@@ -4807,3 +4807,40 @@ this?* For everything below the answer was no.
   **Why not:** Grid-state embeddings in a governed store for CODING agents answer no question any consumer asks.
 - ~~**Evidence-chain submission format** — tamper-evident export of an agent's full decision history per episode, ready for third-party scorecard verification~~
   **Why not:** Per-episode export for the ARC harness, not for this product.
+
+## Rule ledgers and violation history as governed memory (2026-09-26, Proposed)
+
+> Prior-art shape from recent research on rule enforcement for coding agents.
+> **Ideas only — no code, no dependency; the source is never named publicly.**
+
+### The idea
+
+Agents work under written rules. mind-mem already stores decisions and guardrails
+(`check_guardrails`, `recall_with_guardrails`). What it does not store is **which rules
+exist, how each is enforced, and how often each is broken.**
+
+- **Rule ledger block type.** One block per rule: text, source file and line, source
+  content hash (staleness), enforceability class (`lint | deferred | model |
+  unenforceable`), and scope (per action / per turn). Ledger updates go through
+  `propose_update` like any other governed change.
+- **Violation history from transcript replay.** Past agent sessions are reconstructed
+  action by action and checked against the ledger. The result — violation counts per
+  rule, per agent seat, over time — lands as evidence attached to the rule block, so
+  `recall` can answer "is this rule actually followed?" with a number, not a belief.
+- **Calibration record.** For judge-checked rules, the score distribution over ~20
+  historical changes is stored with the rule. A rule that never crosses its threshold
+  (weak) or fires on most changes (noisy) is flagged by `scan` as a contradiction
+  between the rule and its own enforcement.
+
+### What it does NOT license
+
+No judge model runs inside mind-mem, and no rule verdict ever writes to the source of
+truth directly. The ledger is memory about enforcement, not an enforcement engine.
+
+### Falsification condition
+
+Replay one month of saved transcripts against the ten most-cited operational rules.
+If measured violation rates are near zero for all of them, the history leg is not worth
+storing and this entry closes as a non-issue.
+
+- **Status:** Proposed. No implementation authorized.
