@@ -5218,3 +5218,44 @@ If measured violation rates are near zero for all of them, the history leg is no
 storing and this entry closes as a non-issue.
 
 - **Status:** Proposed. No implementation authorized.
+
+## Write-time relation, intake dedup, and memory-gated screening (2026-09-28, Proposed)
+
+> Prior-art shape observed in recent research on autonomous research pipelines.
+> Ideas only — no code, no dependency. Provenance lives in governed memory, not here.
+
+### Why
+
+Three things a research-intake pipeline needs from memory are partly present in
+mind-mem today but are only reachable *after the fact* (via `scan`) or by
+convention (an agent remembering to search first). Each becomes a step instead.
+
+### 1. Relation tag at write time
+
+`propose_update` gains an optional `relation` field whose values reuse the
+existing `block_lineage` edge vocabulary (`refines`, `supersedes`,
+`contradicts`, `supports`, plus `new` for "no related block"). When set, the
+apply path records the matching lineage edge in the same governed write.
+When the proposer claims `new` but `find_similar` returns a close match, the
+proposal is flagged for review instead of applied.
+
+Effect: a stale fact is caught when its replacement is written, not weeks later
+by a contradiction scan. `scan` stays as the backstop.
+
+### 2. "New or known?" as a callable step
+
+A single tool (or a documented `find_similar` + `recall` recipe) that takes an
+incoming item (URL, repo, paper id, free text) and returns
+`known: [block ids] / new: [aspects not covered]`. Intake surfaces (the chat
+adapter, the research desk) call it before any analysis starts.
+
+### 3. Memory gates the screen
+
+`check_dead_ends` + refuted-claim blocks become an input to intake screening:
+an item that matches a recorded dead end or refuted claim is down-ranked or
+skipped, with the matching block id attached so the skip is auditable.
+
+### Status
+
+Proposed. Order: §1, then §2 and §3. Consumers are the naestro research desk
+and the chat adapter's link intake (naestro roadmap R110).
