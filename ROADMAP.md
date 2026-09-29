@@ -5182,6 +5182,194 @@ known to be absent. If the derived statistic does not separate those queries fro
 where the answer is present, there is no signal here and no amount of threshold tuning
 will create one.
 
+## The client surface is a memory boundary: one memory, N agent CLIs, no per-client trust tier (2026-09-20, Proposed)
+
+### What prompted this
+
+A resale router's integration page lists the clients it can be pointed at:
+vendor SDKs, application frameworks, and then a long tail of **agent CLIs**,
+chat front ends and note-taking tools, including two we run ourselves.
+
+(Roster **verified** against the live site 2026-09-20 at
+`cheaperinference.com/docs/integrations` — 17 clients, of which 13 are grouped
+as *harnesses*. OpenClaw and Hermes Agent are confirmed first-class entries.
+Full provenance note in naestro R103. Nothing below depends on the exact roster.)
+
+That list is a market observation, not a roadmap item. What makes it one for
+mind-mem is the shape it exposes: **the number of distinct clients that can sit
+in front of the same memory is growing, and every one of them is a different
+trust context.** We already run mind-mem behind at least five MCP-wired CLIs.
+The count is not the problem; the *undifferentiated* count is.
+
+### The gap
+
+mind-mem's admission filter (`admit_corpus`) governs **what content** is
+resolvable. It does not model **who is asking**. Every MCP client that
+completes the handshake gets the same corpus, because the server has no notion
+of client identity beyond the transport.
+
+That was correct when the clients were all ours and all local. It stops being
+obviously correct when:
+
+- a client reaches the model through a **resale router** — an extra party in
+  the path that is not the model vendor (see naestro R102);
+- a client is a **third-party agent CLI** we did not write and do not gate;
+- the same corpus backs both a governed lane and a public/benchmark lane.
+
+The rule we already apply by hand — *never route STARGA-internal content through
+an unknown intermediary* — is enforced today by **operator discipline at the
+prompt**, not by the memory layer. Discipline is not a mechanism. A prose rule
+that is never mechanically enforced is a rule that drifts, which this repo has
+already learned in the admission-filter context: the shared filter exists
+precisely so withheld content is *unresolvable by construction* rather than
+"filtered by whoever remembered".
+
+### The shape of the fix
+
+Give recall a **caller context** alongside its query, and let the admission
+filter read it:
+
+1. **Client identity at the boundary.** The MCP server records which client
+   opened the session (it already knows the transport; what it lacks is a
+   stable, declared identity it can attach to the call).
+2. **A lane tag per client**, declared in config, not inferred: `governed`
+   (own keys, own path, full corpus) vs `open` (router-reachable, third-party
+   client, restricted corpus).
+3. **`admit_corpus` takes the lane as an input.** Internal blocks become
+   unresolvable on an `open` lane *by construction* — the same guarantee the
+   status filter already provides, extended along a second axis.
+
+The invariant to preserve: a client that cannot prove its lane gets the **most
+restrictive** one. Undeclared defaults to `open`, never to `governed` — the
+fail-closed direction, matching the "undeclared gates default to fail-closed"
+rule already in the orchestration guidance.
+
+### Why this is not just "add auth"
+
+Authentication answers *who*. This needs *through what path* — a governed seat
+and a resold seat can be the **same model, same operator, same credentials**,
+and still differ in whether a third party sees the prompt. Path integrity is a
+property of the route, not of the caller's identity, so an auth token alone
+cannot express it. That is the same distinction naestro R102 draws in refusing
+to treat a resold model seat as a substitute for a first-party approval seat.
+
+### NOT AUDITED
+
+No one has measured this. Specifically unknown:
+
+- whether the MCP layer can even observe a stable client identity today, or
+  whether every client is indistinguishable at the transport;
+- how many blocks in the current corpus would actually be withheld on an `open`
+  lane — if the answer is "almost none", the mechanism buys little and should be
+  closed as declined;
+- whether lane tagging can be expressed in the existing config surface without a
+  schema change.
+
+The first step is the measurement, not the implementation.
+
+### Falsification condition
+
+Partition the corpus by the lane each block *should* be visible on, then count.
+If the `open` lane would see essentially the whole corpus — i.e. we hold almost
+nothing that a third-party path should not see — then this entry is solving a
+problem we do not have, and operator discipline at the prompt is the
+proportionate control. Conversely, if a meaningful fraction is internal-only,
+then the current design is one careless client away from leaking it, and the
+mechanism is overdue.
+
+---
+
+## Prefix-stability as a recall property: what KV-cache practice implies for how we order injected context (2026-09-20, Observed)
+
+> Prior-art shape from an external practitioner text on production inference.
+> **Ideas only — no code, no dependency; the source is never named publicly.**
+
+### The mechanism, stated exactly
+
+Production inference engines re-use the KV cache across requests, not only
+within one. The re-use is **prefix-only**, and the reason is structural rather
+than an implementation limit: LLMs are autoregressive, so every token
+conditions every later token. A single differing token changes the model's
+internal representation of everything after it, even where the remaining text
+is character-identical.
+
+The consequence is sharp. **A shared prefix ends at the first differing token**,
+and everything past that point is recomputed. Two prompts that differ only in
+their opening token share *nothing*, however identical the rest. The
+optimization rule that follows is one line: **novel tokens belong as late in the
+context as possible.**
+
+This is also what pay-per-token APIs are pricing when they bill cache-hit input
+tokens below cache-miss ones.
+
+### Why this lands on mind-mem specifically
+
+mind-mem's job is to inject recalled context into an agent's prompt. That makes
+the **ordering of what we inject a performance property of the whole system**,
+not a cosmetic choice — and it is one we have never treated as such.
+
+The failure mode is concrete and plausible. If injected memory carries anything
+that varies per call near the front — a timestamp, a recall-score line, a
+session id, a per-query relevance header, a reordered block list — then every
+call is a cache miss on the entire downstream prompt, including the large static
+system prompt sitting behind it. The content would be *substantively* identical
+and the cache would still be defeated, because prefix matching is by token, not
+by meaning.
+
+That is the whole finding: a single volatile token at the front of an injection
+can invalidate the cached prefill of everything after it, on every call, and it
+would be invisible in every functional test we run.
+
+### What this licenses
+
+1. **Stable-first ordering for injected context.** Anything invariant across
+   calls — the system prompt, durable project facts, long-lived governed blocks
+   — goes first. Anything that varies per call — query-specific hits, scores,
+   timestamps, session state — goes last. This is free to adopt and cannot hurt
+   correctness.
+2. **Determinism of block ordering becomes a performance requirement, not only
+   a hygiene one.** If two recalls returning the same block set can emit them in
+   different orders, we defeat prefix caching for no benefit. Ordering must be a
+   deterministic function of the block set.
+3. **Keep volatile metadata out of the prefix entirely where it is not load-
+   bearing.** A recall score printed ahead of the content is a per-call token.
+   If a consumer does not need it, it should not be in the injected text at all.
+
+### What it does NOT license
+
+- **Any claim about our current cost or latency.** Nobody has measured whether
+  our injections actually defeat prefix caching today. The mechanism is
+  certain; our exposure to it is unmeasured. Stating otherwise would be the
+  "artifact that looks like a status is not the status" error.
+- **A change to what is admitted.** This is purely about the *order* of already-
+  admitted content. `admit_corpus` governs what is resolvable; nothing here
+  touches that, and ordering must never be allowed to become a second, informal
+  admission path.
+- **Anything about the local stack.** Our own embedding and BM25 path has no KV
+  cache. This applies only where recalled context is injected into a hosted
+  model's prompt.
+
+### The adjacent idea worth noting, not adopting
+
+The same source describes a four-level KV storage hierarchy — GPU VRAM, host
+RAM, local SSD, networked SSD — in descending bandwidth, with hot blocks kept
+high and cold blocks demoted. That is a recognizable description of what a
+tiered recall cache would look like, and the parallel is tempting. It is
+recorded here and explicitly **not** proposed: our retrieval bottleneck has
+never been measured to be storage bandwidth, and building a tier hierarchy
+against an unmeasured bottleneck is the mistake this file exists to prevent.
+
+### Falsification condition
+
+Measurable directly, and cheap. Issue the same recall twice against a hosted
+model that reports cache-hit token counts, and inspect the injected prefix for
+per-call variation. If injections are already prefix-stable and cache-hit
+counts are high, this entry is closed as a non-issue. If the first differing
+token sits near the front of the injection, the reordering is worth doing and
+the cost of not doing it is quantified by the same measurement.
+
+- **Status:** Observed. Measurement first; no implementation authorized.
+
 ## Rule ledgers and violation history as governed memory (2026-09-26, Proposed)
 
 > Prior-art shape from recent research on rule enforcement for coding agents.
