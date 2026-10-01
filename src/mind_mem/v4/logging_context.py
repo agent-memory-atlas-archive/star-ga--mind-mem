@@ -1,4 +1,4 @@
-"""v4 structured logging context (round 4 audit, DeepSeek 9.75→10 gap).
+"""v4 structured logging context (round 4 audit, 9.75→10 gap).
 
 Adds correlation-ID + key-value context propagation across v4
 operations so log lines can be grouped by request, agent, or

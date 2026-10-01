@@ -63,5 +63,5 @@ Follow conventional commit format:
 
 - **CI**: Runs tests on Python 3.10/3.11/3.12/3.13/3.14 across Ubuntu/macOS/Windows
 - **Benchmark**: Measures recall latency
-- **Security Review**: CodeQL + Claude Code review
+- **Security Review**: CodeQL
 - **Docs**: Validates documentation

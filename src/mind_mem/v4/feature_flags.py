@@ -102,7 +102,7 @@ ALL_V4_FLAGS: Final[tuple[str, ...]] = (
     "multi_modal",  # sidecar-described image/audio inbox drops + modality-aware pack cost
     "observability",  # counters / gauges / histograms (round 3 audit 4/4)
     "logging_context",  # correlation-ID + kv context on every log line (round 4 audit)
-    "backpressure",  # ingestion overload signal (round 4 audit, DeepSeek 9.75→10)
+    "backpressure",  # ingestion overload signal (round 4 audit, 9.75→10)
     "block_metadata",  # ChromaDB-style tags + Weaviate-style validators (round 4 audit)
     "circuit_breaker",  # external dependency CB (round 5 audit, Mistral + GLM 9.9→10)
     # Group E — compliance-sensitive opt-in

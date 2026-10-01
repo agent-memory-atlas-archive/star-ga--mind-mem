@@ -33,4 +33,4 @@
 P3's step-tick friction (HITL on every plan-step update) needs the **batch-review mode designed up front**, or agents route around the frame with scratch files and the feature dies. Permissible relaxation: stage-for-batch-review, never silent apply, never for goal/plan/decision fields.
 
 ---
-*Source: Fable design pass, 2026-07-30. Opus reviews + implements the fit ones after v4.4.0 ships.*
+*Source: design pass, 2026-07-30. The items that fit are reviewed and implemented after v4.4.0 ships.*

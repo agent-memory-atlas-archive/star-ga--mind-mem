@@ -502,7 +502,7 @@ ships as a versioned config, like any other governed change.
       below threshold the hit is *demoted, never dropped*. Routes through the
       existing contradiction-log + `list_staleness_scores` primitives; no
       clock/rand on the scored preimage; annotates `hit["validity"]` for
-      `retrieval_diagnostics`. Fable-spec'd, regression-gated
+      `retrieval_diagnostics`. Specified and regression-gated
       (`tests/test_validity_gate.py`).
 - [x] **Feedback-quality → downstream-success bench** — shipped v4.9.1 (`benchmarks/feedback_success_bench.py`; 48 deterministic episodes, starved 0.00 → sufficient 1.00 at matched budget). **Completes Group I.** Originally: add a standing
       eval that predicts agent task-failure from recall feedback-quality
@@ -3015,11 +3015,9 @@ wedge applied to ourselves.
 
 ## Blocking-then-arbitration for entity resolution (prior art: recent working note on agentic KG practice)
 
-> Opened 2026-07-25. Source is a third-party synthesis of public Anthropic material.
-> **Idea only — no code adopted, no dependency, no public attribution.** Note that the
-> social claims made *about* that document ("two Anthropic seniors", "1000x better")
-> are fabrications by a reposter and appear nowhere in it; the document's own numbers
-> are modest and honestly stated. Cite the technique, never the hype.
+> Opened 2026-07-25. **Idea only — no code adopted, no dependency.** The source's own
+> numbers are modest; claims repeated about it elsewhere are not. Cite the technique,
+> never the hype.
 
 **The pattern.** Resolving thousands of entity mentions by handing them all to a
 model in one prompt does not work. The disciplined form is two-stage: **cheap
@@ -3718,7 +3716,7 @@ mislabelled eval set still produces confident numbers.
   **Follow-on, not done here:** the fix for finding 2 is an embed-vs-store
   split in the store's own API (embed a designated field, carry the rest as
   sibling keys that are stored and returned but never vectorised). That is a
-  surface change and belongs behind its own Fable ruling.
+  surface change and belongs behind its own review ruling.
   A vector store retrieves on whatever field carries the vector. If the embedded
   text is phrased in the vocabulary of the *answer* while queries arrive phrased
   in the vocabulary of the *problem*, the vectors never meet: nothing errors, no
@@ -4056,7 +4054,7 @@ symlink hardening follow-up. No parallel chain or evidence enum member was added
      utility number, and Group M's floors: a provenance anchor records *where a
      chunk came from*. It must never be read as a quality signal, must never
      influence ranking, and must never gate approval.
-  **Fable verdict 2026-08-24: AMENDED.** Approved in shape, re-sequenced, and
+  **Review verdict 2026-08-24: AMENDED.** Approved in shape, re-sequenced, and
   corrected on three points. The review was conducted against this entry and an
   independent re-verification of the code (the reviewer's sandbox restricted reads
   to this repo), so the findings below are confirmed independently rather than
@@ -4099,7 +4097,7 @@ symlink hardening follow-up. No parallel chain or evidence enum member was added
      proved holds. **`config_digest` is mandatory, not optional**, since
      `soft_max_chunk_size`/`min`/`max` all move boundaries and version alone
      under-specifies.
-  **Historical sequencing decision (2026-08-24; wiring and anchors are now implemented).** Fable ordered: N3 (done) → **N1** → **wire the
+  **Historical sequencing decision (2026-08-24; wiring and anchors are now implemented).** The review ordered: N3 (done) → **N1** → **wire the
   chunker into the production ingest path** (its own reviewable change) → N2 as
   metadata-sealing per above. Two independent reasons, both confirmed against the
   code: (a) F1 — `smart_chunker` has **zero production importers** (only its two test
@@ -4594,7 +4592,7 @@ named in any public artifact.
 
 ---
 
-## Fable's five for 5.0.0 — "everything already claimed is demonstrably true"
+## Five release criteria for 5.0.0 — "everything already claimed is demonstrably true"
 
 Generative consult 2026-09-01. Asked for architecture rather than approval, the
 ruling was that the correct 5.0.0 is **not the release with more** — after
@@ -4640,7 +4638,7 @@ evidence.
 
 - [ ] **4. Enforcement-in-code audit** — every claim in README/CLAUDE.md mapped to
   a test that enforces it, plus the same reachability pass applied to the 98-tool
-  MCP surface. Fable's addition: the tool list is the most public instance of
+  MCP surface. Added in review: the tool list is the most public instance of
   shipping surface before consumers, and a major version is the one licence to
   cut it. This is the institutional fix for the over-building lesson, not another
   one-time sweep.

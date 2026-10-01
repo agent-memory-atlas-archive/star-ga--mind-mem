@@ -1,4 +1,4 @@
-"""v4 health-check surface (round 4 audit, DeepSeek 9.75→10 gap).
+"""v4 health-check surface (round 4 audit, 9.75→10 gap).
 
 Provides one-line health introspection for production deployments
 that need a liveness/readiness probe. ``health_check(workspace)``

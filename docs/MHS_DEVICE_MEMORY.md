@@ -1,6 +1,6 @@
 # MHS / Device Memory Boundary
 
-> Status: roadmap/specification work. Anthropic announced the Model Hardware Standard (MHS) research preview on 2026-08-27. The final open-source MHS specification is not public yet. This document therefore defines MIND's stable internal boundaries and an MHS compatibility seam without claiming conformance to an unpublished specification. When the normative MHS specification is released, the adapter and conformance layer MUST be reconciled before any interoperability claim is made.
+> Status: roadmap/specification work. The Model Hardware Standard (MHS) research preview was announced on 2026-08-27. The final open-source MHS specification is not public yet. This document therefore defines MIND's stable internal boundaries and an MHS compatibility seam without claiming conformance to an unpublished specification. When the normative MHS specification is released, the adapter and conformance layer MUST be reconciled before any interoperability claim is made.
 
 `mind-mem` may make physical-device experiences more useful by remembering history and preferences.
 It must never become the source of truth for current physical state.

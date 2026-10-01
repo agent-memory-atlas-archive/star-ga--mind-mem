@@ -1,4 +1,4 @@
-"""v4 backpressure controller (round 4 audit, DeepSeek 9.75→10 gap).
+"""v4 backpressure controller (round 4 audit, 9.75→10 gap).
 
 When the embedding pipeline or consolidation worker can't keep up
 with incoming work, callers need an explicit signal that says "back

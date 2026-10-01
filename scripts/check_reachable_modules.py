@@ -97,7 +97,7 @@ ALLOWLIST: dict[str, str] = {
     "novel_term_gate": (
         "Group J. Its only designed consumer is the anticipation-cache "
         "consumer, which is itself an OPEN roadmap item -- the leaf shipped "
-        "before the branch. Fable's audit further argues the cache is "
+        "before the branch. A later audit further argues the cache is "
         "architecturally wrong for a governed store (a client-side TTL cache "
         "serves blocks without passing the governed read path, so a block "
         "contradicted since caching is served as truth). If that call stands, "

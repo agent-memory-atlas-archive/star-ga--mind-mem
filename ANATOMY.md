@@ -1114,7 +1114,7 @@
 - `usage_meter.py` (~5249 tok, huge) — # Copyright 2026 STARGA, Inc.
 ### `src/mind_mem/v4/`
 
-- `backpressure.py` (~4318 tok, huge) — v4 backpressure controller (round 4 audit, DeepSeek 9.75→10 gap).
+- `backpressure.py` (~4318 tok, huge) — v4 backpressure controller (round 4 audit, 9.75→10 gap).
 - `block_kinds.py` (~6493 tok, huge) — v4 block-kind taxonomy (Group B: knowledge graph).
 - `block_metadata.py` (~3946 tok, huge) — v4 block metadata + schema-validation hooks.
 - `block_versioning.py` (~1861 tok, huge) — Block versioning + time-travel — reconstruct what a block said, and when.
@@ -1125,13 +1125,13 @@
 - `federation_client.py` (~5276 tok, huge) — Federation wire-transport client for mind-mem v4.
 - `federation.py` (~7339 tok, huge) — v4 federated cross-agent consistency (Group D).
 - `flag_registry.py` (~8516 tok, huge) — Three-state registry for every declared v4 feature flag.
-- `health.py` (~2475 tok, huge) — v4 health-check surface (round 4 audit, DeepSeek 9.75→10 gap).
+- `health.py` (~2475 tok, huge) — v4 health-check surface (round 4 audit, 9.75→10 gap).
 - `hnsw_kind_index.py` (~3545 tok, huge) — v4 HNSW kind-filtered ANN index (Group D).
 - `__init__.py` (~1010 tok, large) — mind-mem v4.0 surface — side-by-side scaffolding, default OFF.
 - `kernels.py` (~4057 tok, huge) — v4 kernel strategy implementations (Group A).
 - `kind_backfill.py` (~3068 tok, huge) — The v4 kind-index build pass — ``mm kinds backfill``'s engine.
 - `kind_summaries.py` (~5345 tok, huge) — v4 per-kind global summaries (Group B — GraphRAG-style).
-- `logging_context.py` (~1424 tok, large) — v4 structured logging context (round 4 audit, DeepSeek 9.75→10 gap).
+- `logging_context.py` (~1424 tok, large) — v4 structured logging context (round 4 audit, 9.75→10 gap).
 - `observability.py` (~2993 tok, huge) — v4 observability — counters, timers, histograms, exporters.
 - `pq.py` (~5255 tok, huge) — v4 product-quantization (PQ) encoding for embedding storage (Group D).
 - `self_editing.py` (~3295 tok, huge) — v4 self-editing on recall (Group A — MemGPT pattern).
