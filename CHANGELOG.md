@@ -12,6 +12,9 @@ All notable changes to MIND-Mem are documented in this file.
 
 ### Fixed
 
+- The temporal hard filter no longer empties recall: when the resolved window ("last month")
+  excludes every candidate, the unfiltered ranking is kept. Blocks are dated by when they were
+  recorded, so an event mentioned later used to become unanswerable ("no record").
 - Hybrid fusion no longer erases a leg's metadata: the fused hit is still a copy of the
   freshest leg's dict, but fields only another leg returned (the lexical leg's `speaker`,
   `DiaID`, `tags`) are now kept, so evidence packers render the speaker and source id of

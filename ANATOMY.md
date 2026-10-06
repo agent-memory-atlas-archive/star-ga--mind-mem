@@ -5,8 +5,8 @@
 > Re-generate with: `anatomy .`
 
 **Project:** `mind-mem`
-**Files:** 1671 | **Est. tokens:** ~4,890,124
-**Generated:** 2026-10-06 17:03 UTC
+**Files:** 1672 | **Est. tokens:** ~4,890,472
+**Generated:** 2026-10-06 18:14 UTC
 
 ## Token Budget Guide
 
@@ -91,7 +91,7 @@
 | `src/mind_mem/tool_output/` | 3 | ~5,895 |
 | `src/mind_mem/v4/` | 24 | ~96,311 |
 | `src/mind_mem/viewer_static/` | 3 | ~865 |
-| `tests/` | 745 | ~2,181,906 |
+| `tests/` | 746 | ~2,182,254 |
 | `tests/fixtures/` | 7 | ~11,912 |
 | `tests/fixtures/importers/` | 5 | ~1,218 |
 | `tests/fixtures/importers/agent_memory/` | 4 | ~383 |
@@ -1871,6 +1871,7 @@
 - `test_task_frames.py` (~7349 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_telemetry.py` (~2829 tok, huge) — Tests for src/mind_mem/telemetry.py.
 - `test_temporal_decay_scoring.py` (~863 tok, large) — v3.3.0 Tier 1 #3 — half-life decay on block ``Created``/``Date`` field.
+- `test_temporal_filter_empty_fallback.py` (~348 tok, medium) — A temporal hard-filter window that excludes every candidate falls back to the unfiltered ranking."""
 - `test_temporal.py` (~223 tok, medium) — Tests for temporal filtering module."""
 - `test_tenant_audit.py` (~2833 tok, huge) — v4.0 prep — per-tenant audit chain façade."""
 - `test_tenant_kms.py` (~1916 tok, huge) — v4.0 prep — per-tenant KMS envelope encryption."""

@@ -2558,7 +2558,14 @@ def recall(
         t_start, t_end = resolve_time_reference(query, reference_date=_scoring_instant)
         if t_start is not None or t_end is not None:
             pre_count = len(results)
-            results = apply_temporal_filter(results, t_start, t_end)
+            filtered = apply_temporal_filter(results, t_start, t_end)
+            if filtered:
+                results = filtered
+            else:
+                # A block is dated by when it was RECORDED; the event it mentions ("last month") is often
+                # earlier. A window that removes every candidate would turn an answerable question into
+                # "no record", so keep the unfiltered ranking instead.
+                _log.info("temporal_hard_filter_empty_fallback", start=str(t_start), end=str(t_end), pre=pre_count)
             _log.info("temporal_hard_filter", start=str(t_start), end=str(t_end), pre=pre_count, post=len(results))
 
     _stage_counts["temporal_filtered"] = len(results)
