@@ -5,8 +5,8 @@
 > Re-generate with: `anatomy .`
 
 **Project:** `mind-mem`
-**Files:** 1672 | **Est. tokens:** ~4,890,472
-**Generated:** 2026-10-06 18:14 UTC
+**Files:** 1672 | **Est. tokens:** ~4,890,476
+**Generated:** 2026-10-06 18:56 UTC
 
 ## Token Budget Guide
 
@@ -91,7 +91,7 @@
 | `src/mind_mem/tool_output/` | 3 | ~5,895 |
 | `src/mind_mem/v4/` | 24 | ~96,311 |
 | `src/mind_mem/viewer_static/` | 3 | ~865 |
-| `tests/` | 746 | ~2,182,254 |
+| `tests/` | 746 | ~2,182,258 |
 | `tests/fixtures/` | 7 | ~11,912 |
 | `tests/fixtures/importers/` | 5 | ~1,218 |
 | `tests/fixtures/importers/agent_memory/` | 4 | ~383 |
@@ -1545,7 +1545,7 @@
 - `test_llm_extractor.py` (~1842 tok, huge) — Tests for the optional LLM entity/fact extractor module."""
 - `test_llm_noise_profile.py` (~2359 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_llm_noise_profile_wiring.py` (~7741 tok, huge) — # Copyright 2026 STARGA, Inc.
-- `test_locomo_bench_ingest.py` (~527 tok, large) — LoCoMo benchmark ingestion: shared-image descriptions are part of a turn; evidence budget scales with top_k."""
+- `test_locomo_bench_ingest.py` (~531 tok, large) — LoCoMo benchmark ingestion: shared-image descriptions are part of a turn; evidence budget scales with top_k."""
 - `test_locomo_suite.py` (~2743 tok, huge) — Tests for the LoCoMo recall harness (self-asserting adapters).
 - `test_longmemeval_full_run.py` (~1696 tok, huge) — The full-run driver must score the same pool the canonical harness does.
 - `test_m2_custom_namespace_direct_get.py` (~2095 tok, huge) — M2: direct reads and recall for explicitly declared custom roots."""

@@ -40,7 +40,7 @@ def test_build_workspace_stores_the_description(tmp_path):
     sample = {"sample_id": "s1", "conversation": {"speaker_a": "Ana", "speaker_b": "Bo", "session_1_date_time": "1 May 2023",
               "session_1": [{"speaker": "Ana", "dia_id": "D1:1", "text": "Look!", "blip_caption": "a photo of a red kite"}]}}
     ws = h.build_workspace(sample, str(tmp_path))
-    corpus = Path(ws, "decisions", "DECISIONS.md").read_text()
+    corpus = Path(ws, "decisions", "DECISIONS.md").read_text(encoding="utf-8")
     assert "Statement: [Ana] Look! [shared image: a photo of a red kite]" in corpus
 
 
