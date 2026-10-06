@@ -200,6 +200,10 @@ def rrf_fuse(
     # per (id, arm) as the lists are walked is the only point at which both
     # legs' values are still in scope.
     leg_raw: dict[str, dict[str, float]] = {}
+    # Every leg's dict per id, in arrival order. The fused item copies ONE of them (R-1); fields that
+    # only the other legs carry (the lexical leg's ``speaker`` / ``DiaID`` / ``tags``, the dense
+    # leg's ``Date``) are filled in from these so fusion never erases metadata a leg returned.
+    leg_dicts: dict[str, list[dict]] = {}
 
     for list_idx, results in enumerate(ranked_lists):
         w = weights[list_idx] if list_idx < len(weights) else 1.0
@@ -212,6 +216,7 @@ def rrf_fuse(
                 leg_raw.setdefault(bid, {})[arm] = float(item.get("score", 0.0) or 0.0)
             except (TypeError, ValueError):
                 leg_raw.setdefault(bid, {})[arm] = 0.0
+            leg_dicts.setdefault(bid, []).append(item)
             existing = block_data.get(bid)
             if existing is None:
                 block_data[bid] = item
@@ -239,6 +244,10 @@ def rrf_fuse(
     fused = []
     for bid in sorted_ids:
         item = block_data[bid].copy()
+        for other in leg_dicts.get(bid, ()):
+            for key, value in other.items():
+                if key not in item and value not in (None, ""):
+                    item[key] = value
         item["rrf_score"] = round(scores[bid], 6)
         # ONE SCORE CONTRACT: ``score`` is the sort key at every stage exit.
         # Before this, fusion wrote ``rrf_score`` and left ``score`` holding
@@ -1994,10 +2003,10 @@ class HybridBackend:
             reranked = None
         if reranked is None:
             try:
-                from .cross_encoder_reranker import CrossEncoderReranker
+                from . import cross_encoder_reranker as _cer
 
-                if CrossEncoderReranker.is_available():
-                    ce = CrossEncoderReranker()
+                if _cer.CrossEncoderReranker.is_available():
+                    ce = _cer.CrossEncoderReranker(**_cer.ce_model_args(ce_cfg))
                     for r in candidates:
                         if "content" not in r:
                             r["content"] = r.get("excerpt", "")

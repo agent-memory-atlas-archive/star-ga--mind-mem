@@ -4,6 +4,24 @@ All notable changes to MIND-Mem are documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- Hybrid fusion no longer erases a leg's metadata: the fused hit is still a copy of the
+  freshest leg's dict, but fields only another leg returned (the lexical leg's `speaker`,
+  `DiaID`, `tags`) are now kept, so evidence packers render the speaker and source id of
+  every fused hit.
+- The single-model cross-encoder (hybrid post-fusion and the recall core) now loads the
+  configured `cross_encoder.model` / `cross_encoder.device`; it previously always loaded
+  the default MiniLM cross-encoder whatever was configured.
+
+### Benchmarks
+
+- LoCoMo workspaces include what a turn shared: the image description is stored with the
+  turn text as `[shared image: ...]`.
+- The LoCoMo evidence budget scales with `top_k` (500 characters per block, never below the
+  historical 6,000; `MIND_MEM_EVIDENCE_MAX_CHARS` overrides), so raising `top_k` no longer
+  silently drops retrieved blocks from the prompt.
+
 ## [5.0.4] - 2026-09-15
 
 ### Added

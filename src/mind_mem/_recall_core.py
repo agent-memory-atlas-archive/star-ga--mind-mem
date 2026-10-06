@@ -2614,10 +2614,10 @@ def recall(
     # Stage 2.5: Optional cross-encoder neural reranking — capped (#9)
     if ce_config.get("enabled", False):
         try:
-            from .cross_encoder_reranker import CrossEncoderReranker
+            from .cross_encoder_reranker import CrossEncoderReranker, ce_model_args
 
             if CrossEncoderReranker.is_available():
-                ce = CrossEncoderReranker()
+                ce = CrossEncoderReranker(**ce_model_args(ce_config))
                 ce_cap = min(len(deduped), MAX_RERANK_CANDIDATES)
                 ce_input = deduped[:ce_cap]
                 for r in ce_input:
