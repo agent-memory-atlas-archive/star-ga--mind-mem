@@ -5,8 +5,8 @@
 > Re-generate with: `anatomy .`
 
 **Project:** `mind-mem`
-**Files:** 1668 | **Est. tokens:** ~4,886,924
-**Generated:** 2026-10-06 15:32 UTC
+**Files:** 1671 | **Est. tokens:** ~4,890,124
+**Generated:** 2026-10-06 17:03 UTC
 
 ## Token Budget Guide
 
@@ -76,7 +76,7 @@
 | `skills/integrity-scan/` | 1 | ~376 |
 | `skills/memory-recall/` | 1 | ~549 |
 | `src/` | 1 | ~280 |
-| `src/mind_mem/` | 238 | ~1,070,207 |
+| `src/mind_mem/` | 239 | ~1,072,132 |
 | `src/mind_mem/api/` | 5 | ~27,259 |
 | `src/mind_mem/bench/` | 17 | ~48,632 |
 | `src/mind_mem/compliance/` | 7 | ~15,436 |
@@ -91,7 +91,7 @@
 | `src/mind_mem/tool_output/` | 3 | ~5,895 |
 | `src/mind_mem/v4/` | 24 | ~96,311 |
 | `src/mind_mem/viewer_static/` | 3 | ~865 |
-| `tests/` | 743 | ~2,180,631 |
+| `tests/` | 745 | ~2,181,906 |
 | `tests/fixtures/` | 7 | ~11,912 |
 | `tests/fixtures/importers/` | 5 | ~1,218 |
 | `tests/fixtures/importers/agent_memory/` | 4 | ~383 |
@@ -792,7 +792,7 @@
 - `chat_citations.py` (~2480 tok, huge) — Citation extraction + validation for the conversational chat layer.
 - `chat_cli.py` (~1135 tok, large) — ``mind-mem-chat`` — ask a workspace a question, get cited answers.
 - `chat_generators.py` (~2047 tok, huge) — Pluggable answer generators for the conversational chat layer.
-- `chat_memory.py` (~10238 tok, huge) — Conversational chat layer — grounded answers with ``[[block_id]]`` citations.
+- `chat_memory.py` (~10527 tok, huge) — Conversational chat layer — grounded answers with ``[[block_id]]`` citations.
 - `check_version.py` (~1189 tok, large) — Version consistency checker for mind-mem.
 - `closed_slots.py` (~6827 tok, huge) — Closed, versioned fact slots on the governed Markdown store.
 - `codepoint_sanitize.py` (~2007 tok, huge) — Invisible-Unicode codepoint sanitization for block ingestion (security).
@@ -1029,6 +1029,7 @@
 - `semantic_capability.py` (~219 tok, medium) — Explicit capability boundary for semantic answer verification.
 - `served_ledger.py` (~13315 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `session_boost.py` (~1511 tok, huge) — Session-boundary preservation for recall (v3.3.0 Tier 2 #5).
+- `session_expansion.py` (~1636 tok, huge) — Session expansion: answer from whole conversation sessions instead of isolated turns.
 - `session_summarizer.py` (~3852 tok, huge) — mind-mem Session Summarizer. Zero external deps.
 ### `src/mind_mem/skill_opt/`
 
@@ -1317,6 +1318,7 @@
 - `test_chain_transaction_capability.py` (~1204 tok, large) — # Copyright 2026 STARGA, Inc.
 - `test_chain_truncation.py` (~5069 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_change_stream_backpressure.py` (~956 tok, large) — The change stream's backpressure counters, and the drain that gives
+- `test_chat_session_expansion.py` (~524 tok, large) — chat_with_memory(session_expansion_chars=N) answers from whole admitted sessions; 0 leaves it unchanged."""
 - `test_chat_with_memory.py` (~7563 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_check_version_gate.py` (~475 tok, medium) — Regression tests for the version-consistency gate.
 - `test_check_version.py` (~271 tok, medium) — Tests for version consistency checker."""
@@ -1834,6 +1836,7 @@
 - `test_served_ledger.py` (~12124 tok, huge) — RA.1 — the served-set ledger: proof of what was served, joinable to outcome.
 - `test_served_ledger_v2_compat.py` (~1724 tok, huge) — Reader-only compatibility controls for mixed v1/v2 served ledgers.
 - `test_session_boost.py` (~1488 tok, large) — v3.3.0 Tier 2 #5 — session-boundary preservation via recall-side boost.
+- `test_session_expansion.py` (~751 tok, large) — Session expansion returns whole admitted sessions, ranked by hits then session BM25, within a budget."""
 - `test_session_summarizer_door.py` (~3747 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_session_summarizer.py` (~3976 tok, huge) — Comprehensive tests for mind_mem/session_summarizer.py.
 - `test_sharded_pg.py` (~4415 tok, huge) — v4.0 prep — sharded Postgres routing tests (mock underlying stores)."""

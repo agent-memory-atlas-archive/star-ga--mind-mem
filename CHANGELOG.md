@@ -4,6 +4,12 @@ All notable changes to MIND-Mem are documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Session expansion (`mind_mem.session_expansion`, opt-in `chat_with_memory(session_expansion_chars=N)`):
+  answer from the whole sessions the hits belong to, plus other sessions ranked by whole-session
+  BM25, within a character budget, from the admitted corpus only. Off by default.
+
 ### Fixed
 
 - Hybrid fusion no longer erases a leg's metadata: the fused hit is still a copy of the

@@ -602,6 +602,7 @@ def chat_with_memory(
     agent_id: str | None = None,
     semantic_required: bool = False,
     graph_seed: str | None = None,
+    session_expansion_chars: int = 0,
 ) -> ChatAnswer:
     """Answer *question* from *workspace* with verified citations.
 
@@ -636,6 +637,11 @@ def chat_with_memory(
         semantic_required: Require a reviewed semantic entailment verifier.
             The current runtime has no such verifier, so ``True`` returns an
             explicit abstention before recall or generation.
+        session_expansion_chars: **Opt-in** (0 = off, the unexpanded path). When positive, the
+            evidence is the whole sessions the hits belong to, plus other sessions that match the
+            question lexically, drawn from the admitted corpus only and capped at this many
+            characters of block text (see :mod:`mind_mem.session_expansion`). Block text is not
+            cut to the recall excerpt length. Not applied on the graph path.
         graph_seed: Opt-in seed for a read-only edge-grounded projection.
             When supplied, chat may cite only the canonical source documents
             behind served edges. Missing graph/provenance is an explicit
@@ -770,6 +776,17 @@ def chat_with_memory(
                 graph_evidence=_graph_evidence_payload(None, error="graph provenance unavailable; answer withheld"),
                 attestation_scope="none",
             )
+
+    if session_expansion_chars > 0 and graph_context is None and hits:
+        # Opt-in: answer from the whole sessions the hits belong to (plus other sessions that match
+        # the question), drawn only from the admitted corpus, within the character budget.
+        from .session_expansion import expand_sessions
+
+        expanded = expand_sessions(asked, [h for h in hits if isinstance(h, dict)],
+                                   _admitted_graph_blocks(workspace, agent_id), session_expansion_chars)
+        if expanded:
+            hits = expanded
+            max_evidence_chars = max(max_evidence_chars, session_expansion_chars + 64 * len(expanded))
 
     evidence = _to_evidence(hits or ())
 
