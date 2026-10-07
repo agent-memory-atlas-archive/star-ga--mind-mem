@@ -603,6 +603,7 @@ def chat_with_memory(
     semantic_required: bool = False,
     graph_seed: str | None = None,
     session_expansion_chars: int = 0,
+    computed_facts: bool = False,
 ) -> ChatAnswer:
     """Answer *question* from *workspace* with verified citations.
 
@@ -642,6 +643,13 @@ def chat_with_memory(
             question lexically, drawn from the admitted corpus only and capped at this many
             characters of block text (see :mod:`mind_mem.session_expansion`). Block text is not
             cut to the recall excerpt length. Not applied on the graph path.
+        computed_facts: **Opt-in** (False = the uncomputed path, byte-identical). When True, a block
+            of facts computed from the evidence in code is appended to it: event dates resolved to
+            ISO, a sorted timeline, elapsed days / weeks (days // 7) / calendar months to "today",
+            the gap between the two events the question names, their neighbours, and for a choice
+            question the offered options verbatim (see :mod:`mind_mem.answer_facts`). If the answer
+            to a choice question names none of the options, the generator is asked once more with
+            that constraint stated.
         graph_seed: Opt-in seed for a read-only edge-grounded projection.
             When supplied, chat may cite only the canonical source documents
             behind served edges. Missing graph/provenance is an explicit
@@ -877,6 +885,15 @@ def chat_with_memory(
     if graph_facts:
         facts = facts + "\n\n" + graph_facts
 
+    options: list[str] = []
+    if computed_facts:
+        from .answer_facts import choice_options, computed_facts as _computed
+
+        extra = _computed(asked, evidence)
+        if extra:
+            facts = facts + "\n\n" + extra
+        options = choice_options(asked)
+
     prompt = _build_prompt(asked, resolved_category, facts)
     request = ChatRequest(question=asked, prompt=prompt, evidence=evidence, category=resolved_category)
 
@@ -884,6 +901,16 @@ def chat_with_memory(
     if not isinstance(answer, str):
         raise TypeError(f"generator must return str, got {type(answer).__name__}")
     answer = answer.strip()
+    if options:
+        from .answer_facts import names_an_option
+
+        if not names_an_option(answer, options):
+            # One retry with the constraint stated; the second answer is kept whatever it says.
+            retry_prompt = prompt + "\n\nYour answer must name exactly one of these options, verbatim: " + " | ".join(options)
+            retried = (generator or extractive_generator)(
+                ChatRequest(question=asked, prompt=retry_prompt, evidence=evidence, category=resolved_category))
+            if isinstance(retried, str) and retried.strip():
+                answer = retried.strip()
 
     if graph_context is not None:
         latest_context, latest_payload = _graph_context_for_chat(workspace, graph_seed or "", agent_id=agent_id)

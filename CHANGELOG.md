@@ -6,6 +6,13 @@ All notable changes to MIND-Mem are documented in this file.
 
 ### Added
 
+- Computed evidence facts (`mind_mem.answer_facts`, opt-in `chat_with_memory(computed_facts=True)`):
+  event dates resolved in code (explicit dates; today / yesterday / N days ago / last <weekday>
+  against the block date), a sorted timeline, elapsed days / weeks (days // 7) / calendar months
+  for "ago" questions, a table of pairwise day gaps for "between" questions, name links between
+  blocks for two-step questions, and the offered options of a choice question verbatim. A choice
+  answer that names none of the options is regenerated once with that constraint. Off by default;
+  off is byte-identical.
 - Session expansion (`mind_mem.session_expansion`, opt-in `chat_with_memory(session_expansion_chars=N)`):
   answer from the whole sessions the hits belong to, plus other sessions ranked by whole-session
   BM25, within a character budget, from the admitted corpus only. Off by default.
