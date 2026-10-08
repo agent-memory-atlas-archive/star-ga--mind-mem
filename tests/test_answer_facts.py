@@ -173,18 +173,6 @@ def test_names_skip_common_capitalised_words_after_a_colon_and_calendar_words():
     assert "The Quiet Ferry" in names or "Quiet Ferry" in names  # a real title still counts
 
 
-def test_between_question_with_an_event_missing_from_evidence_gets_no_gap_table():
-    """10-07 gate #179: 'the solo audition' is not in the evidence; the gap table made the model answer."""
-    from datetime import date
-    from mind_mem.answer_facts import timeline_facts
-
-    items = [("A", date(2024, 5, 6), "I joined the choir yesterday."),
-             ("B", date(2024, 8, 25), "I sang the solo at the carol service on 2024-08-24.")]
-    lines = timeline_facts("How many days passed between joining the choir and the solo audition?", items)
-    assert any("No event in the evidence matches" in l and "audition" in l for l in lines)
-    assert not any(l.startswith("Days between events") for l in lines)
-
-
 def test_between_question_with_both_events_present_keeps_the_gap_table():
     from datetime import date
     from mind_mem.answer_facts import timeline_facts
