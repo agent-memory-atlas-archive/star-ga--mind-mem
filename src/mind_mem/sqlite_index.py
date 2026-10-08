@@ -1995,6 +1995,13 @@ def query_index(
     # ``return_k`` widens this slice — and only this slice — when the caller
     # has a filter left to apply. It never narrows: ``limit`` is the floor, so
     # a caller can only ever be handed at least what it asked for.
+    # Superseded/revoked rows drop below every live row before the cut, so a
+    # dead block that out-scores its replacement cannot take the replacement's
+    # slot at a small ``limit``. The pool here is the wide ``fetch_k`` one.
+    # Local import: ``_recall_core`` imports from this module.
+    from ._recall_core import _rank_replaced_below_live
+
+    deduped = _rank_replaced_below_live(deduped)
     top = deduped[: limit if return_k is None else max(return_k, limit)]
 
     _log.info(

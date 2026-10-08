@@ -1122,18 +1122,23 @@ def _apply_validity_and_resort(
 _REPLACED_STATUSES = VALIDITY_STATUS_DEAD | {"revoked"}
 
 
+def _is_replaced(hit: Mapping[str, Any]) -> bool:
+    """True when *hit* carries a superseded/revoked/dead status (either key case)."""
+    return str(hit.get("status") or hit.get("Status") or "").strip().lower() in _REPLACED_STATUSES
+
+
 def _rank_replaced_below_live(hits: list[dict]) -> list[dict]:
     """Move superseded/revoked hits below every live hit, keeping each group's order.
 
     A corrected memory stays recallable as history, but it must never outrank
-    the memory that replaced it. Runs before the limit cut so the live
-    replacement keeps its slot.
+    the memory that replaced it. Every recall leg calls this on its WIDE pool,
+    before its own limit cut, so the live replacement keeps its slot at any
+    limit; the funnel in :func:`_apply_post_filters` calls it again as a
+    backstop. Stable, so a list with no dead status is returned in its
+    original order.
     """
 
-    def replaced(h: dict) -> bool:
-        return str(h.get("status") or h.get("Status") or "").strip().lower() in _REPLACED_STATUSES
-
-    return sorted(hits, key=replaced)
+    return sorted(hits, key=_is_replaced)
 
 
 def _apply_post_filters(
@@ -1716,6 +1721,7 @@ def recall(
                 all_merged = _apply_min_maturity_filter(all_merged, min_maturity)
             if as_of is not None:
                 all_merged = _apply_as_of_projection(all_merged, workspace, as_of)
+            all_merged = _rank_replaced_below_live(all_merged)
             return apply_guardrail_surfacing(
                 all_merged[:limit],
                 workspace=workspace,
@@ -2725,6 +2731,12 @@ def recall(
 
     # Re-sort after propagation + hard negative adjustment
     deduped.sort(key=lambda r: (r["score"], r.get("_id", "")), reverse=True)
+
+    # Superseded/revoked hits drop below every live hit BEFORE the knee and
+    # the limit cut: the funnel's own demotion runs on a list this leg has
+    # already narrowed, so a replacement cut here never reaches it. A no-op
+    # (stable sort on a constant key) when no hit carries a dead status.
+    deduped = _rank_replaced_below_live(deduped)
 
     # Stage 2.9: Knee score cutoff — adaptive truncation before context packing
     if recall_cfg.get("knee_cutoff", True) and deduped:
