@@ -5,8 +5,8 @@
 > Re-generate with: `anatomy .`
 
 **Project:** `mind-mem`
-**Files:** 1675 | **Est. tokens:** ~4,897,248
-**Generated:** 2026-10-08 05:36 UTC
+**Files:** 1675 | **Est. tokens:** ~4,897,946
+**Generated:** 2026-10-08 06:26 UTC
 
 ## Token Budget Guide
 
@@ -76,7 +76,7 @@
 | `skills/integrity-scan/` | 1 | ~376 |
 | `skills/memory-recall/` | 1 | ~549 |
 | `src/` | 1 | ~280 |
-| `src/mind_mem/` | 240 | ~1,076,100 |
+| `src/mind_mem/` | 240 | ~1,076,329 |
 | `src/mind_mem/api/` | 5 | ~27,259 |
 | `src/mind_mem/bench/` | 17 | ~48,632 |
 | `src/mind_mem/compliance/` | 7 | ~15,436 |
@@ -91,7 +91,7 @@
 | `src/mind_mem/tool_output/` | 3 | ~5,895 |
 | `src/mind_mem/v4/` | 24 | ~96,311 |
 | `src/mind_mem/viewer_static/` | 3 | ~865 |
-| `tests/` | 748 | ~2,185,062 |
+| `tests/` | 748 | ~2,185,531 |
 | `tests/fixtures/` | 7 | ~11,912 |
 | `tests/fixtures/importers/` | 5 | ~1,218 |
 | `tests/fixtures/importers/agent_memory/` | 4 | ~383 |
@@ -732,7 +732,7 @@
 - `alerting.py` (~2738 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `alert_urls.py` (~1873 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `anchoring.py` (~4266 tok, huge) — # Copyright 2026 STARGA, Inc.
-- `answer_facts.py` (~3580 tok, huge) — Deterministic facts computed from the evidence before the answerer sees it.
+- `answer_facts.py` (~3809 tok, huge) — Deterministic facts computed from the evidence before the answerer sees it.
 - `answer_quality.py` (~3059 tok, huge) — Answer-quality layer: verification + self-consistency + per-category spec.
 ### `src/mind_mem/api/`
 
@@ -1251,7 +1251,7 @@
 - `test_alerting.py` (~1964 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_alert_url_allowlist.py` (~1925 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_allow_decompose.py` (~311 tok, medium) — Tests for _allow_decompose recall parameter."""
-- `test_answer_facts.py` (~2172 tok, huge) — Computed evidence facts: resolved event dates, deltas, neighbours and choice options.
+- `test_answer_facts.py` (~2641 tok, huge) — Computed evidence facts: resolved event dates, deltas, neighbours and choice options.
 - `test_answer_quality_confidence.py` (~761 tok, large) — ``self_consistency`` confidence must be votes over samples REQUESTED.
 - `test_answer_quality.py` (~1288 tok, large) — Tests for the v3.3.0 answer-quality shims."""
 - `test_anticipation_cache.py` (~9753 tok, huge) — The anticipation cache, proven to retire with the ledger head rather than a clock.

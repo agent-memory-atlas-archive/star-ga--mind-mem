@@ -207,7 +207,17 @@ def timeline_facts(question: str, items: Sequence[tuple[str, date | None, str]])
             if e.day <= today:
                 days = (today - e.day).days
                 lines.append(f"- [[{e.block_id}]] was {_span(days)} ago, {_months(e.day, today)} calendar months ago.")
-    if _PAIR_LABELS.search(question) and 2 <= len(events) <= MAX_PAIR_EVENTS:
+    pair = _PAIR_LABELS.search(question)
+    if pair and 2 <= len(events) <= MAX_PAIR_EVENTS:
+        # Both events the question names must exist in the evidence. If one does not (asked about "the solo
+        # audition", evidence only has "sang the solo at the carol service"), say so and give no gap table:
+        # a full table of gaps invites an answer to a question the evidence cannot answer.
+        unmatched = [span.strip(" ,.") for span in pair.groups()
+                     if _terms(span) and not any(_terms(span) <= _terms(e.text) for e in events)]
+        if unmatched:
+            lines.append("No event in the evidence matches: " + "; ".join(f'"{u}"' for u in unmatched) + ".")
+            return lines
+    if pair and 2 <= len(events) <= MAX_PAIR_EVENTS:
         # Every pairwise gap, so the answer is a lookup; which two events the question means is left to
         # the reader (a lexical guess picks decoys like "dry-run cutover" for "the cutover").
         lines.append("Days between events (later minus earlier):")
@@ -259,7 +269,9 @@ def bridge_facts(question: str, items: Sequence[tuple[str, date | None, str]]) -
     lines = []
     for name, ids in sorted(by_name.items()):
         ids = list(dict.fromkeys(ids))
-        if len(ids) >= 2 and any(i in about for i in ids):
+        # A bridge brings in a block that is NOT already about the question; linking two blocks that are both
+        # about it adds nothing and nudges an answer (10-07 gate #159).
+        if len(ids) >= 2 and any(i in about for i in ids) and any(i not in about for i in ids):
             lines.append(f"- {name}: " + ", ".join(f"[[{i}]]" for i in ids))
     return (["Blocks linked by the same name (combine them to answer):"] + lines) if lines else []
 
