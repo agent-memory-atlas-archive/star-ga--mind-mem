@@ -219,7 +219,14 @@ def timeline_facts(question: str, items: Sequence[tuple[str, date | None, str]])
 
 
 _NAME = re.compile(r"\b([A-Z][a-z]+(?:\s+(?:[A-Z][a-z]+|&|of|de|la))*\s+[A-Z][a-z]+|[A-Z][a-z]+(?:'s)?)\b")
-_SENT_START = re.compile(r"(?:^|[.!?]\s+)([A-Z][a-z]+)")
+# A sentence also starts after a colon or an opening quote ("Assistant: Last month's ..." is not a name).
+_SENT_START = re.compile(r"(?:^|[.!?:]\s+|[\"\u201c]\s*)([A-Z][a-z]+)")
+# Capitalised words that are never the name of a person, place or thing in a block (calendar words and
+# common sentence openers); linking two blocks through them only adds decoys.
+_NOT_NAMES = frozenset(
+    "monday tuesday wednesday thursday friday saturday sunday january february march april may june july "
+    "august september october november december last this next today yesterday tomorrow the a an i my our "
+    "your we you assistant user".split())
 
 
 def _names(text: str) -> set[str]:
@@ -227,7 +234,13 @@ def _names(text: str) -> set[str]:
     out = set()
     for m in _NAME.finditer(text):
         n = m.group(1).removesuffix("'s")
-        if " " in n or n not in starts:
+        words = n.split()
+        while words and words[0].lower() in _NOT_NAMES:  # "The Quiet Ferry" keeps "Quiet Ferry"
+            words = words[1:]
+        if not words or all(w.lower() in _NOT_NAMES for w in words):
+            continue
+        n = " ".join(words)
+        if len(words) > 1 or n not in starts:
             out.add(n)
     return out
 

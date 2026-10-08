@@ -159,3 +159,15 @@ def test_long_evidence_keeps_only_worked_out_dates():
 def test_no_name_links_for_long_evidence():
     ev = [Ev(f"D-{i}", "2024-01-01", f"assistant: Additional Tips for Android users, item {i}.") for i in range(20)]
     assert "linked by the same name" not in computed_facts("Which phone do I use?", ev)
+
+
+def test_names_skip_common_capitalised_words_after_a_colon_and_calendar_words():
+    """10-07 gate #159: "Assistant: Last month's ..." made "Last" a name, and "Thursday" linked unrelated blocks."""
+    from mind_mem.answer_facts import _names
+
+    text = "Assistant: Last month's book club pick was The Quiet Ferry. See you Thursday in March."
+    names = _names(text)
+    assert "Last" not in names
+    assert "Thursday" not in names
+    assert "March" not in names
+    assert "The Quiet Ferry" in names or "Quiet Ferry" in names  # a real title still counts
