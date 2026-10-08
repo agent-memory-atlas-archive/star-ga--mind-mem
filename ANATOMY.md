@@ -5,8 +5,8 @@
 > Re-generate with: `anatomy .`
 
 **Project:** `mind-mem`
-**Files:** 1684 | **Est. tokens:** ~4,933,320
-**Generated:** 2026-10-07 11:14 UTC
+**Files:** 1689 | **Est. tokens:** ~4,938,242
+**Generated:** 2026-10-08 23:34 UTC
 
 ## Token Budget Guide
 
@@ -78,14 +78,14 @@
 | `skills/mind-mem/` | 1 | ~1,671 |
 | `skills/mind-mem/references/` | 6 | ~18,811 |
 | `src/` | 1 | ~280 |
-| `src/mind_mem/` | 241 | ~1,074,853 |
+| `src/mind_mem/` | 242 | ~1,076,518 |
 | `src/mind_mem/api/` | 5 | ~27,259 |
 | `src/mind_mem/bench/` | 17 | ~48,632 |
 | `src/mind_mem/compliance/` | 7 | ~15,436 |
 | `src/mind_mem/importers/` | 10 | ~34,469 |
 | `src/mind_mem/mcp/` | 3 | ~6,672 |
 | `src/mind_mem/mcp/infra/` | 8 | ~16,195 |
-| `src/mind_mem/mcp/tools/` | 29 | ~125,231 |
+| `src/mind_mem/mcp/tools/` | 29 | ~125,497 |
 | `src/mind_mem/skill_opt/` | 11 | ~20,899 |
 | `src/mind_mem/spec/` | 4 | ~6,845 |
 | `src/mind_mem/storage/` | 2 | ~11,712 |
@@ -93,7 +93,7 @@
 | `src/mind_mem/tool_output/` | 3 | ~5,895 |
 | `src/mind_mem/v4/` | 24 | ~96,311 |
 | `src/mind_mem/viewer_static/` | 3 | ~865 |
-| `tests/` | 746 | ~2,194,349 |
+| `tests/` | 750 | ~2,197,340 |
 | `tests/fixtures/` | 7 | ~11,912 |
 | `tests/fixtures/importers/` | 5 | ~1,218 |
 | `tests/fixtures/importers/agent_memory/` | 4 | ~383 |
@@ -834,7 +834,7 @@
 - `consolidation_maturity_gate.py` (~2589 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `content_lifecycle.py` (~3292 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `context_core.py` (~4313 tok, huge) — # Copyright 2026 STARGA, Inc.
-- `contradiction_detector.py` (~4893 tok, huge) — mind-mem Contradiction Detector — Surface conflicts at the governance gate.
+- `contradiction_detector.py` (~5236 tok, huge) — mind-mem Contradiction Detector — Surface conflicts at the governance gate.
 - `core_export.py` (~8336 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `corpus_registry.py` (~5767 tok, huge) — Central corpus path registry for mind-mem.
 - `cron_runner.py` (~3583 tok, huge) — mind-mem Cron Runner — single entry point for all periodic jobs. Zero external deps.
@@ -859,6 +859,7 @@
 - `evidence_recovery.py` (~10620 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `extraction_feedback.py` (~1877 tok, huge) — mind-mem Extraction Quality Feedback Tracker.
 - `extractor.py` (~7670 tok, huge) — mind-mem Entity & Fact Extractor (Regex NER-lite). Zero external deps.
+- `fact_slots.py` (~1026 tok, large) — # Copyright 2026 STARGA, Inc.
 - `feature_gate.py` (~2240 tok, huge) — Shared config-resolver for retrieval features (architect audit item #6).
 - `federation_connect.py` (~3549 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `field_audit.py` (~3103 tok, huge) — mind-mem Per-Field Mutation Audit — tracks individual field changes.
@@ -866,7 +867,7 @@
 - `governance_bench.py` (~1855 tok, huge) — mind-mem Governance Benchmark Suite.
 - `governance_gate.py` (~21786 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `governance_raft.py` (~2474 tok, huge) — Raft-style consensus wrapper for governance writes (v4.0 prep).
-- `granularity_align.py` (~3714 tok, huge) — Granularity / abstraction alignment — named merge operation (Group H, v4.0.x).
+- `granularity_align.py` (~3871 tok, huge) — Granularity / abstraction alignment — named merge operation (Group H, v4.0.x).
 - `graph_ingest.py` (~7489 tok, huge) — Corpus → typed knowledge-graph ingestion (HITL-gated).
 - `graph_recall.py` (~4634 tok, huge) — Multi-hop graph traversal for recall (v3.3.0 Tier 1 #2).
 - `graph_schema.py` (~2082 tok, huge) — # Copyright 2026 STARGA, Inc.
@@ -942,7 +943,7 @@
 - `core.py` (~2862 tok, huge) — Context-core MCP tools — ``.mmcore`` bundle lifecycle.
 - `encryption.py` (~2670 tok, huge) — At-rest encryption MCP tools — ``encrypt_file`` / ``decrypt_file``.
 - `frames.py` (~2034 tok, huge) — # Copyright 2026 STARGA, Inc.
-- `governance.py` (~15802 tok, huge) — Governance MCP tools — propose / apply / rollback / scan / contradictions / memory_evolution.
+- `governance.py` (~16068 tok, huge) — Governance MCP tools — propose / apply / rollback / scan / contradictions / memory_evolution.
 - `graph.py` (~8747 tok, huge) — Knowledge-graph + causal-graph MCP tools.
 - `guardrails.py` (~1835 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `_helpers.py` (~1412 tok, large) — Shared tool-internal helpers — workspace paths + lazy-init singletons.
@@ -1065,7 +1066,7 @@
 
 - `smart_chunker.py` (~7592 tok, huge) — mind-mem Smart Chunker — Semantic-boundary document chunking.
 - `smoke_test.sh` (~633 tok, large) — mind-mem Smoke Test — end-to-end verification
-- `spec_binding.py` (~2883 tok, huge) — # Copyright 2026 STARGA, Inc.
+- `spec_binding.py` (~3022 tok, huge) — # Copyright 2026 STARGA, Inc.
 ### `src/mind_mem/spec/`
 
 - `export_asyncapi.py` (~3887 tok, huge) — # Copyright 2026 STARGA, Inc.
@@ -1380,6 +1381,7 @@
 - `test_context_core.py` (~3175 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_context_pack.py` (~2584 tok, huge) — Tests for context_pack rules: adjacency, diversity, pronoun rescue."""
 - `test_context_pack_scripts.py` (~673 tok, large) — Tests for context packing via scripts._recall_context."""
+- `test_contradiction_changed_fact.py` (~1045 tok, large) — A changed fact (Tuesday -> Thursday) is flagged as a contradiction.
 - `test_contradiction_detector.py` (~5871 tok, huge) — Tests for contradiction_detector.py — Contradiction detection at governance gate (#432).
 - `test_core_export_wiring.py` (~4543 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_core_v140.py` (~2707 tok, huge) — Tests for v1.4.0 core hardening: issues #28, #30, #32, #34."""
@@ -1482,6 +1484,7 @@
 - `test_governed_signal_and_edge.py` (~9817 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_governed_write_is_screened.py` (~1252 tok, large) — # Copyright 2026 STARGA, Inc.
 - `test_governed_write_paths.py` (~10704 tok, huge) — # Copyright 2026 STARGA, Inc.
+- `test_granularity_align_discriminators.py` (~650 tok, large) — A merge is never proposed between memories that differ in who, when or time zone.
 - `test_granularity_align.py` (~3310 tok, huge) — Tests for granularity_align — named merge operation (Group H, v4.0.x).
 - `test_granularity_align_wiring.py` (~6715 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_graph_backfill_backends.py` (~1526 tok, huge) — # Copyright 2026 STARGA, Inc.
@@ -1771,6 +1774,7 @@
 - `test_recall_speaker.py` (~263 tok, medium) — Tests for speaker-based recall."""
 - `test_recall_status_boost.py` (~399 tok, medium) — Tests for status boost in recall."""
 - `test_recall_sufficiency.py` (~1295 tok, large) — Regression gate for Group I item 2 recall-sufficiency score.
+- `test_recall_superseded_rank.py` (~403 tok, medium) — A superseded memory never outranks the live memory that replaced it.
 - `test_recall_supersedes.py` (~216 tok, medium) — Tests for supersedes field in recall."""
 - `test_recall_tags.py` (~320 tok, medium) — Tests for tag-based recall."""
 - `test_recall_temporal.py` (~2800 tok, huge) — Tests for _recall_temporal.py — time-aware hard filters for temporal queries."""
@@ -1832,6 +1836,7 @@
 - `test_rm3_expand.py` (~321 tok, medium) — Tests for RM3 query expansion."""
 - `test_roadmap_hygiene.py` (~3996 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_roadmap_ticks_gate.py` (~2742 tok, huge) — # Copyright 2026 STARGA, Inc.
+- `test_rollback_restores_memory_only.py` (~893 tok, large) — Rolling back a correction restores memory, never the configuration.
 - `test_runpod_release_bundle.py` (~3422 tok, huge) — Offline closure tests for the RunPod training/evaluation release bundle."""
 - `test_schema_version.py` (~2454 tok, huge) — Tests for schema_version.py — zero external deps (stdlib unittest)."""
 - `test_scope_outcome_is_truthful.py` (~6877 tok, huge) — # Copyright 2026 STARGA, Inc.

@@ -13,6 +13,7 @@ Usage:
 Exit codes: 0 = applied, 1 = failed (rolled back), 2 = validation error
 """
 
+import contextlib
 import difflib
 import hashlib
 import importlib.util
@@ -661,6 +662,27 @@ def _snapshot_target_file(ws, snap_dir):
         return snap_dir
 
 
+@contextlib.contextmanager
+def _live_config_kept(ws):
+    """Put the live, attested config bytes back after the body runs (or fails)."""
+    from .governance_gate import config_path_for
+
+    path = config_path_for(ws)
+    try:
+        with open(path, "rb") as handle:
+            live = handle.read()
+    except FileNotFoundError:
+        live = None
+    try:
+        yield
+    finally:
+        if live is not None:
+            tmp = path + ".restore_tmp"
+            with open(tmp, "wb") as handle:
+                handle.write(live)
+            os.replace(tmp, path)
+
+
 def restore_snapshot(ws, snap_dir, *, action=RESTORE_VERB, actor="apply_engine", metadata=None):
     """Restore workspace from a snapshot directory, inside a recorded scope.
 
@@ -749,7 +771,13 @@ def restore_snapshot(ws, snap_dir, *, action=RESTORE_VERB, actor="apply_engine",
         metadata=door_metadata,
         provenance=restore_provenance,
     ) as receipt:
-        _store_for(ws).restore(snap_dir)
+        # A restore rewinds MEMORY, never configuration. The snapshot carries
+        # a copy of mind-mem.json, and putting it back silently undid every
+        # setting attested after the snapshot (and left the config out of
+        # step with its spec binding, so this scope's own CLOSE record was
+        # refused as drift and the workspace stayed write-blocked).
+        with _live_config_kept(ws):
+            _store_for(ws).restore(snap_dir)
         _log.info(
             "restore_recorded",
             snapshot=snap_name,

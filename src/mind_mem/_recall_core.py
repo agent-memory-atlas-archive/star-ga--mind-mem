@@ -38,6 +38,7 @@ from ._recall_constants import (
     RM3_BLEND_WEIGHT,
     STATUS_BOOST_ACTIVE,
     STATUS_BOOST_WIP,
+    VALIDITY_STATUS_DEAD,
 )
 from ._recall_context import context_pack
 from ._recall_detection import (
@@ -1118,6 +1119,23 @@ def _apply_validity_and_resort(
     return hits
 
 
+_REPLACED_STATUSES = VALIDITY_STATUS_DEAD | {"revoked"}
+
+
+def _rank_replaced_below_live(hits: list[dict]) -> list[dict]:
+    """Move superseded/revoked hits below every live hit, keeping each group's order.
+
+    A corrected memory stays recallable as history, but it must never outrank
+    the memory that replaced it. Runs before the limit cut so the live
+    replacement keeps its slot.
+    """
+
+    def replaced(h: dict) -> bool:
+        return str(h.get("status") or h.get("Status") or "").strip().lower() in _REPLACED_STATUSES
+
+    return sorted(hits, key=replaced)
+
+
 def _apply_post_filters(
     hits: list[dict],
     *,
@@ -1172,6 +1190,7 @@ def _apply_post_filters(
         hits = _apply_event_id_filter(hits, event_id)
     if min_maturity is not None:
         hits = _apply_min_maturity_filter(hits, min_maturity)
+    hits = _rank_replaced_below_live(hits)
     # Apply the full conjunction before making the single result-size decision.
     # Slicing after each predicate can discard a later hit that satisfies all
     # filters and makes the answer depend on predicate order.

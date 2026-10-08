@@ -74,6 +74,8 @@ import re
 from dataclasses import dataclass
 from typing import Any
 
+from .fact_slots import slots_differ
+
 __all__ = [
     "DEFAULT_MIN_SIMILARITY",
     "MERGE_STRATEGIES",
@@ -255,6 +257,20 @@ def _similarity(a: dict[str, Any], b: dict[str, Any]) -> float:
     return _cosine(_term_vec(ta), _term_vec(tb))
 
 
+def _facts_conflict(a: dict[str, Any], b: dict[str, Any]) -> bool:
+    """True when the blocks name different people, days/dates, times or time zones.
+
+    Text overlap cannot see these: "call with Ilona Tue 10am Arizona" and "call
+    with the contractor Tue 10am Pacific" share most words, yet merging them
+    loses one memory.
+    """
+
+    def text(blk: dict[str, Any]) -> str:
+        return " ".join(str(blk.get(k, "")) for k in ("excerpt", "content", "Statement"))
+
+    return slots_differ(text(a), text(b))
+
+
 def _suggest_strategy(a: dict[str, Any], b: dict[str, Any]) -> str:
     """Heuristically pick a merge strategy for the pair.
 
@@ -323,6 +339,8 @@ def find_merge_candidates(
             b_blk, vb = indexed[j]
             sim = _cosine(va, vb)
             if sim < threshold:
+                continue
+            if _facts_conflict(a_blk, b_blk):
                 continue
             strategy = _suggest_strategy(a_blk, b_blk)
             reason = _build_reason(sim)

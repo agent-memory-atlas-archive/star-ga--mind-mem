@@ -42,9 +42,37 @@ Surfaced at the top so the actual remaining work is visible without
 scrolling 1500 lines of historical sections. Each item is followed
 by its full description below.
 
-### Model — retrained `mind-mem-4b` (1 item, not started)
+### Correctness — found by the internal pre-release check on 5.0.4 (4 items, fixed 2026-10-08)
 
-- [ ] **Retrain `mind-mem-4b` on a newer base model.** The published weights are a
+A throwaway-workspace check (three look-alike Tuesday calls, then a correction
+moving one of them to Thursday) found four defects. Each was fixed test-first and
+the original reproduction re-run against the fixed tree.
+
+- [x] **The merge planner proposed merging memories that differ in who, when or time zone.**
+  "Ilona Tue 10am Arizona" and "contractor Tue 10am Pacific" scored 0.82 and were offered
+  as a `keep_longer` merge, which would have dropped the Ilona memory. A merge is now never
+  proposed when people, day/date, clock time or time zone differ (`fact_slots.py`, used by
+  `granularity_align.find_merge_candidates`). Test: `tests/test_granularity_align_discriminators.py`.
+- [x] **A superseded memory still ranked #1 in recall.** Superseded/revoked hits now rank
+  below every live hit in the single post-filter funnel, before the limit cut, so the live
+  replacement keeps its slot and the old one stays recallable as history.
+  Test: `tests/test_recall_superseded_rank.py`.
+- [x] **Rolling back a correction also reverted later config changes, then blocked the workspace.**
+  Two causes: every restore put back the snapshot's `mind-mem.json`, and
+  `SpecBindingManager.get_binding` cached the binding forever (its docstring promised to
+  reload on change), so a long-running process never saw a later `mm config set`. A restore
+  now keeps the live attested config, and the binding cache is keyed on a stat of the
+  binding file. Test: `tests/test_rollback_restores_memory_only.py`.
+- [x] **A changed fact (Tuesday → Thursday) was not flagged as a contradiction.** The
+  classifier only knew negation words and status pairs, and both text extractors skipped the
+  `Statement` field. A restatement about the same people with a different day, time or zone
+  is now a contradiction, and `propose_update` returns a `contradicts` list naming the
+  committed block (present only when one exists). Test: `tests/test_contradiction_changed_fact.py`.
+
+### Model — retrained `mind-mem-4b` (1 item, in progress since early October 2026)
+
+- [~] **Retrain `mind-mem-4b` on a newer base model.** In progress on Qwen3.8-4B (full fine-tune);
+  acceptance rule in `train/ACCEPTANCE.md` (every gate and every benchmark at 100%). The published weights are a
   full fine-tune of Qwen3.5-4B built against an earlier tree, so they describe a tool
   surface that has since moved. Several planned features depend on a model trained
   against the current surface. Full fine-tune (not QLoRA), corpus regenerated from a
@@ -2036,7 +2064,7 @@ Projected v3.3.0 overall with Tier-1+2 shipped: **74-76 (same model as answerer 
 - [x] **Probabilistic truth score** — shipped in `src/mind_mem/truth_score.py` (commit `e98c144`). Bayesian posterior ``prior × age_decay − contradiction_mass + access_bonus``, clamped [0.01, 0.99]. Exposed via ``annotate_results(results, contradiction_graph=…)``; caller surfaces as ``block.truth_score``. Feeds into EvidenceBundle confidence. 22 tests.
 - [x] **Streaming ingest + back-pressure queue** — shipped in `src/mind_mem/streaming.py` (commit `9956b7a`). Bounded mpsc deque with drop-oldest policy + per-client token bucket. ``build_queue_from_config`` opt-in via ``streaming.enabled``. Thread-safe multi-producer. 14 tests including a 4-thread concurrency test.
 - [x] **Consensus voting** — shipped in `src/mind_mem/consensus_vote.py` (commit `f644096`). ``reach_consensus(votes, quorum_threshold, min_votes)`` returns a typed ``ConsensusDecision(winner, margin, confidence, reason, vote_counts)``; trust weights pulled from ``Vote.trust_weight`` or ``namespaces.<id>.trust_weight``; 0-weight excludes. **Wired 5.0.1** into `conflict_resolver.analyze_contradiction`'s `manual_review` fallback behind `governance.consensus.enabled` (default off); votes read from `intelligence/VOTES.md` through `admit_corpus`, winner staged as a `pending-review` proposal, never applied. 41 tests.
-- [ ] **mind-mem-4b v2 retrain — rebase to Qwen3.8-4B + catch up to the current surface** — training recipe + data generators shipped (`docs/mind-mem-4b-v2-training-recipe.md`, `benchmarks/generate_dispatcher_examples.py`, `benchmarks/generate_retrieval_examples.py`). **NOT required by the v4.5.0 recall-noise fix or the v4.6.0 validity gate** — both are backend / flag-gated and add no MCP tool, and the 4b is only the swappable KG-extraction/dispatch model (recall + hybrid *scoring* is the `mind/*.mind` kernels + Python, never the 4b). The refresh is warranted because the current 4b was trained knowing **83** tools while the live surface is now **107** (the typed-edge KG tools — `propose_edge` / `approve_edge` / `reject_edge` / `list_edge_proposals` / `entity_add_observation` — landed in v4.3/v4.4 *after* the 4b was trained). Proposed model = **full retrain on a Qwen3.8-4B base**, subject to verifying the base checkpoint's availability and suitability before training (current base: Qwen3.5-4B) over the surface + v3.2.x dispatchers + v3.3.0/v4.x retrieval shapes (incl. the validity-gate config, OKF v0.2, and hybrid fusion-provenance fields) + LoCoMo replay. **Sequencing (operator decision 2026-08-18): deferred to AFTER the full Pure-MIND port** — do the Qwen3.8-4B rebase + retrain once, over the *post-port* tool/surface, bundled with that milestone rather than now. The current 4b remains the swappable KG-extraction/dispatch model (never on the recall-scoring path — that is the `mind/*.mind` kernels + Python). The runtime continues to execute its registered tools, but the checkpoint's evaluation does not establish dispatch competence over the full current surface; the 83-versus-107 counts alone are not a tool-set compatibility proof. The current training-readiness corpus is development data with evaluation-target overlap; it does not establish an independent holdout or a retrain result. Runpod H200 kickoff (~$55, 8-12 hr external GPU) runs on operator approval at that time.
+- [~] **mind-mem-4b v2 retrain — rebase to Qwen3.8-4B + catch up to the current surface** — **In progress since early October 2026; this supersedes the 2026-08-18 deferral below.** — training recipe + data generators shipped (`docs/mind-mem-4b-v2-training-recipe.md`, `benchmarks/generate_dispatcher_examples.py`, `benchmarks/generate_retrieval_examples.py`). **NOT required by the v4.5.0 recall-noise fix or the v4.6.0 validity gate** — both are backend / flag-gated and add no MCP tool, and the 4b is only the swappable KG-extraction/dispatch model (recall + hybrid *scoring* is the `mind/*.mind` kernels + Python, never the 4b). The refresh is warranted because the current 4b was trained knowing **83** tools while the live surface is now **107** (the typed-edge KG tools — `propose_edge` / `approve_edge` / `reject_edge` / `list_edge_proposals` / `entity_add_observation` — landed in v4.3/v4.4 *after* the 4b was trained). Proposed model = **full retrain on a Qwen3.8-4B base**, subject to verifying the base checkpoint's availability and suitability before training (current base: Qwen3.5-4B) over the surface + v3.2.x dispatchers + v3.3.0/v4.x retrieval shapes (incl. the validity-gate config, OKF v0.2, and hybrid fusion-provenance fields) + LoCoMo replay. **Sequencing (operator decision 2026-08-18): deferred to AFTER the full Pure-MIND port** — do the Qwen3.8-4B rebase + retrain once, over the *post-port* tool/surface, bundled with that milestone rather than now. The current 4b remains the swappable KG-extraction/dispatch model (never on the recall-scoring path — that is the `mind/*.mind` kernels + Python). The runtime continues to execute its registered tools, but the checkpoint's evaluation does not establish dispatch competence over the full current surface; the 83-versus-107 counts alone are not a tool-set compatibility proof. The current training-readiness corpus is development data with evaluation-target overlap; it does not establish an independent holdout or a retrain result. Runpod H200 kickoff (~$55, 8-12 hr external GPU) runs on operator approval at that time.
 
 **Estimated (v3.3.0):** ~2400 lines retrieval (Tier 1+2+3) + ~2000 lines web UI + ~2 GPU-days retrain. New optional extras: `mind-mem[reasoning]`, `mind-mem[streaming]`, `mind-mem[rerank-ensemble]` (Tier 4).
 

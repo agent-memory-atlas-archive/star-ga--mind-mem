@@ -157,6 +157,7 @@ class SpecBindingManager:
         self._config_path = os.path.abspath(config_path)
         self._binding_path = os.path.join(os.path.dirname(self._config_path), _BINDING_FILENAME)
         self._cached: Optional[SpecBinding] = None
+        self._cached_stamp: Optional[tuple[int, int, int]] = None
 
     # ------------------------------------------------------------------
     # Public API
@@ -182,6 +183,7 @@ class SpecBindingManager:
         )
         self._persist(binding)
         self._cached = binding
+        self._cached_stamp = self._binding_stamp()
         _log.info(
             "spec_binding.bound",
             config_path=abs_path,
@@ -262,9 +264,18 @@ class SpecBindingManager:
                 corrupted. Callers must decide explicitly whether to
                 rebuild the binding or refuse to operate.
         """
-        if self._cached is not None:
+        stamp = self._binding_stamp()
+        if self._cached is not None and stamp == self._cached_stamp:
             return self._cached
         return self._load()
+
+    def _binding_stamp(self) -> Optional[tuple[int, int, int]]:
+        """Cheap identity of the binding file on disk (a stat, never a read)."""
+        try:
+            st = os.stat(self._binding_path)
+        except FileNotFoundError:
+            return None
+        return (st.st_ino, st.st_mtime_ns, st.st_size)
 
     def has_drifted(self) -> bool:
         """Return ``True`` if the config has changed or no binding exists.
@@ -308,6 +319,7 @@ class SpecBindingManager:
                 data = json.load(f)
             binding = SpecBinding.from_dict(data)
             self._cached = binding
+            self._cached_stamp = self._binding_stamp()
             return binding
         except (json.JSONDecodeError, KeyError, ValueError) as exc:
             _log.warning("spec_binding.load_failed", error=str(exc))

@@ -569,7 +569,29 @@ def propose_update(
     }
     if provenance:
         response["provenance_attached"] = sorted(provenance)
+    contradicts = _committed_contradictions(ws, statement)
+    if contradicts:
+        # Present only when a committed memory states a different value for
+        # the same fact, so the reviewer sees the conflict at proposal time
+        # (a correction should be applied as a supersede, not as a second truth).
+        response["contradicts"] = contradicts
     return json.dumps(response, indent=2)
+
+
+def _committed_contradictions(ws: str, statement: str) -> list[dict[str, str]]:
+    """Committed blocks the proposed statement contradicts (fail-soft: [] on detector error)."""
+    from mind_mem.contradiction_detector import check_proposal_contradictions
+
+    try:
+        report = check_proposal_contradictions(ws, {"Statement": statement})
+    except Exception as exc:  # detector failure must not block a proposal
+        _log.warning("propose_contradiction_check_failed", error=str(exc))
+        return []
+    return [
+        {"block_id": c["block_id"], "existing": c["existing_excerpt"][:200]}
+        for c in report.get("conflicts", [])
+        if c.get("conflict_type") == "contradiction"
+    ]
 
 
 def _invalidate_recall_cache() -> None:

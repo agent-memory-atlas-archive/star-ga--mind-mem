@@ -26,6 +26,7 @@ import os
 import re
 
 from .block_parser import parse_file
+from .fact_slots import changed_fact
 from .observability import get_logger, metrics
 
 _log = get_logger("contradiction_detector")
@@ -72,7 +73,7 @@ def _extract_proposal_text(proposal: dict) -> str:
     parts = []
 
     # Title / summary
-    for field in ("Title", "Summary", "Description", "Rationale"):
+    for field in ("Statement", "Title", "Summary", "Description", "Rationale"):
         val = proposal.get(field)
         if isinstance(val, str) and val.strip():
             parts.append(val.strip())
@@ -100,7 +101,7 @@ def _extract_proposal_text(proposal: dict) -> str:
 def _extract_block_text(block: dict) -> str:
     """Extract searchable text from a committed block."""
     parts = []
-    for field in ("Title", "Summary", "Description", "Rationale", "Decision", "Content", "Action", "Details"):
+    for field in ("Statement", "Title", "Summary", "Description", "Rationale", "Decision", "Content", "Action", "Details"):
         val = block.get(field)
         if isinstance(val, str) and val.strip():
             parts.append(val.strip())
@@ -177,7 +178,21 @@ def _tfidf_cosine_similarity(text_a: str, text_b: str) -> float:
 # ---------------------------------------------------------------------------
 
 
-def _classify_conflict(proposal_text: str, existing_text: str, similarity: float) -> str:
+#: Below the flag threshold a pair is still a candidate when it is a changed
+#: fact: a correction rewrites the very slot that carries the meaning.
+_CHANGED_FACT_MIN_SIMILARITY = 0.3
+
+
+def _statement(block: dict, fallback: str) -> str:
+    """The claim itself; who/when slots are read from it, never from a rationale."""
+    for key in ("Statement", "excerpt"):
+        val = block.get(key)
+        if isinstance(val, str) and val.strip():
+            return val
+    return fallback
+
+
+def _classify_conflict(proposal_text: str, existing_text: str, similarity: float, *, changed: bool | None = None) -> str:
     """Classify the type of relationship between a proposal and an existing block.
 
     Returns one of:
@@ -186,6 +201,14 @@ def _classify_conflict(proposal_text: str, existing_text: str, similarity: float
         "duplicate"     — Near-identical content
         "related"       — Similar topic but no clear conflict
     """
+    # A restatement about the same people with a different day, time or zone
+    # is a changed fact, however similar the wording: "Tuesday" -> "Thursday"
+    # changes one token and used to read as a duplicate. Checked first.
+    if changed is None:
+        changed = changed_fact(proposal_text, existing_text)
+    if similarity > _CHANGED_FACT_MIN_SIMILARITY and changed:
+        return "contradiction"
+
     # Very high similarity suggests duplicate or refinement
     if similarity > 0.9:
         return "duplicate"
@@ -309,6 +332,7 @@ def detect_contradictions(
     """
     ws = os.path.abspath(workspace)
     proposal_text = _extract_proposal_text(proposal)
+    proposal_claim = _statement(proposal, proposal_text)
 
     if not proposal_text.strip():
         _log.info("empty_proposal_text", proposal_id=proposal.get("ProposalId"))
@@ -339,10 +363,11 @@ def detect_contradictions(
                 existing_text = _extract_block_text(result)
 
             similarity = _tfidf_cosine_similarity(proposal_text, existing_text)
-            if similarity < threshold:
+            changed = changed_fact(proposal_claim, _statement(result, existing_text))
+            if similarity < threshold and not (changed and similarity > _CHANGED_FACT_MIN_SIMILARITY):
                 continue
 
-            conflict_type = _classify_conflict(proposal_text, existing_text, similarity)
+            conflict_type = _classify_conflict(proposal_text, existing_text, similarity, changed=changed)
             conflicts.append(
                 {
                     "block_id": block_id,
@@ -371,10 +396,11 @@ def detect_contradictions(
             continue
 
         similarity = _tfidf_cosine_similarity(proposal_text, existing_text)
-        if similarity < threshold:
+        changed = changed_fact(proposal_claim, _statement(block, existing_text))
+        if similarity < threshold and not (changed and similarity > _CHANGED_FACT_MIN_SIMILARITY):
             continue
 
-        conflict_type = _classify_conflict(proposal_text, existing_text, similarity)
+        conflict_type = _classify_conflict(proposal_text, existing_text, similarity, changed=changed)
         conflicts.append(
             {
                 "block_id": block_id,
