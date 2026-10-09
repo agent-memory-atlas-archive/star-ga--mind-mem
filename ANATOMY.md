@@ -5,8 +5,8 @@
 > Re-generate with: `anatomy .`
 
 **Project:** `mind-mem`
-**Files:** 1709 | **Est. tokens:** ~5,036,812
-**Generated:** 2026-10-09 08:47 UTC
+**Files:** 1709 | **Est. tokens:** ~5,036,837
+**Generated:** 2026-10-09 09:23 UTC
 
 ## Token Budget Guide
 
@@ -85,7 +85,7 @@
 | `src/mind_mem/importers/` | 10 | ~34,469 |
 | `src/mind_mem/mcp/` | 3 | ~7,718 |
 | `src/mind_mem/mcp/infra/` | 8 | ~20,532 |
-| `src/mind_mem/mcp/tools/` | 29 | ~132,171 |
+| `src/mind_mem/mcp/tools/` | 29 | ~132,196 |
 | `src/mind_mem/skill_opt/` | 11 | ~20,899 |
 | `src/mind_mem/spec/` | 4 | ~6,845 |
 | `src/mind_mem/storage/` | 2 | ~11,712 |
@@ -958,7 +958,7 @@
 - `pipeline.py` (~1128 tok, large) — MCP wrapping for pipeline-hash inspection + dirty-block re-extraction.
 - `public.py` (~5590 tok, huge) — # mypy: disable-error-code="no-any-return"
 - `quality.py` (~1102 tok, large) — MCP wrapping for the v3.11.0 deterministic quality gate.
-- `recall.py` (~24243 tok, huge) — Recall surface — the retrieval core of the MCP API.
+- `recall.py` (~24268 tok, huge) — Recall surface — the retrieval core of the MCP API.
 - `signal.py` (~926 tok, large) — Interaction-signal MCP tools — ``observe_signal`` + ``signal_stats``.
 - `trajectory.py` (~1576 tok, huge) — Trajectory-memory MCP tool — case-based recall over past task outcomes.
 - `walkthrough_persona.py` (~1843 tok, huge) — MCP wrapping for v3.9 walkthrough + persona projection.

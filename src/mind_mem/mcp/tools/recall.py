@@ -22,6 +22,7 @@ is the shared choke point they all ultimately lean on.
 from __future__ import annotations
 
 import json
+import os  # noqa: F401 - tests reach os.lstat through this module (test_unresolved_anchor_boundary)
 import re as _re_mod
 import sqlite3
 import time
