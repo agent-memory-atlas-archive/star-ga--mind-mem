@@ -108,3 +108,39 @@ def readable_blocks(
         if source_readable(workspace, source, principal):
             kept.append(block)
     return kept
+
+
+#: Refusal text for a workspace-level transport. Deliberately content-free.
+WORKSPACE_LEVEL_TRANSPORT_REFUSAL = "namespace ACL is configured; this transport has no per-caller identity and is refused"
+
+
+def namespace_acl_configured(workspace: str) -> bool:
+    """True when the workspace declares per-agent namespace restrictions.
+
+    A transport that authenticates with one flat credential (the stdlib HTTP
+    transport, gRPC) has no principal to put in front of
+    :class:`~mind_mem.namespaces.NamespaceManager`; it reads as an unbound,
+    workspace-level caller. That is a coherent contract only while no
+    per-agent restriction exists. Once ``mind-mem-acl.json`` declares agents
+    (or ``default_policy: deny``) such a transport would silently return what
+    the MCP tool path denies, so it must refuse instead.
+
+    An ACL file that exists but cannot be parsed counts as configured:
+    "I could not tell" is not "there is no restriction".
+    """
+    import json
+
+    path = os.path.join(workspace, "mind-mem-acl.json")
+    if not os.path.exists(path):
+        return False
+    try:
+        with open(path, "r", encoding="utf-8") as handle:
+            acl = json.load(handle)
+    except (OSError, ValueError):
+        return True
+    if not isinstance(acl, dict):
+        return True
+    agents = acl.get("agents")
+    if isinstance(agents, dict) and agents:
+        return True
+    return acl.get("default_policy") == "deny"

@@ -581,6 +581,13 @@ def _acting_as(request: Request):  # type: ignore[no-untyped-def]
         current_agent_id.reset(reset)
 
 
+def _refuse_if_denied(parsed: Any) -> Any:
+    """Turn the tool path's ``namespace access denied`` answer into a 403."""
+    if isinstance(parsed, dict) and parsed.get("error") == "namespace access denied":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="namespace access denied")
+    return parsed
+
+
 @contextmanager
 def _reading_as(request: Request):  # type: ignore[no-untyped-def]
     """Run a READ endpoint's tool call as the authenticated principal.
@@ -1239,11 +1246,12 @@ def create_app(
         summary="Run workspace integrity scan",
         dependencies=[Depends(_rate_limit)],
     )
-    def scan(_token: Annotated[str | None, Depends(_require_auth)]) -> Any:
+    def scan(request: Request, _token: Annotated[str | None, Depends(_require_auth)]) -> Any:
         from mind_mem.mcp.tools.governance import scan as _scan
 
-        raw = _scan()
-        return _parse_tool_json(raw)
+        with _reading_as(request):
+            raw = _scan()
+        return _refuse_if_denied(_parse_tool_json(raw))
 
     @application.get(
         "/v1/contradictions",
@@ -1251,11 +1259,12 @@ def create_app(
         summary="List detected contradictions with resolution analysis",
         dependencies=[Depends(_rate_limit)],
     )
-    def list_contradictions(_token: Annotated[str | None, Depends(_require_auth)]) -> Any:
+    def list_contradictions(request: Request, _token: Annotated[str | None, Depends(_require_auth)]) -> Any:
         from mind_mem.mcp.tools.governance import list_contradictions as _list_contradictions
 
-        raw = _list_contradictions()
-        return _parse_tool_json(raw)
+        with _reading_as(request):
+            raw = _list_contradictions()
+        return _refuse_if_denied(_parse_tool_json(raw))
 
     # ------------------------------------------------------------------
     # OIDC / SSO callback

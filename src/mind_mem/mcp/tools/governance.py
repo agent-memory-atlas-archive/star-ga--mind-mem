@@ -1048,6 +1048,29 @@ def _world_staleness_summary(ws: str) -> dict[str, Any]:
         }
 
 
+def _root_corpus_denied(ws: str, rel_paths: tuple[str, ...]) -> str | None:
+    """A refusal body when the bound caller may not read every root file, else ``None``.
+
+    ``scan`` and ``list_contradictions`` summarise or return root-corpus content
+    and used to ignore the caller's namespace ACL; the decision is the shared
+    :func:`mind_mem.read_authz.source_readable`, the one ``get_block`` makes. An
+    unbound caller (stdio / operator) is unrestricted; an unresolvable caller is
+    refused.
+    """
+    from mind_mem.read_authz import CallerUnresolved, caller_principal, source_readable
+
+    try:
+        principal = caller_principal()
+    except CallerUnresolved:
+        return json.dumps({"_schema_version": MCP_SCHEMA_VERSION, "error": "namespace access denied"})
+    if all(source_readable(ws, rel, principal) for rel in rel_paths):
+        return None
+    return json.dumps({"_schema_version": MCP_SCHEMA_VERSION, "error": "namespace access denied"})
+
+
+_SCAN_ROOT_FILES = ("decisions/DECISIONS.md", "intelligence/CONTRADICTIONS.md", "intelligence/SIGNALS.md")
+
+
 @mcp_tool_observe
 @_traced("scan")
 def scan() -> str:
@@ -1068,6 +1091,9 @@ def scan() -> str:
     ws_err = _check_workspace(ws)
     if ws_err:
         return ws_err
+    denied = _root_corpus_denied(ws, _SCAN_ROOT_FILES)
+    if denied is not None:
+        return denied
 
     backend = _resolve_backend(ws)
     is_markdown = backend in _MARKDOWN_BACKENDS
@@ -1164,6 +1190,9 @@ def scan() -> str:
 def list_contradictions() -> str:
     """List detected contradictions with resolution analysis."""
     ws = _workspace()
+    denied = _root_corpus_denied(ws, ("decisions/DECISIONS.md", "intelligence/CONTRADICTIONS.md"))
+    if denied is not None:
+        return denied
 
     from mind_mem.conflict_resolver import resolve_contradictions
 

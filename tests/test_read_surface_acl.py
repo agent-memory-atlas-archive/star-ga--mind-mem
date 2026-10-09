@@ -64,6 +64,12 @@ def ws(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
             + _blk(f"T-{tag}-QUA", f"zq{tag}TASKQUARANTINEDcanary", "quarantined", typ="Task"),
         )
     _w(root, "intelligence/CONTRADICTIONS.md", _blk("C-ROOT-ACT", "zqROOTCONTRACTIVEcanary", typ="Contradiction"))
+    _w(
+        root,
+        "intelligence/SIGNALS.md",
+        _blk("SIG-ROOT-ACT", "zqROOTSIGACTIVEcanary", typ="Signal")
+        + _blk("SIG-ROOT-PEN", "zqROOTSIGPENDINGcanary", "pending", typ="Signal"),
+    )
     _w(root, "entities/projects.md", _blk("PRJ-ROOT-ACT", "zqROOTPROJACTIVEcanary", typ="Project"))
     _w(
         root,
@@ -101,7 +107,8 @@ ALWAYS_DENIED = tuple(f"zq{tag}{kind}QUARANTINEDcanary" for tag in TAGS for kind
     "zqALICEACTIVEcanary",
     "zqALICETASKACTIVEcanary",
 )
-ROOT_ACTIVE = ("zqROOTACTIVEcanary", "zqROOTTASKACTIVEcanary", "zqROOTCONTRACTIVEcanary", "zqROOTPROJACTIVEcanary")
+ROOT_ACTIVE = ("zqROOTACTIVEcanary", "zqROOTTASKACTIVEcanary", "zqROOTCONTRACTIVEcanary", "zqROOTPROJACTIVEcanary", "zqROOTSIGACTIVEcanary")
+ALWAYS_DENIED = ALWAYS_DENIED + ("zqROOTSIGPENDINGcanary",)
 
 
 def _resource_bodies(ws: Path, principal: str | None) -> dict[str, str]:
@@ -183,6 +190,7 @@ def test_granted_caller_gets_exactly_what_it_is_granted_from_every_resource(ws: 
     assert "zqROOTACTIVEcanary" in bodies["decisions"]
     assert "zqROOTTASKACTIVEcanary" in bodies["tasks"]
     assert "zqROOTCONTRACTIVEcanary" in bodies["contradictions"]
+    assert "zqROOTSIGACTIVEcanary" in bodies["signals"]
     assert "zqROOTPROJACTIVEcanary" in bodies["entities"]
     assert "zqSHAREDLEDGERACTIVEcanary" in bodies["ledger"]
     assert json.loads(bodies["health"])["files"]["decisions"]["total"] == 2
@@ -332,3 +340,145 @@ def test_rest_read_endpoint_binds_the_principal_around_the_tool(client_keys, mon
     monkeypatch.setattr(acl, "authenticated_agent_id", spy)
     client.post("/v1/recall", headers=_auth(keys, "eve"), json={"query": "frost telemetry rollout gamma", "limit": 5})
     assert seen and set(seen) == {"eve"}
+
+
+# --- REST scan / contradictions: denied and allowed, parity with the tool ------
+
+
+def test_rest_scan_and_contradictions_deny_restricted_and_serve_granted(client_keys) -> None:  # type: ignore[no-untyped-def]
+    client, keys = client_keys
+    for path in ("/v1/scan", "/v1/contradictions"):
+        denied = client.get(path, headers=_auth(keys, "eve"))
+        assert denied.status_code == 403, path
+        assert "total" not in denied.text and "decisions" not in denied.text  # no counts leak through the refusal
+        allowed = client.get(path, headers=_auth(keys, "alice"))
+        assert allowed.status_code == 200, path  # positive control
+    scan = client.get("/v1/scan", headers=_auth(keys, "alice")).json()
+    assert scan["checks"]["decisions"]["total"] == 2
+
+
+def test_scan_and_contradictions_tools_follow_the_same_acl(ws: Path) -> None:
+    from mind_mem.mcp.tools.governance import list_contradictions, scan
+
+    with bind_current_agent("eve"), use_workspace(str(ws)):
+        assert json.loads(scan()).get("error") == "namespace access denied"
+        assert json.loads(list_contradictions()).get("error") == "namespace access denied"
+    with bind_current_agent("alice"), use_workspace(str(ws)):
+        assert "error" not in json.loads(scan())
+        assert "error" not in json.loads(list_contradictions())
+    with use_workspace(str(ws)):  # unbound operator keeps workspace-level reads
+        assert "error" not in json.loads(scan())
+
+
+# --- workspace-level transports: refuse while a namespace ACL is configured ----
+
+
+def test_namespace_acl_configured_predicate(tmp_path: Path) -> None:
+    assert read_authz.namespace_acl_configured(str(tmp_path)) is False  # no file
+    acl = tmp_path / "mind-mem-acl.json"
+    acl.write_text(json.dumps({"default_policy": "read", "agents": {}}))
+    assert read_authz.namespace_acl_configured(str(tmp_path)) is False
+    acl.write_text(json.dumps({"default_policy": "deny"}))
+    assert read_authz.namespace_acl_configured(str(tmp_path)) is True
+    acl.write_text(json.dumps({"agents": {"a": {"read": ["shared"]}}}))
+    assert read_authz.namespace_acl_configured(str(tmp_path)) is True
+    acl.write_text("{ not json")
+    assert read_authz.namespace_acl_configured(str(tmp_path)) is True  # cannot tell -> restricted
+    acl.write_text("[]")
+    assert read_authz.namespace_acl_configured(str(tmp_path)) is True
+
+
+def _http(port: int, method: str, path: str, body: dict[str, Any] | None = None) -> tuple[int, str]:
+    import http.client
+
+    conn = http.client.HTTPConnection("127.0.0.1", port, timeout=10)
+    payload = json.dumps(body).encode() if body is not None else b""
+    try:
+        conn.request(method, path, body=payload, headers={"Content-Length": str(len(payload)), "Content-Type": "application/json"})
+        response = conn.getresponse()
+        return response.status, response.read().decode("utf-8", "replace")
+    finally:
+        conn.close()
+
+
+def _serve_http(workspace: Path):  # type: ignore[no-untyped-def]
+    import socket
+
+    from mind_mem.http_transport import serve_http
+
+    sock = socket.socket()
+    sock.bind(("127.0.0.1", 0))
+    port = sock.getsockname()[1]
+    sock.close()
+    _t, stop = serve_http(workspace=str(workspace), port=port, host="127.0.0.1", token=None, allow_unauthenticated_localhost=True)
+    return port, stop
+
+
+HTTP_READS = (
+    ("GET", "/memories?limit=50&active_only=false", None),
+    ("POST", "/query", {"query": "frost telemetry rollout", "limit": 20}),
+    ("POST", "/walkthrough", {"topic": "frost telemetry rollout", "limit": 20}),
+    ("GET", "/federation/conflicts", None),
+    ("GET", "/federation/vclock/D-ROOT-ACT", None),
+)
+
+
+def test_every_non_mutating_http_route_but_status_is_guarded() -> None:
+    from mind_mem.http_transport import PATH_STATUS, ROUTES
+
+    unguarded = [
+        r.name for r in ROUTES if not r.mutates and r.path != PATH_STATUS and not getattr(r.handler, "_namespace_acl_guarded", False)
+    ]
+    assert unguarded == [], f"read routes that would bypass a configured namespace ACL: {unguarded}"
+
+
+def test_http_handlers_refuse_when_called_directly_too(ws: Path) -> None:
+    from mind_mem import http_transport as ht
+
+    for status, payload in (
+        ht._handle_query(str(ws), {"query": "frost telemetry rollout", "limit": 10}),
+        ht._handle_list_memories(str(ws), {}),
+        ht._handle_walkthrough(str(ws), {"topic": "frost telemetry rollout"}),
+    ):
+        assert status == 403 and "zqROOT" not in json.dumps(payload)
+
+
+def test_http_transport_refuses_every_read_while_a_namespace_acl_is_configured(ws: Path) -> None:
+    port, stop = _serve_http(ws)
+    try:
+        for method, path, body in HTTP_READS:
+            status, text = _http(port, method, path, body)
+            assert status == 403, (path, status, text[:200])
+            for canary in ALWAYS_DENIED + ROOT_ACTIVE:
+                assert canary not in text, (path, canary)
+            assert "D-ROOT" not in text and "D-BOB" not in text  # not even ids or counts
+        assert _http(port, "GET", "/status")[0] == 200  # liveness is not a read
+    finally:
+        stop()
+
+
+def test_http_transport_still_serves_when_no_namespace_acl_exists(ws: Path) -> None:
+    """Positive control: the refusal is caused by the ACL, not by the route being dead."""
+    (ws / "mind-mem-acl.json").unlink()
+    port, stop = _serve_http(ws)
+    try:
+        status, text = _http(port, "GET", "/memories?limit=50&active_only=false")
+        assert status == 200 and "D-ROOT-ACT" in text
+        assert "zqROOTQUARANTINEDcanary" not in text and "D-ROOT-QUA" not in text  # admission still applies
+    finally:
+        stop()
+
+
+def test_grpc_recall_and_scan_refuse_while_a_namespace_acl_is_configured(ws: Path) -> None:
+    from mind_mem.api import grpc_server as g
+    from mind_mem.mcp.infra.workspace import use_workspace
+
+    with use_workspace(str(ws)):
+        with pytest.raises(PermissionError):
+            g.handle_recall(g.RecallRequest(query="frost telemetry rollout"))
+        scan = g.handle_governance(g.GovernanceRequest(operation="scan"))
+        assert scan.ok is False and scan.payload == ""
+        (ws / "mind-mem-acl.json").unlink()
+        ok = g.handle_recall(g.RecallRequest(query="frost telemetry rollout"))  # positive control
+        assert "zqROOTACTIVEcanary" in ok.payload
+        assert "zqROOTQUARANTINEDcanary" not in ok.payload

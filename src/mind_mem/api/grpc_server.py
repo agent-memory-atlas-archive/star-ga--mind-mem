@@ -170,6 +170,20 @@ class HealthResponse:
 # ---------------------------------------------------------------------------
 
 
+def _refuse_if_namespace_acl_configured() -> None:
+    """Refuse a read when a per-agent namespace ACL exists.
+
+    This transport performs no authentication and binds no principal, so every
+    caller is workspace-level. That cannot honour a configured namespace ACL;
+    failing closed is the only answer that does not bypass it.
+    """
+    from mind_mem.mcp.infra.workspace import _workspace
+    from mind_mem.read_authz import WORKSPACE_LEVEL_TRANSPORT_REFUSAL, namespace_acl_configured
+
+    if namespace_acl_configured(_workspace()):
+        raise PermissionError(WORKSPACE_LEVEL_TRANSPORT_REFUSAL)
+
+
 def handle_recall(request: RecallRequest) -> RecallResponse:
     """Recall handler — delegates to the shared ``_recall_impl``.
 
@@ -184,6 +198,7 @@ def handle_recall(request: RecallRequest) -> RecallResponse:
     import time
 
     _reject_unsupported_tenant(request.tenant_id)
+    _refuse_if_namespace_acl_configured()
     t0 = time.perf_counter()
     from mind_mem.mcp.tools.recall import _recall_impl
 
@@ -220,6 +235,12 @@ def handle_governance(request: GovernanceRequest) -> GovernanceResponse:
     if request.operation not in ops:
         return GovernanceResponse(ok=False, payload="", error=f"unknown operation: {request.operation}")
     mod_name, fn_name = ops[request.operation]
+    if request.operation == "scan":
+        # The one read among the four: it summarises the root corpus.
+        try:
+            _refuse_if_namespace_acl_configured()
+        except PermissionError as exc:
+            return GovernanceResponse(ok=False, payload="", error=str(exc))
     try:
         import importlib
 
