@@ -166,14 +166,70 @@ def read_scope(workspace: str) -> ReadScope:
     servable = servable_block_ids(workspace, principal)
     if servable is None:
         return ReadScope(workspace, principal, None, True)
-    from .admissibility import admissible
-    from .storage import iter_blocks
+    return ReadScope(workspace, principal, servable, whole_view(workspace, principal))
 
-    everything = admissible(iter_blocks(workspace, active_only=False))
-    whole = everything <= servable and all(
-        source_readable(workspace, f"{ns}/decisions/DECISIONS.md", principal) for ns in _other_namespace_roots(workspace)
-    )
-    return ReadScope(workspace, principal, servable, whole)
+
+def whole_view(workspace: str, principal: str | None) -> bool:
+    """True when *principal* can READ every namespace source of the workspace.
+
+    "Whole" is a statement about the ACL, not about which blocks happen to be
+    admitted today: the root corpus, ``shared``, every ``agents/*`` directory
+    and every declared custom namespace must each be readable. Deriving it
+    from admissible blocks made a caller "whole" whenever the namespaces it
+    could not read held only quarantined / pending blocks, which then served
+    it every workspace-wide aggregate (query log, calibration, index stats).
+    Unbound callers are whole by definition.
+    """
+    if not is_bound(principal):
+        return True
+    return all(source_readable(workspace, src, principal) for src in _namespace_sources(workspace))
+
+
+def _namespace_sources(workspace: str) -> list[str]:
+    """One probe per namespace root plus every corpus file registered under it."""
+    from .corpus_registry import discover_corpus_files
+
+    root = os.path.realpath(workspace)
+    sources: list[str] = ["decisions/DECISIONS.md"]
+    for label, rel in discover_corpus_files(root):
+        sources.append(rel.replace(os.sep, "/"))
+    for ns in _other_namespace_roots(workspace):
+        sources.append(f"{ns}/decisions/DECISIONS.md")
+        ns_path = os.path.join(root, *ns.split("/"))
+        if os.path.islink(ns_path) or not os.path.isdir(ns_path):
+            continue
+        for _label, rel in discover_corpus_files(ns_path):
+            sources.append(f"{ns}/{rel.replace(os.sep, '/')}")
+    return list(dict.fromkeys(sources))
+
+
+def readable_namespace_roots(workspace: str, principal: str | None) -> tuple[str, ...]:
+    """Namespace roots *principal* can read: ``""`` is the workspace root.
+
+    A compact fingerprint of what a caller could have drawn free text from.
+    Recorded on a staged proposal so another viewer is shown it only when that
+    viewer can read at least everything the proposer could.
+    """
+    probes = {"": "decisions/DECISIONS.md"}
+    for ns in _other_namespace_roots(workspace):
+        probes[ns] = f"{ns}/decisions/DECISIONS.md"
+    return tuple(ns for ns, src in probes.items() if source_readable(workspace, src, principal))
+
+
+def roots_readable(workspace: str, roots: Iterable[object], principal: str | None) -> bool:
+    """True when *principal* can read every namespace root in *roots*.
+
+    A malformed entry is unreadable: the check fails closed.
+    """
+    if not is_bound(principal):
+        return True
+    for ns in roots:
+        if not isinstance(ns, str):
+            return False
+        src = f"{ns}/decisions/DECISIONS.md" if ns else "decisions/DECISIONS.md"
+        if not source_readable(workspace, src, principal):
+            return False
+    return True
 
 
 def _other_namespace_roots(workspace: str) -> list[str]:

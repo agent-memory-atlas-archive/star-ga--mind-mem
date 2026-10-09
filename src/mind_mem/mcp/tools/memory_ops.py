@@ -1061,6 +1061,8 @@ def get_block(block_id: str, namespace: str = "") -> str:
         selector_config = dict(bound_config) if bound_config is not None else _load_config(ws)
         selected_namespace, selector_error = _namespace_selector(namespace, selector_config)
         if selector_error or selected_namespace is None:
+            if _selector_masked(ws, namespace):
+                return _block_miss(block_id, _miss_where(ws))
             return json.dumps({"_schema_version": MCP_SCHEMA_VERSION, "error": selector_error or "invalid namespace selector"})
         from mind_mem.audit_context import UNATTRIBUTED, current_agent_id
         from mind_mem.namespaces import InvalidAgentIdError, NamespaceManager
@@ -1068,11 +1070,11 @@ def get_block(block_id: str, namespace: str = "") -> str:
         agent_id = current_agent_id.get()
         if selected_namespace.startswith("agents/"):
             if not agent_id or agent_id == UNATTRIBUTED or selected_namespace != f"agents/{agent_id}":
-                return json.dumps({"_schema_version": MCP_SCHEMA_VERSION, "error": "namespace access denied"})
+                return _block_miss(block_id, _miss_where(ws))
         try:
             manager = NamespaceManager(ws, agent_id=None if agent_id in {None, "", UNATTRIBUTED} else agent_id)
         except InvalidAgentIdError:
-            return json.dumps({"_schema_version": MCP_SCHEMA_VERSION, "error": "namespace access denied"})
+            return _block_miss(block_id, _miss_where(ws))
         acl_probe = {
             "workspace": "decisions/DECISIONS.md",
             "shared": "shared/decisions/DECISIONS.md",
@@ -1081,9 +1083,9 @@ def get_block(block_id: str, namespace: str = "") -> str:
         namespace_real = os.path.realpath(namespace_path)
         workspace_real = os.path.realpath(ws)
         if os.path.islink(namespace_path) or (namespace_real != workspace_real and not namespace_real.startswith(workspace_real + os.sep)):
-            return json.dumps({"_schema_version": MCP_SCHEMA_VERSION, "error": "namespace access denied"})
+            return _block_miss(block_id, _miss_where(ws))
         if not manager.can_read(acl_probe):
-            return json.dumps({"_schema_version": MCP_SCHEMA_VERSION, "error": "namespace access denied"})
+            return _block_miss(block_id, _miss_where(ws))
 
     block, where = _resolve_block_for_read(ws, block_id, namespace=selected_namespace)
 
@@ -1113,10 +1115,10 @@ def get_block(block_id: str, namespace: str = "") -> str:
             source_real = os.path.realpath(rel_source)
             workspace_real = os.path.realpath(ws)
             if source_real != workspace_real and not source_real.startswith(workspace_real + os.sep):
-                return json.dumps({"_schema_version": MCP_SCHEMA_VERSION, "error": "namespace access denied"})
+                return _block_miss(block_id, where)
             rel_source = os.path.relpath(source_real, workspace_real).replace(os.sep, "/")
         if "\x00" in rel_source or ".." in rel_source.split("/"):
-            return json.dumps({"_schema_version": MCP_SCHEMA_VERSION, "error": "namespace access denied"})
+            return _block_miss(block_id, where)
         source_namespace = namespace_for_path(rel_source)
         bound_agent = current_agent_id.get()
         is_bound = bound_agent not in {None, "", UNATTRIBUTED}
@@ -1129,7 +1131,7 @@ def get_block(block_id: str, namespace: str = "") -> str:
             from mind_mem.read_authz import source_readable
 
             if not source_readable(ws, rel_source, bound_agent if is_bound else None, check_realpath=where != "store"):
-                return json.dumps({"_schema_version": MCP_SCHEMA_VERSION, "error": "namespace access denied"})
+                return _block_miss(block_id, where)
 
     # EGRESS GATE. Resolution above says whether the bytes EXIST; this says
     # whether this caller may see them. ``get_block`` is a USER-scope tool and
@@ -1190,6 +1192,16 @@ def get_block(block_id: str, namespace: str = "") -> str:
         )
 
     metrics.inc("mcp_get_block_miss")
+    return _block_miss(block_id, where)
+
+
+def _block_miss(block_id: str, where: str) -> str:
+    """The one "not found" body. A denied read answers with exactly this.
+
+    ``get_block`` used to answer ``namespace access denied`` for a block the
+    caller's ACL withheld and this text for one that did not exist, which let
+    a restricted caller enumerate ids. Both now return the same bytes.
+    """
     missing_in = "the block store" if where == "store" else "any corpus file"
     return json.dumps(
         {
@@ -1201,6 +1213,31 @@ def get_block(block_id: str, namespace: str = "") -> str:
         },
         indent=2,
     )
+
+
+def _miss_where(ws: str) -> str:
+    """Where a miss claims to have looked, as the backend would report it."""
+    return "corpus" if _is_markdown_backend(ws) else "store"
+
+
+def _selector_masked(ws: str, selector: object) -> bool:
+    """True when a bound caller names a namespace its ACL does not let it read.
+
+    An invalid or undeclared selector is then indistinguishable from a
+    denied one: both answer as a miss, so the error text cannot be used to
+    learn which custom namespaces are declared.
+    """
+    from mind_mem.read_authz import CallerUnresolved, caller_principal, is_bound, source_readable
+
+    if not isinstance(selector, str) or not selector or "\x00" in selector or ".." in selector.split("/"):
+        return False
+    try:
+        principal = caller_principal()
+    except CallerUnresolved:
+        return True
+    if not is_bound(principal):
+        return False
+    return not source_readable(ws, f"{selector}/decisions/DECISIONS.md", principal)
 
 
 def _resolve_block_for_read(ws: str, block_id: str, *, namespace: str | None = None) -> tuple[dict | None, str]:

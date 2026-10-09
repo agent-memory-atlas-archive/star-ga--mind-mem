@@ -37,6 +37,7 @@ Requires ``grpcio``, which mind-mem does not depend on.
 
 from __future__ import annotations
 
+import os
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from typing import Any, Callable, Iterator, Optional, Sequence, Tuple
@@ -262,9 +263,11 @@ def handle_health() -> HealthResponse:
     from mind_mem.mcp.infra.constants import MCP_SCHEMA_VERSION
     from mind_mem.mcp.infra.workspace import _workspace
 
+    # Basename only: the absolute path is a filesystem-layout disclosure to
+    # every caller of an endpoint that needs no credential.
     return HealthResponse(
         status="ok",
-        workspace=_workspace(),
+        workspace=os.path.basename(os.path.abspath(_workspace())),
         schema_version=MCP_SCHEMA_VERSION,
     )
 

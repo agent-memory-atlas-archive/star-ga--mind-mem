@@ -178,7 +178,7 @@ def propose_edge(
             object,
             source_block_id=source_block_id,
             confidence=float(confidence),
-            metadata=_proposer_metadata(),
+            metadata=_proposer_metadata(ws, (source_block_id.strip(),)),
         )
     except ValueError as exc:
         return json.dumps({"error": str(exc)})
@@ -288,35 +288,72 @@ def reject_edge(proposal_id: str) -> str:
     return json.dumps({**proposal.as_dict(), "_schema_version": "1.0"}, indent=2)
 
 
-def _proposer_metadata() -> dict[str, str]:
-    """``{"proposer": <authenticated principal>}`` for a bound caller, else empty.
+def _proposer_metadata(ws: str, derives_from: tuple[str, ...] = ()) -> dict[str, Any]:
+    """Provenance stamped on a staged proposal.
 
-    Recorded so the list tools can show a caller its own staged proposals.
+    * ``proposer`` -- the authenticated principal (bound callers only); shown
+      back only to that principal and to whole-view callers.
+    * ``proposer_view`` -- the namespace roots the proposer could read when it
+      staged the proposal. Free text (subject / object / rationale) may come
+      from any of them, so another viewer is shown the proposal only when it
+      can read all of them too. An unbound (operator) proposer could read
+      everything, so its proposals carry every root.
+    * ``derives_from`` -- block ids the proposal is derived from.
     """
-    from mind_mem.read_authz import CallerUnresolved, caller_principal
+    from mind_mem.read_authz import CallerUnresolved, caller_principal, readable_namespace_roots
 
     try:
         principal = caller_principal()
     except CallerUnresolved:
         return {}
-    return {"proposer": principal} if principal else {}
+    meta: dict[str, Any] = {"proposer_view": list(readable_namespace_roots(ws, principal))}
+    if principal:
+        meta["proposer"] = principal
+    if derives_from:
+        meta["derives_from"] = sorted(set(derives_from))
+    return meta
+
+
+_PROVENANCE_KEYS = ("proposer", "proposer_view", "derives_from")
 
 
 def _proposal_visible(scope: Any, proposal: Any, *, blocks: tuple[str, ...]) -> bool:
     """May the caller see this staged proposal?
 
-    A caller always sees the proposals it staged itself (``metadata.proposer``).
-    Others' proposals are visible when the caller's view is the whole workspace
-    or every block the proposal cites is one it may read. A proposal that cites
-    no block (an entity merge) and was staged by someone else is not visible to
-    a restricted caller.
+    * a whole-view caller sees everything;
+    * a caller always sees the proposals it staged itself;
+    * a proposal stamped with the proposer's view is shown to another caller
+      only if that caller can read every namespace the proposer could, and
+      every block the proposal cites or derives from is servable to it;
+    * a legacy proposal (no stamp) is shown only when it cites blocks and all
+      of them are servable; an entity merge staged by someone else, which
+      cites no block, is not shown to a restricted caller.
     """
     if scope.whole:
         return True
     meta = proposal.metadata if isinstance(proposal.metadata, dict) else {}
     if scope.principal and meta.get("proposer") == scope.principal:
         return True
+    derived = tuple(b for b in (*blocks, *(meta.get("derives_from") or ())) if isinstance(b, str))
+    view = meta.get("proposer_view")
+    if isinstance(view, list):
+        from mind_mem.read_authz import roots_readable
+
+        return roots_readable(scope.workspace, view, scope.principal) and all(scope.allows(b) for b in derived)
     return bool(blocks) and all(scope.allows(b) for b in blocks)
+
+
+def _proposal_dict(scope: Any, proposal: Any) -> dict[str, Any]:
+    """The proposal as served: who staged it is shown only to them and whole views."""
+    out: dict[str, Any] = proposal.as_dict()
+    meta = out.get("metadata")
+    if scope.whole or not isinstance(meta, dict):
+        return out
+    own = bool(scope.principal) and meta.get("proposer") == scope.principal
+    if own:
+        return out
+    out["metadata"] = {k: v for k, v in meta.items() if k not in _PROVENANCE_KEYS}
+    return out
 
 
 @mcp_tool_observe
@@ -365,7 +402,7 @@ def list_edge_proposals(status: str = "staged", limit: int = 64) -> str:
         {
             "status": status,
             "count": len(proposals),
-            "proposals": [p.as_dict() for p in proposals],
+            "proposals": [_proposal_dict(scope, p) for p in proposals],
             "_schema_version": "1.0",
         },
         indent=2,
@@ -385,14 +422,48 @@ def propose_entity_merge(winner_id: str, loser_id: str, rationale: str) -> str:
         return json.dumps({"error": "winner_id and loser_id must be non-empty entity ids"})
     if not isinstance(rationale, str):
         return json.dumps({"error": "rationale must be a string"})
+    scope, denied = _read_scope_or_denied(ws)
+    if denied is not None:
+        return denied
     kg = KnowledgeGraph(_kg_path(ws))
     try:
-        proposal = kg.propose_entity_merge(winner_id, loser_id, rationale=rationale, metadata=_proposer_metadata())
+        sources: list[str] = []
+        if scope.restricted and not scope.whole:
+            # A restricted caller may name an entity only if it derives from
+            # blocks the caller may read. Every other pair -- existing but
+            # unreadable, or absent -- gets the one answer a missing entity
+            # gets, so the error text cannot be used to probe the graph.
+            winner, loser = winner_id.strip(), loser_id.strip()
+            if winner == loser:
+                return json.dumps({"error": "winner_id and loser_id must be distinct"})
+            if sum(not char.isspace() for char in rationale) < 8:
+                return json.dumps({"error": "entity merge rationale must be at least 8 non-whitespace characters"})
+            for entity in (winner, loser):
+                entity_sources = _readable_entity_sources(kg, entity, scope)
+                if entity_sources is None:
+                    return json.dumps({"error": "winner_id and loser_id must name existing entities"})
+                sources.extend(entity_sources)
+        proposal = kg.propose_entity_merge(winner_id, loser_id, rationale=rationale, metadata=_proposer_metadata(ws, tuple(sources)))
     except (EntityMergeError, ValueError) as exc:
         return json.dumps({"error": str(exc)})
     finally:
         kg.close()
     return json.dumps({**proposal.as_dict(), "_schema_version": "1.0"}, indent=2)
+
+
+def _readable_entity_sources(kg: Any, entity: str, scope: Any) -> list[str] | None:
+    """Source blocks of *entity* when it exists and every one is servable, else ``None``.
+
+    An entity with no recorded source block cannot be shown to derive from
+    anything the caller may read, so it counts as unreadable.
+    """
+    with kg._lock:
+        exists = kg._conn.execute("SELECT 1 FROM entities WHERE id = ?", (entity,)).fetchone()
+        rows = kg._conn.execute("SELECT DISTINCT source_block_id FROM edges WHERE subject = ? OR object = ?", (entity, entity)).fetchall()
+    sources = [str(row[0]) for row in rows if row[0]]
+    if exists is None or not sources or not all(scope.allows(b) for b in sources):
+        return None
+    return sources
 
 
 @mcp_tool_observe
@@ -427,7 +498,7 @@ def list_entity_merge_proposals(status: str = "staged", limit: int = 64) -> str:
         kg.close()
     proposals = [p for p in proposals if _proposal_visible(scope, p, blocks=())][:limit]
     return json.dumps(
-        {"status": status, "count": len(proposals), "proposals": [p.as_dict() for p in proposals], "_schema_version": "1.0"},
+        {"status": status, "count": len(proposals), "proposals": [_proposal_dict(scope, p) for p in proposals], "_schema_version": "1.0"},
         indent=2,
     )
 

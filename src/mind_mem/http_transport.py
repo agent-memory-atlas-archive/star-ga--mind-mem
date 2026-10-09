@@ -808,8 +808,24 @@ def _refuse_under_namespace_acl(handler: Any) -> Any:
 
 
 def _handle_status(workspace: str) -> tuple[int, dict[str, Any]]:
-    """``GET /status`` — health + memory count + last-scan timestamp."""
+    """``GET /status`` — health + memory count + last-scan timestamp.
+
+    Under a configured namespace ACL this transport has no per-caller identity,
+    so a workspace-wide count or scan time would be a figure over namespaces the
+    caller may not read. It then answers liveness only.
+    """
+    from .read_authz import namespace_acl_configured
     from .storage import get_block_store
+
+    if namespace_acl_configured(workspace):
+        return (
+            200,
+            {
+                "ok": True,
+                "workspace": os.path.basename(os.path.abspath(workspace)),
+                "server_time": int(time.time()),
+            },
+        )
 
     try:
         store = get_block_store(workspace)

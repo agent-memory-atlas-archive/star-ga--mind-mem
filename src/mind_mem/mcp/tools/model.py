@@ -16,6 +16,7 @@ underlying functions which already raise structured errors.
 from __future__ import annotations
 
 import contextlib
+import dataclasses
 import json
 import os
 from pathlib import Path
@@ -84,6 +85,83 @@ def _reject_bad_path(path: str, field: str = "path") -> str | None:
     return None
 
 
+#: Upper bound on files examined when proving a whole directory is readable.
+_MAX_ACL_WALK_FILES = 200_000
+
+
+def _bound_principal() -> tuple[bool, str | None]:
+    """``(refuse, principal)``: refuse when the caller cannot be established."""
+    from mind_mem.read_authz import CallerUnresolved, caller_principal, is_bound
+
+    try:
+        principal = caller_principal()
+    except CallerUnresolved:
+        return True, None
+    return False, principal if is_bound(principal) else None
+
+
+def _configured_model_dirs(ws: str) -> tuple[str, ...]:
+    """Absolute, resolved ``model_dirs`` from the workspace config (operator-designated)."""
+    from mind_mem.storage import _load_workspace_config
+
+    try:
+        raw = _load_workspace_config(ws, quiet=True).get("model_dirs")
+    except Exception:  # config unreadable: no extra directories
+        return ()
+    if not isinstance(raw, list):
+        return ()
+    return tuple(os.path.realpath(os.path.expanduser(d)) for d in raw if isinstance(d, str) and d.strip())
+
+
+def _model_path_allowed(path: str, *, want_file: bool = False) -> bool:
+    """May the current caller look at *path* at all?
+
+    An unbound caller (stdio operator) keeps today's behaviour. A bound
+    caller may only touch (a) a directory configured as ``model_dirs`` or
+    (b) a path inside the workspace that its namespace ACL lets it read --
+    for a directory, every file below it. Anything else, including every
+    path outside the workspace, is refused; callers must answer a refusal
+    exactly as they answer a path that does not exist.
+    """
+    refuse, principal = _bound_principal()
+    if refuse:
+        return False
+    if principal is None:
+        return True
+    from mind_mem.mcp.infra.workspace import _workspace
+    from mind_mem.read_authz import source_readable
+
+    ws = os.path.realpath(_workspace())
+    real = os.path.realpath(os.path.expanduser(path))
+    for allowed in _configured_model_dirs(ws):
+        if real == allowed or real.startswith(allowed + os.sep):
+            return True
+    if not real.startswith(ws + os.sep):
+        return False
+    rel = os.path.relpath(real, ws).replace(os.sep, "/")
+    if os.path.isfile(real):
+        return source_readable(ws, rel, principal)
+    if want_file:
+        return False
+    if not source_readable(ws, rel + "/.model", principal):
+        return False
+    seen = 0
+    for dirpath, _dirs, files in os.walk(real, followlinks=False):
+        for name in files:
+            seen += 1
+            if seen > _MAX_ACL_WALK_FILES:
+                return False
+            member = os.path.relpath(os.path.join(dirpath, name), ws).replace(os.sep, "/")
+            if not source_readable(ws, member, principal):
+                return False
+    return True
+
+
+def _display_path(path: str) -> str:
+    """The path as the caller supplied it: a bound caller is never shown the resolved host path."""
+    return path
+
+
 @mcp_tool_observe
 def audit_model_tool(
     path: str,
@@ -120,17 +198,35 @@ def audit_model_tool(
 
     extra = tuple(allow_publisher) if allow_publisher else None
 
+    # A bound caller reaches only paths its ACL grants; every other path --
+    # unreadable, outside the workspace, absent -- gets the "not found" body.
+    # File names, hashes, counts and sizes of an unreadable namespace are
+    # content, and "missing vs present" is an existence oracle.
+    _refused, _principal = _bound_principal()
+    masked = _refused or _principal is not None
+    if masked and not _model_path_allowed(path):
+        return json.dumps(
+            {"_schema_version": MCP_SCHEMA_VERSION, "ok": False, "error": f"model path not found: {_display_path(path)}"},
+            indent=2,
+        )
+
     try:
         from mind_mem.model_audit import audit_model
 
         report = audit_model(path, allow_extra_publishers=extra)
     except (FileNotFoundError, NotADirectoryError) as exc:
+        msg = str(exc)
+        if masked:
+            shown = _display_path(path)
+            msg = f"model path not found: {shown}" if isinstance(exc, FileNotFoundError) else f"model path is not a directory: {shown}"
         return json.dumps(
-            {"_schema_version": MCP_SCHEMA_VERSION, "ok": False, "error": str(exc)},
+            {"_schema_version": MCP_SCHEMA_VERSION, "ok": False, "error": msg},
             indent=2,
         )
 
     out = report.to_dict()
+    if masked:
+        out["model_path"] = _display_path(path)
     if not include_manifest:
         out.pop("manifest", None)
     out["_schema_version"] = MCP_SCHEMA_VERSION
@@ -291,12 +387,16 @@ def verify_model_tool(path: str, pubkey_path: str = "") -> str:
     if err:
         return err
 
+    _refused, _principal = _bound_principal()
+    masked = _refused or _principal is not None
     pk: bytes | None = None
     if pubkey_path:
         from mind_mem.model_signing import ED25519_PUBLIC_KEY_BYTES
 
         p = Path(os.path.expanduser(pubkey_path))
-        if not p.is_file():
+        # A bound caller's key file is subject to the same ACL as its
+        # checkpoint; an unreadable one answers exactly like an absent one.
+        if (masked and not _model_path_allowed(pubkey_path, want_file=True)) or not p.is_file():
             return json.dumps(
                 {
                     "_schema_version": MCP_SCHEMA_VERSION,
@@ -316,15 +416,28 @@ def verify_model_tool(path: str, pubkey_path: str = "") -> str:
                 indent=2,
             )
 
-    from mind_mem.model_signing import verify_model
+    from mind_mem.model_signing import MANIFEST_FILENAME, VerifyResult, verify_model
 
-    try:
-        result = verify_model(path, public_key=pk)
-    except NotADirectoryError as exc:
-        return json.dumps(
-            {"_schema_version": MCP_SCHEMA_VERSION, "ok": False, "error": str(exc)},
-            indent=2,
+    if masked and not _model_path_allowed(path):
+        # Same result an absent checkpoint produces, with the caller's own path.
+        result = VerifyResult(
+            passed=False,
+            manifest_sha256="",
+            error_kind="missing_file",
+            error_detail=f"{MANIFEST_FILENAME} not found in {_display_path(path)}",
         )
+    else:
+        try:
+            result = verify_model(path, public_key=pk)
+        except NotADirectoryError as exc:
+            msg = f"checkpoint root not a directory: {_display_path(path)}" if masked else str(exc)
+            return json.dumps(
+                {"_schema_version": MCP_SCHEMA_VERSION, "ok": False, "error": msg},
+                indent=2,
+            )
+        if masked and result.error_detail:
+            resolved = str(Path(path).expanduser().resolve())
+            result = dataclasses.replace(result, error_detail=result.error_detail.replace(resolved, _display_path(path)))
 
     metrics.inc("mcp_verify_model")
     _log.info(

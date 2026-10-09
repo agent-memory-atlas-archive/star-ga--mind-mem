@@ -82,17 +82,38 @@ def _admit_category_context(workspace: str, context: str, scope: Any = None) -> 
 
     from mind_mem.storage import get_block_store
 
-    live = {str(block.get("_id")): block.get("Status") for block in get_block_store(workspace).get_all(active_only=False)}
+    all_blocks = get_block_store(workspace).get_all(active_only=False)
+    live = {str(block.get("_id")): block.get("Status") for block in all_blocks}
+    restricted = scope is not None and scope.restricted
+    if restricted:
+        # ``withheld_count`` is a statement about what the caller could have
+        # seen: sections whose block lives in a namespace the caller cannot
+        # read are neither served nor counted -- a count from an unreadable
+        # source reveals that source holds withheld (quarantined / pending)
+        # material. A block that cannot be placed in a source is unreadable.
+        from mind_mem.read_authz import block_source, source_readable
+        from mind_mem.storage import iter_blocks
+
+        readable_ids = {
+            str(block.get("_id"))
+            for block in iter_blocks(workspace, active_only=False)
+            if (src := block_source(block)) and source_readable(workspace, src, scope.principal)
+        }
+        sections = [(block_id, text) for block_id, text in sections if block_id in readable_ids]
     rows = [{"_id": block_id, "Status": live.get(block_id, _UNRESOLVED_STATUS)} for block_id, _ in sections]
     decision = admit_read(rows, workspace=workspace, surface="category_summary")
     servable = {str(row["_id"]) for row in decision.admitted}
-    if scope is not None and scope.restricted:
+    if restricted:
         # admission says the block may be served to anyone; the namespace ACL
         # says whether THIS caller may read the file it lives in
         servable = {block_id for block_id in servable if scope.allows(block_id)}
         # the file's own "N blocks in this category" line counts blocks the caller cannot read
         preamble = _CATEGORY_COUNT_LINE.sub("", preamble)
     kept = "".join(text for block_id, text in sections if block_id in servable)
+    if restricted and not kept:
+        # A category file exists when ANY namespace holds a block of that
+        # category; its bare title would tell a restricted caller so.
+        return "", decision.withheld
     return preamble + kept, decision.withheld
 
 
