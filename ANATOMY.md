@@ -5,8 +5,8 @@
 > Re-generate with: `anatomy .`
 
 **Project:** `mind-mem`
-**Files:** 1690 | **Est. tokens:** ~4,940,744
-**Generated:** 2026-10-09 00:03 UTC
+**Files:** 1691 | **Est. tokens:** ~4,942,661
+**Generated:** 2026-10-09 00:47 UTC
 
 ## Token Budget Guide
 
@@ -93,7 +93,7 @@
 | `src/mind_mem/tool_output/` | 3 | ~5,895 |
 | `src/mind_mem/v4/` | 24 | ~96,311 |
 | `src/mind_mem/viewer_static/` | 3 | ~865 |
-| `tests/` | 751 | ~2,199,842 |
+| `tests/` | 752 | ~2,201,759 |
 | `tests/fixtures/` | 7 | ~11,912 |
 | `tests/fixtures/importers/` | 5 | ~1,218 |
 | `tests/fixtures/importers/agent_memory/` | 4 | ~383 |
@@ -1765,6 +1765,7 @@
 - `test_recall_query_id_join.py` (~7740 tok, huge) — RA.1's residual, closed: the recall envelope publishes the run identity.
 - `test_recall_recursion_fix.py` (~2069 tok, huge) — Regression tests for the recall ↔ query_index mutual recursion bug.
 - `test_recall_references.py` (~270 tok, medium) — Tests for reference-based recall."""
+- `test_recall_replaced_demotion_invariants.py` (~1917 tok, huge) — Dead-status demotion keeps every recall invariant it sits next to.
 - `test_recall_rerank_depth_and_score_contract.py` (~12176 tok, huge) — One score contract (F1) + rerank depth (F2).
 - `test_recall_reranking.py` (~2740 tok, huge) — Tests for _recall_reranking.py — deterministic reranker + LLM rerank."""
 - `test_recall_scoring_dates.py` (~1424 tok, large) — A slash-dated corpus must not silently lose its temporal signal.

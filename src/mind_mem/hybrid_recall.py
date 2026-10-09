@@ -90,9 +90,9 @@ def _is_replaced(hit: Mapping[str, Any]) -> bool:
 
 
 def _demote_replaced(hits: list[dict]) -> list[dict]:
-    """Dead-status hits below every live hit, before a leg cuts to ``limit``.
+    """Dead-status hits re-scored below every live hit, before a leg cuts to ``limit``.
 
-    The single ordering rule lives in ``_recall_core._rank_replaced_below_live``;
+    The single demotion rule lives in ``_recall_core._rank_replaced_below_live``;
     this is the local-import seam (``_recall_core`` imports this module).
     """
     from ._recall_core import _rank_replaced_below_live

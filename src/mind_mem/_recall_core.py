@@ -1127,18 +1127,73 @@ def _is_replaced(hit: Mapping[str, Any]) -> bool:
     return str(hit.get("status") or hit.get("Status") or "").strip().lower() in _REPLACED_STATUSES
 
 
+#: Marker recording a dead hit's score before :func:`_rank_replaced_below_live`
+#: re-scored it (mirrors the validity gate's ``_validity_demoted``).
+REPLACED_DEMOTED_MARKER = "_replaced_demoted_from"
+
+
+def _hit_score(hit: Mapping[str, Any]) -> float:
+    try:
+        return float(hit.get("score", 0.0) or 0.0)
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def _demoted_score(score: float, lowest_live: float) -> float:
+    """A dead hit's score in ``[0, lowest_live)``, increasing in its own score.
+
+    Strictly below every live score whenever that score is positive (the
+    case on every leg; a live score of exactly ``0`` can only be tied), never
+    negative, deterministic, and order-preserving among demoted hits.
+    """
+    own = max(score, 0.0)
+    return max(lowest_live, 0.0) * own / (1.0 + own)
+
+
 def _rank_replaced_below_live(hits: list[dict]) -> list[dict]:
-    """Move superseded/revoked hits below every live hit, keeping each group's order.
+    """Demote superseded/revoked hits, BY SCORE, below every live hit.
 
     A corrected memory stays recallable as history, but it must never outrank
     the memory that replaced it. Every recall leg calls this on its WIDE pool,
     before its own limit cut, so the live replacement keeps its slot at any
     limit; the funnel in :func:`_apply_post_filters` calls it again as a
-    backstop. Stable, so a list with no dead status is returned in its
-    original order.
-    """
+    backstop.
 
-    return sorted(hits, key=_is_replaced)
+    The demotion is a score change, not a bare reorder, so the
+    score-descending contract every leg promises still holds: each dead hit
+    scoring at or above the lowest live score is re-scored strictly below
+    every live score (see :func:`_demoted_score`), on a copy carrying
+    :data:`REPLACED_DEMOTED_MARKER` with its original score; the input hits
+    are never mutated. Live hits keep their order, followed by the dead hits
+    in descending score (stable). When no hit needs re-scoring the input list
+    itself is returned, untouched, so carrier identity and every attached
+    attribute survive.
+    """
+    live = [h for h in hits if not _is_replaced(h)]
+    if not live or len(live) == len(hits):
+        return hits
+    anchor = min(live, key=_hit_score)
+    lowest_live = _hit_score(anchor)
+    # A demoted score is derived from the anchor's score, so when that score
+    # came from co-retrieval propagation the demoted one did too: carry the
+    # provenance flag rather than present a boost-dependent score as stable.
+    inherited = {"_co_retrieval_boost": True} if anchor.get("_co_retrieval_boost") else {}
+    dead: list[dict] = []
+    changed = False
+    for hit in hits:
+        if not _is_replaced(hit):
+            continue
+        score = _hit_score(hit)
+        if score < lowest_live:
+            dead.append(hit)
+            continue
+        original = hit.get(REPLACED_DEMOTED_MARKER, score)
+        dead.append({**hit, **inherited, "score": _demoted_score(score, lowest_live), REPLACED_DEMOTED_MARKER: original})
+        changed = True
+    if not changed and all(a is b for a, b in zip(hits, live)):
+        return hits
+    dead.sort(key=_hit_score, reverse=True)
+    return live + dead
 
 
 def _knee_cutoff_live_aware(results: list[dict], *, min_results: int, min_score: float) -> list[dict]:
@@ -2756,10 +2811,10 @@ def recall(
         min_sc = float(recall_cfg.get("min_score", 0.0))
         deduped = _knee_cutoff_live_aware(deduped, min_results=min(3, limit), min_score=min_sc)
 
-    # Superseded/revoked hits drop below every live hit BEFORE the limit cut:
-    # the funnel's own demotion runs on a list this leg has already narrowed,
-    # so a replacement cut here never reaches it. A no-op (stable sort on a
-    # constant key) when no hit carries a dead status.
+    # Superseded/revoked hits are re-scored below every live hit BEFORE the
+    # limit cut: the funnel's own demotion runs on a list this leg has already
+    # narrowed, so a replacement cut here never reaches it. Returns the same
+    # list when no hit needs demoting.
     deduped = _rank_replaced_below_live(deduped)
 
     _stage_counts["knee_cutoff"] = len(deduped)
