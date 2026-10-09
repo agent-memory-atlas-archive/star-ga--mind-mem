@@ -5,8 +5,8 @@
 > Re-generate with: `anatomy .`
 
 **Project:** `mind-mem`
-**Files:** 1696 | **Est. tokens:** ~4,962,690
-**Generated:** 2026-10-09 02:13 UTC
+**Files:** 1696 | **Est. tokens:** ~4,963,098
+**Generated:** 2026-10-09 02:25 UTC
 
 ## Token Budget Guide
 
@@ -93,7 +93,7 @@
 | `src/mind_mem/tool_output/` | 3 | ~5,895 |
 | `src/mind_mem/v4/` | 24 | ~96,311 |
 | `src/mind_mem/viewer_static/` | 3 | ~865 |
-| `tests/` | 757 | ~2,217,577 |
+| `tests/` | 757 | ~2,217,985 |
 | `tests/fixtures/` | 7 | ~11,912 |
 | `tests/fixtures/importers/` | 5 | ~1,218 |
 | `tests/fixtures/importers/agent_memory/` | 4 | ~383 |
@@ -1729,7 +1729,7 @@
 - `test_recall_as_of.py` (~1297 tok, large) — Tests for the ``recall(..., as_of=)`` time-travel plumb-through (roadmap Group B).
 - `test_recall_attestation_anchor.py` (~4089 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_recall_attestation_completeness.py` (~3691 tok, huge) — An attestation must distinguish two runs that served different answers.
-- `test_recall_attestation_failure_boundary.py` (~1029 tok, large) — Failure-boundary controls for the post-cache recall attestation rail."""
+- `test_recall_attestation_failure_boundary.py` (~1196 tok, large) — Failure-boundary controls for the post-cache recall attestation rail."""
 - `test_recall_attestation.py` (~5631 tok, huge) — Tests for the per-run recall attestation (recall_attestation.py).
 - `test_recall_attestation_served_backend.py` (~3611 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_recall_attestation_unrequested_leg.py` (~789 tok, large) — An unrequested vector leg must not be attested as degraded.
@@ -1750,7 +1750,7 @@
 - `test_recall_empty_query_types.py` (~322 tok, medium) — Tests for various empty/minimal query types."""
 - `test_recall_empty_workspace.py` (~134 tok, small) — Tests for recall on empty workspaces."""
 - `test_recall_expansion_no_overbroad_synonyms.py` (~811 tok, large) — Regression tests for over-broad synonym entries in _QUERY_EXPANSIONS.
-- `test_recall_explain.py` (~4352 tok, huge) — Tests for the explain=True flag on recall and hybrid_search MCP tools.
+- `test_recall_explain.py` (~4593 tok, huge) — Tests for the explain=True flag on recall and hybrid_search MCP tools.
 - `test_recall_filter_pushdown.py` (~5733 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_recall_filters_reach_the_surface.py` (~1901 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_recall_format_cache_isolation.py` (~1891 tok, huge) — ``format`` is not in the recall-cache key, so it must not be applied inside it.
