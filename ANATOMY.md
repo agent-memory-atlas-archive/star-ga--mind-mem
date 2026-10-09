@@ -5,8 +5,8 @@
 > Re-generate with: `anatomy .`
 
 **Project:** `mind-mem`
-**Files:** 1720 | **Est. tokens:** ~5,106,069
-**Generated:** 2026-10-09 10:37 UTC
+**Files:** 1720 | **Est. tokens:** ~5,106,441
+**Generated:** 2026-10-09 11:26 UTC
 
 ## Token Budget Guide
 
@@ -93,7 +93,7 @@
 | `src/mind_mem/tool_output/` | 3 | ~5,895 |
 | `src/mind_mem/v4/` | 24 | ~96,311 |
 | `src/mind_mem/viewer_static/` | 3 | ~865 |
-| `tests/` | 777 | ~2,297,593 |
+| `tests/` | 777 | ~2,297,965 |
 | `tests/fixtures/` | 8 | ~16,356 |
 | `tests/fixtures/importers/` | 5 | ~1,218 |
 | `tests/fixtures/importers/agent_memory/` | 4 | ~383 |
@@ -1514,7 +1514,7 @@
 - `test_grid_search.py` (~1199 tok, large) — Tests for benchmarks/grid_search.py — grid generation and utility functions."""
 - `test_group_h_robustness.py` (~7219 tok, huge) — Robustness tests for Group-H modules: edge-cases, error-paths, boundary values.
 - `test_group_s_corroboration_breadth.py` (~6857 tok, huge) — Group S — cross-project corroboration as a maturity component.
-- `test_grpc_server.py` (~2246 tok, huge) — v4.0 prep — gRPC wire protocol (tests for the grpcio-free handlers)."""
+- `test_grpc_server.py` (~2259 tok, huge) — v4.0 prep — gRPC wire protocol (tests for the grpcio-free handlers)."""
 - `test_guardrail_blocks.py` (~10742 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_guardrail_status_and_sources.py` (~1989 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_guardrail_surface_never_grows.py` (~1279 tok, large) — Guardrail surfacing must never return more hits than it was given.
@@ -1586,7 +1586,7 @@
 - `test_llm_noise_profile_wiring.py` (~7834 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_locomo_suite.py` (~2743 tok, huge) — Tests for the LoCoMo recall harness (self-asserting adapters).
 - `test_longmemeval_full_run.py` (~1696 tok, huge) — The full-run driver must score the same pool the canonical harness does.
-- `test_m2_custom_namespace_direct_get.py` (~2095 tok, huge) — M2: direct reads and recall for explicitly declared custom roots."""
+- `test_m2_custom_namespace_direct_get.py` (~2256 tok, huge) — M2: direct reads and recall for explicitly declared custom roots."""
 - `test_m2_m3_namespace_contract.py` (~3147 tok, huge) — Source-bound M2/M3 namespace reachability and floor controls."""
 - `test_m4_closed_set_slots.py` (~5837 tok, huge) — M4 closed-set slots: declaration, staging, and governed supersession."""
 - `test_m5_enforcement_boundaries.py` (~2959 tok, huge) — M5 output enforcement controls for summaries and evidence scope."""
@@ -1605,14 +1605,14 @@
 - `test_mcp_compiled_truth_load.py` (~4697 tok, huge) — The compiled-truth read tool -- registered since v3.2.0, never tested.
 - `test_mcp_content_lifecycle.py` (~3892 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_mcp_db_error_backstop.py` (~1717 tok, huge) — The MCP tool decorator must not let a backend DB error crash the server.
-- `test_mcp_entity_merge.py` (~4607 tok, huge) — Governed RA.4 entity equivalence controls.
+- `test_mcp_entity_merge.py` (~4736 tok, huge) — Governed RA.4 entity equivalence controls.
 - `test_mcp_export_corpus_boundary.py` (~923 tok, large) — MCP export must use the same configured, admitted corpus as other exports.
 - `test_mcp_graph_hitl.py` (~1868 tok, huge) — MCP-surface tests for the HITL typed-edge flow + provenance (v4.4.0 Finding 1)
 - `test_mcp_http_gate_matches_enforcement.py` (~2775 tok, huge) — The MCP HTTP startup gate must agree with what actually enforces auth.
 - `test_mcp_integration.py` (~5530 tok, huge) — MCP transport and auth integration tests (#474).
 - `test_mcp_list_cores.py` (~3526 tok, huge) — ``list_cores`` — the read side of the ``.mmcore`` lifecycle, previously unpinned.
 - `test_mcp_list_evidence.py` (~4569 tok, huge) — ``list_evidence`` — the audit family's only *reader* of the evidence chain.
-- `test_mcp_namespace_direct_get.py` (~4840 tok, huge) — Namespace-selected MCP direct reads remain ACL- and admission-bound."""
+- `test_mcp_namespace_direct_get.py` (~4909 tok, huge) — Namespace-selected MCP direct reads remain ACL- and admission-bound."""
 - `test_mcp_ontology_load.py` (~5046 tok, huge) — ``ontology_load`` -- the MCP door onto the OWL-lite schema layer.
 - `test_mcp_ontology_validate.py` (~4860 tok, huge) — ``ontology_validate`` — the MCP tool, as distinct from the ontology library.
 - `test_mcp_pipeline.py` (~1495 tok, large) — Tests for the v3.9.0 pipeline-hash MCP tools."""
