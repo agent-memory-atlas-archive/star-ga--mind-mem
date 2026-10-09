@@ -117,9 +117,11 @@ BLOCK_D = "DEC-20200101-004"
 
 CORPUS: tuple[tuple[str, str], ...] = (
     (BLOCK_A, "use Q16.16 fixed-point arithmetic for deterministic scoring across substrates"),
-    (BLOCK_B, "all scoring must use fixed-point Q16.16 arithmetic for deterministic scoring across every substrate"),
+    # Duplicates that differ only in plain wording: a merge may never be proposed
+    # across moved names/values or a changed modal (fact_slots fails closed).
+    (BLOCK_B, "use Q16.16 fixed-point arithmetic for deterministic scoring across every substrate"),
     (BLOCK_C, "the release workflow publishes wheels to PyPI on tag push"),
-    (BLOCK_D, "release workflow publishes the wheels on a tag push to PyPI"),
+    (BLOCK_D, "the release workflow publishes the wheels to PyPI on a tag push"),
 )
 
 
