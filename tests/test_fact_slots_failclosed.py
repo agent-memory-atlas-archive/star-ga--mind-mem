@@ -22,6 +22,19 @@ from mind_mem.fact_slots import changed_fact, slots_differ
 from mind_mem.granularity_align import find_merge_candidates, find_similar_pairs
 
 NEVER_MERGE = [
+    # case, abbreviations and time formats can change meaning: never merged
+    ("Call with Ilona on Tue at 10 am.", "Call with Ilona on Tuesday at 10am."),
+    ("meeting with ilona tuesday", "meeting with Ilona tuesday"),
+    ("The call isn't on Tuesday.", "the call is not on Tuesday"),
+    ("Standup at 10 a.m.", "Standup at 10am"),
+    ("Ship the samples to US", "Ship the samples to us"),
+    ("IT owns the laptop rollout", "it owns the laptop rollout"),
+    ("Ask May about the budget", "Ask may about the budget"),
+    ("Polish the release notes", "polish the release notes"),
+    ("Use Jun's laptop", "Use June's laptop"),
+    ("Review the loan APR", "Review the loan April"),
+    ("Dinner with Bob at 7:00", "Dinner with Bob at 7am"),
+    ("Hire 3 PM for Q4", "Hire 15:00 for Q4"),
     ("Ilona call Tue 10am Arizona time.", "Contractor call Tue 10am Pacific time."),
     ("Weekly planning call with Ilona on Tuesday at 10am PT.", "Weekly planning call with Ilona on Tuesday at 10am ET."),
     ("Call with Ilona on Tuesday at 10am in Pacific.", "Call with Ilona on Tuesday at 10am in Eastern."),
@@ -98,12 +111,9 @@ NEVER_MERGE = [
 ]
 
 EXACT_DUPLICATES = [
-    ("Call with Ilona on Tue at 10 am.", "Call with Ilona on Tuesday at 10am."),
-    ("Weekly planning call with Ilona on Tuesday at 10am Arizona time.", "weekly planning call with Ilona on Tue at 10:00 am Arizona time"),
-    ("meeting with ilona tuesday", "meeting with Ilona tuesday"),
-    ("The call isn't on Tuesday.", "the call is not on Tuesday"),
-    ("Standup at 10 a.m.", "Standup at 10am"),
-    ("Use  Postgres   for the index.", "use postgres for the index"),
+    ("Use  Postgres   for the index.", "Use Postgres for the index"),
+    ("Call with Ilona on Tuesday at 10am.", "Call with Ilona on Tuesday at 10am"),
+    ("Cafe\u0301 opens at 9am", "Café opens at 9am"),  # NFD vs NFC
 ]
 
 LOOKALIKES = [
@@ -160,6 +170,11 @@ CONTRADICTS = [
     ("Starting next week the standup is on Thursday", "The standup is on Tuesday"),
     ("Rent payment to Ilona is due on the 15th of each month.", "Rent payment to Ilona is due on the 5th of each month."),
     ("The call is not on Tuesday", "The call is on Tuesday"),
+    ("Alice no longer works on Tuesdays", "Alice works on Tuesdays"),
+    ("The call has been moved up to Thursday", "The call is on Tuesday"),
+    ("The call's on Thursday", "The call is on Tuesday"),
+    ("Rent is due on the 7th", "Rent is due on the 5th"),
+    ("The meeting was rescheduled to Thursday", "The meeting is scheduled for Tuesday"),
 ]
 
 NOT_CONTRADICTS = [
@@ -215,6 +230,21 @@ CRASH_INPUTS = [
 def test_never_merge(a, b):
     assert slots_differ(a, b) and slots_differ(b, a)
     assert find_merge_candidates([{"_id": "A", "content": a}, {"_id": "B", "content": b}], min_similarity=0.0) == []
+
+
+@pytest.mark.parametrize("field", ["Date", "speaker", "Scope", "tags"])
+def test_any_differing_content_field_blocks_merge(field):
+    a = {"_id": "A", "content": "Standup with Bob", field: "x1"}
+    b = {"_id": "B", "content": "Standup with Bob", field: "x2"}
+    assert find_merge_candidates([a, b], min_similarity=0.0) == []
+
+
+def test_planner_projection_carries_frontmatter_fields():
+    from mind_mem.mcp.tools.consolidation import _granularity_block
+
+    a = _granularity_block("A", "active", "t", {"Statement": "Standup with Bob", "Date": "2026-01-01"})
+    b = _granularity_block("B", "active", "t", {"Statement": "Standup with Bob", "Date": "2026-03-01"})
+    assert find_merge_candidates([a, b], min_similarity=0.0) == []
 
 
 def test_tag_only_entity_blocks_merge():

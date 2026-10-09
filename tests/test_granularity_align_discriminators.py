@@ -56,9 +56,9 @@ def test_different_time_zone_is_not_merged():
 
 
 def test_exact_duplicate_is_still_proposed():
-    # Positive control: the same statement up to case, spacing and abbreviations -> still a candidate.
+    # Positive control: the same statement up to spacing and a trailing full stop -> still a candidate.
     a = _blk("A", "Weekly planning call with Ilona on Tuesday at 10am Arizona time.")
-    b = _blk("B", "weekly planning call with Ilona on Tue at 10:00 am Arizona time")
+    b = _blk("B", "Weekly planning call with Ilona on Tuesday at  10am Arizona time")
     assert _pairs([a, b]) == {("A", "B")}
 
 

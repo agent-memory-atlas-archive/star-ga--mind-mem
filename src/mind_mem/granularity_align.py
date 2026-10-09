@@ -74,7 +74,7 @@ import re
 from dataclasses import dataclass
 from typing import Any
 
-from .fact_slots import slots_differ
+from .fact_slots import canonical_tokens
 
 __all__ = [
     "DEFAULT_MIN_SIMILARITY",
@@ -259,7 +259,9 @@ def _similarity(a: dict[str, Any], b: dict[str, Any]) -> float:
     return _cosine(_term_vec(ta), _term_vec(tb))
 
 
-#: Block fields that are bookkeeping, not content: they may differ between exact duplicates.
+#: Block fields that are bookkeeping, not content: they may differ between exact
+#: duplicates. Everything else (Date, Scope, speaker, Tags, Supersedes, ...) is
+#: content and must be identical for a merge to be proposed.
 _BOOKKEEPING = frozenset(
     {
         "_id",
@@ -270,24 +272,52 @@ _BOOKKEEPING = frozenset(
         "score",
         "status",
         "Status",
-        "Date",
-        "date",
-        "created",
-        "updated",
         "importance",
         "Importance",
         "Maturity",
         "maturity",
         "access_count",
+        "AccessCount",
         "lifecycle",
         "Lifecycle",
-        "speaker",
+        "created",
+        "updated",
+        "Created",
+        "Updated",
+        "last_access",
+        "LastAccess",
+        "Sources",
+        "sources",
+        "Rationale",
+        "rationale",
+        "History",
+        "history",
+        "Evidence",
+        "evidence",
+        "fields",
     }
 )
 
 
 def _content_fields(block: dict[str, Any]) -> dict[str, str]:
-    return {k: str(v) for k, v in block.items() if k not in _BOOKKEEPING and not str(k).startswith("_") and v not in (None, "")}
+    out = {k: str(v) for k, v in block.items() if k not in _BOOKKEEPING and not str(k).startswith("_") and v not in (None, "")}
+    nested = block.get("fields")
+    if isinstance(nested, dict):  # full frontmatter carried by the plan_consolidation projection
+        out.update({k: str(v) for k, v in nested.items() if k not in _BOOKKEEPING and v not in (None, "")})
+    return out
+
+
+def _identity(block: dict[str, Any]) -> tuple:
+    """Everything that makes a block the memory it is, normalised (see fact_slots.canonical_tokens).
+
+    Two blocks are the SAME memory only when their identities are equal. Computed
+    once per block per call, so the pairwise scan compares cheap tuples.
+    """
+    text = " ".join(str(block.get(k, "")) for k in ("excerpt", "content", "Statement") if block.get(k))
+    fields = _content_fields(block)
+    for key in ("excerpt", "content", "Statement"):
+        fields.pop(key, None)
+    return (canonical_tokens(text), tuple(sorted((k, canonical_tokens(v)) for k, v in fields.items())))
 
 
 def _facts_conflict(a: dict[str, Any], b: dict[str, Any]) -> bool:
@@ -300,19 +330,7 @@ def _facts_conflict(a: dict[str, Any], b: dict[str, Any]) -> bool:
     merging them loses a memory). Differently worded look-alikes are reported
     as ``similar_pairs`` for a human, never as merge candidates.
     """
-    fa, fb = _content_fields(a), _content_fields(b)
-    for key in ("excerpt", "content", "Statement"):
-        fa.pop(key, None)
-        fb.pop(key, None)
-    if set(fa) != set(fb):
-        return True
-    if any(slots_differ(fa[k], fb[k]) for k in fa):
-        return True
-
-    def text(blk: dict[str, Any]) -> str:
-        return " ".join(str(blk.get(k, "")) for k in ("excerpt", "content", "Statement") if blk.get(k))
-
-    return slots_differ(text(a), text(b))
+    return _identity(a) != _identity(b)
 
 
 def _suggest_strategy(a: dict[str, Any], b: dict[str, Any]) -> str:
@@ -374,6 +392,7 @@ def find_merge_candidates(
         tokens = _tokenize(_block_text(blk))
         if tokens:
             indexed.append((blk, _term_vec(tokens)))
+    identities = [_identity(blk) for blk, _ in indexed]
 
     candidates: list[GranularityMergeCandidate] = []
 
@@ -384,7 +403,7 @@ def find_merge_candidates(
             sim = _cosine(va, vb)
             if sim < threshold:
                 continue
-            if _facts_conflict(a_blk, b_blk):
+            if identities[i] != identities[j]:
                 continue
             strategy = _suggest_strategy(a_blk, b_blk)
             reason = _build_reason(sim)
@@ -433,13 +452,14 @@ def find_similar_pairs(
     """Look-alike pairs above ``min_similarity`` that are not exact duplicates (advisory only)."""
     threshold = max(0.0, min(1.0, float(min_similarity)))
     indexed = [(blk, _term_vec(toks)) for blk in blocks if (toks := _tokenize(_block_text(blk)))]
+    identities = [_identity(blk) for blk, _ in indexed]
     pairs: list[SimilarPair] = []
     for i in range(len(indexed)):
         a_blk, va = indexed[i]
         for j in range(i + 1, len(indexed)):
             b_blk, vb = indexed[j]
             sim = _cosine(va, vb)
-            if sim < threshold or not _facts_conflict(a_blk, b_blk):
+            if sim < threshold or identities[i] == identities[j]:
                 continue
             pairs.append(SimilarPair(_block_id(a_blk), _block_id(b_blk), round(sim, 6)))
     pairs.sort(key=lambda p: (-p.similarity, p.id_a, p.id_b))

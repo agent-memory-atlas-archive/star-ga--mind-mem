@@ -405,6 +405,9 @@ def _granularity_block(block_id: str, status: str, tags: str, raw: dict[str, Any
     }
     if "Maturity" in raw:
         entry["Maturity"] = raw["Maturity"]
+    # Every frontmatter field travels with the block so the merge check compares
+    # who/when/scope fields (Date, Scope, speaker, ...), not only the claim text.
+    entry["fields"] = {k: v for k, v in raw.items() if isinstance(v, (str, int, float)) and not str(k).startswith("_")}
     return entry
 
 
