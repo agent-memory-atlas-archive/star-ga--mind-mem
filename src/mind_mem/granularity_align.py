@@ -80,6 +80,8 @@ __all__ = [
     "DEFAULT_MIN_SIMILARITY",
     "MERGE_STRATEGIES",
     "GranularityMergeCandidate",
+    "SimilarPair",
+    "find_similar_pairs",
     "find_merge_candidates",
     "merge_blocks",
 ]
@@ -257,16 +259,58 @@ def _similarity(a: dict[str, Any], b: dict[str, Any]) -> float:
     return _cosine(_term_vec(ta), _term_vec(tb))
 
 
-def _facts_conflict(a: dict[str, Any], b: dict[str, Any]) -> bool:
-    """True when the blocks name different people, days/dates, times or time zones.
+#: Block fields that are bookkeeping, not content: they may differ between exact duplicates.
+_BOOKKEEPING = frozenset(
+    {
+        "_id",
+        "id",
+        "_source_file",
+        "file",
+        "line",
+        "score",
+        "status",
+        "Status",
+        "Date",
+        "date",
+        "created",
+        "updated",
+        "importance",
+        "Importance",
+        "Maturity",
+        "maturity",
+        "access_count",
+        "lifecycle",
+        "Lifecycle",
+        "speaker",
+    }
+)
 
-    Text overlap cannot see these: "call with Ilona Tue 10am Arizona" and "call
-    with the contractor Tue 10am Pacific" share most words, yet merging them
-    loses one memory.
+
+def _content_fields(block: dict[str, Any]) -> dict[str, str]:
+    return {k: str(v) for k, v in block.items() if k not in _BOOKKEEPING and not str(k).startswith("_") and v not in (None, "")}
+
+
+def _facts_conflict(a: dict[str, Any], b: dict[str, Any]) -> bool:
+    """True unless the two blocks are the SAME memory (every content field equal after normalisation).
+
+    A merge proposal is only ever made for exact duplicates: deciding that two
+    differently worded statements mean the same thing is a semantic judgement
+    that text overlap cannot make safely ("call with Ilona Tue 10am Arizona"
+    vs "call with the contractor Tue 10am Pacific" share most words, yet
+    merging them loses a memory). Differently worded look-alikes are reported
+    as ``similar_pairs`` for a human, never as merge candidates.
     """
+    fa, fb = _content_fields(a), _content_fields(b)
+    for key in ("excerpt", "content", "Statement"):
+        fa.pop(key, None)
+        fb.pop(key, None)
+    if set(fa) != set(fb):
+        return True
+    if any(slots_differ(fa[k], fb[k]) for k in fa):
+        return True
 
     def text(blk: dict[str, Any]) -> str:
-        return " ".join(str(blk.get(k, "")) for k in ("excerpt", "content", "Statement"))
+        return " ".join(str(blk.get(k, "")) for k in ("excerpt", "content", "Statement") if blk.get(k))
 
     return slots_differ(text(a), text(b))
 
@@ -361,6 +405,45 @@ def find_merge_candidates(
         candidates = candidates[:cap]
 
     return candidates
+
+
+@dataclass(frozen=True)
+class SimilarPair:
+    """Two look-alike blocks that are NOT exact duplicates: shown to a reviewer, never proposed for merge."""
+
+    id_a: str
+    id_b: str
+    similarity: float
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "id_a": self.id_a,
+            "id_b": self.id_b,
+            "similarity": round(self.similarity, 4),
+            "reason": "similar wording but the statements differ; not proposed for merge (review by hand)",
+        }
+
+
+def find_similar_pairs(
+    blocks: list[dict[str, Any]],
+    *,
+    min_similarity: float = DEFAULT_MIN_SIMILARITY,
+    max_pairs: int = 50,
+) -> list[SimilarPair]:
+    """Look-alike pairs above ``min_similarity`` that are not exact duplicates (advisory only)."""
+    threshold = max(0.0, min(1.0, float(min_similarity)))
+    indexed = [(blk, _term_vec(toks)) for blk in blocks if (toks := _tokenize(_block_text(blk)))]
+    pairs: list[SimilarPair] = []
+    for i in range(len(indexed)):
+        a_blk, va = indexed[i]
+        for j in range(i + 1, len(indexed)):
+            b_blk, vb = indexed[j]
+            sim = _cosine(va, vb)
+            if sim < threshold or not _facts_conflict(a_blk, b_blk):
+                continue
+            pairs.append(SimilarPair(_block_id(a_blk), _block_id(b_blk), round(sim, 6)))
+    pairs.sort(key=lambda p: (-p.similarity, p.id_a, p.id_b))
+    return pairs[:max_pairs] if max_pairs > 0 else pairs
 
 
 # ---------------------------------------------------------------------------

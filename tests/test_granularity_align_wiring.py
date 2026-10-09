@@ -116,12 +116,12 @@ BLOCK_C = "DEC-20200101-003"
 BLOCK_D = "DEC-20200101-004"
 
 CORPUS: tuple[tuple[str, str], ...] = (
-    (BLOCK_A, "use Q16.16 fixed-point arithmetic for deterministic scoring across substrates"),
-    # Duplicates that differ only in plain wording: a merge may never be proposed
-    # across moved names/values or a changed modal (fact_slots fails closed).
-    (BLOCK_B, "use Q16.16 fixed-point arithmetic for deterministic scoring across every substrate"),
+    (BLOCK_A, "weekly deterministic scoring review of q16 fixed-point arithmetic across substrates on tuesday at 10am pacific time"),
+    # Merge candidates are exact duplicates after normalisation (case, spacing,
+    # trailing full stop); differently worded look-alikes go to similar_pairs.
+    (BLOCK_B, "Weekly deterministic scoring review of q16 fixed-point arithmetic across substrates on Tue at 10:00 am Pacific time."),
     (BLOCK_C, "the release workflow publishes wheels to PyPI on tag push"),
-    (BLOCK_D, "the release workflow publishes the wheels to PyPI on a tag push"),
+    (BLOCK_D, "The release workflow publishes wheels to PyPI on tag push."),
 )
 
 

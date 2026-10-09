@@ -55,8 +55,17 @@ def test_different_time_zone_is_not_merged():
     assert _pairs([a, b]) == set()
 
 
-def test_true_duplicate_is_still_proposed():
-    # Positive control: same who/when/zone, different wording -> still a candidate.
+def test_exact_duplicate_is_still_proposed():
+    # Positive control: the same statement up to case, spacing and abbreviations -> still a candidate.
+    a = _blk("A", "Weekly planning call with Ilona on Tuesday at 10am Arizona time.")
+    b = _blk("B", "weekly planning call with Ilona on Tue at 10:00 am Arizona time")
+    assert _pairs([a, b]) == {("A", "B")}
+
+
+def test_reworded_lookalike_is_similar_not_merge():
+    from mind_mem.granularity_align import find_similar_pairs
+
     a = _blk("A", "Weekly planning call with Ilona on Tuesday at 10am Arizona time.")
     b = _blk("B", "Weekly planning call with Ilona, Tuesday 10am Arizona time, recurring.")
-    assert _pairs([a, b]) == {("A", "B")}
+    assert _pairs([a, b]) == set()
+    assert [(p.id_a, p.id_b) for p in find_similar_pairs([a, b], min_similarity=0.5)] == [("A", "B")]

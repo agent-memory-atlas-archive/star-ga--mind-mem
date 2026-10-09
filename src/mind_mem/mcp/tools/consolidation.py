@@ -511,6 +511,7 @@ def _granularity_section(
     from mind_mem.granularity_align import (
         DEFAULT_MIN_SIMILARITY,
         find_merge_candidates,
+        find_similar_pairs,
         merge_blocks,
     )
 
@@ -540,6 +541,9 @@ def _granularity_section(
         "scanned_blocks": len(blocks),
         "truncated": len(blocks) >= max_blocks,
         "candidates": entries,
+        # Look-alike pairs that are NOT exact duplicates: never merge candidates,
+        # shown so a reviewer can decide by hand (fact_slots fails closed).
+        "similar_pairs": [p.to_dict() for p in find_similar_pairs(blocks, min_similarity=min_similarity, max_pairs=max_candidates)],
         "applied": False,
         "route": "propose_update -> approve_apply",
     }
