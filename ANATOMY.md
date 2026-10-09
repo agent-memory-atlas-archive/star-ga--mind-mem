@@ -5,8 +5,8 @@
 > Re-generate with: `anatomy .`
 
 **Project:** `mind-mem`
-**Files:** 1693 | **Est. tokens:** ~4,947,189
-**Generated:** 2026-10-09 01:33 UTC
+**Files:** 1695 | **Est. tokens:** ~4,958,091
+**Generated:** 2026-10-09 01:35 UTC
 
 ## Token Budget Guide
 
@@ -78,7 +78,7 @@
 | `skills/mind-mem/` | 1 | ~1,671 |
 | `skills/mind-mem/references/` | 6 | ~18,811 |
 | `src/` | 1 | ~280 |
-| `src/mind_mem/` | 242 | ~1,076,518 |
+| `src/mind_mem/` | 242 | ~1,079,567 |
 | `src/mind_mem/api/` | 5 | ~27,259 |
 | `src/mind_mem/bench/` | 17 | ~48,632 |
 | `src/mind_mem/compliance/` | 7 | ~15,436 |
@@ -93,7 +93,7 @@
 | `src/mind_mem/tool_output/` | 3 | ~5,895 |
 | `src/mind_mem/v4/` | 24 | ~96,311 |
 | `src/mind_mem/viewer_static/` | 3 | ~865 |
-| `tests/` | 754 | ~2,206,287 |
+| `tests/` | 756 | ~2,214,140 |
 | `tests/fixtures/` | 7 | ~11,912 |
 | `tests/fixtures/importers/` | 5 | ~1,218 |
 | `tests/fixtures/importers/agent_memory/` | 4 | ~383 |
@@ -763,7 +763,7 @@
 - `audit_pinned.py` (~3194 tok, huge) — Pinned-model audit pipeline — release-CI gate for ``mind-mem.json``.
 - `auto_resolver.py` (~3194 tok, huge) — mind-mem Automatic Contradiction Resolution Suggestions.
 - `axis_recall.py` (~5249 tok, huge) — # Copyright 2026 STARGA, Inc.
-- `backup_restore.py` (~7122 tok, huge) — mind-mem Backup & Restore CLI. Zero external deps.
+- `backup_restore.py` (~7315 tok, huge) — mind-mem Backup & Restore CLI. Zero external deps.
 - `baseline_snapshot.py` (~4176 tok, huge) — Baseline snapshot for intent drift detection.
 ### `src/mind_mem/bench/`
 
@@ -828,7 +828,7 @@
 ### `src/mind_mem/`
 
 - `compressors.py` (~2253 tok, huge) — Real `Compressor` implementations for mind_mem.recompaction. Zero new deps.
-- `conflict_resolver.py` (~5596 tok, huge) — mind-mem Automated Conflict Resolution Pipeline. Zero external deps.
+- `conflict_resolver.py` (~5810 tok, huge) — mind-mem Automated Conflict Resolution Pipeline. Zero external deps.
 - `connection_manager.py` (~3185 tok, huge) — SQLite connection manager with read/write separation and WAL mode.
 - `consensus_vote.py` (~2067 tok, huge) — Quorum-based consensus voting on contradictions (v3.3.0).
 - `consolidation_maturity_gate.py` (~2589 tok, huge) — # Copyright 2026 STARGA, Inc.
@@ -865,7 +865,7 @@
 - `field_audit.py` (~3103 tok, huge) — mind-mem Per-Field Mutation Audit — tracks individual field changes.
 - `frame_fields.py` (~2143 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `governance_bench.py` (~1855 tok, huge) — mind-mem Governance Benchmark Suite.
-- `governance_gate.py` (~21786 tok, huge) — # Copyright 2026 STARGA, Inc.
+- `governance_gate.py` (~23279 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `governance_raft.py` (~2474 tok, huge) — Raft-style consensus wrapper for governance writes (v4.0 prep).
 - `granularity_align.py` (~3871 tok, huge) — Granularity / abstraction alignment — named merge operation (Group H, v4.0.x).
 - `graph_ingest.py` (~7489 tok, huge) — Corpus → typed knowledge-graph ingestion (HITL-gated).
@@ -893,7 +893,7 @@
 - `inbox.py` (~9199 tok, huge) — Inbox folder ingestion — `mm inbox-watch` (v3.9.0 candidate).
 - `ingestion_pipeline.py` (~8045 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `__init__.py` (~1030 tok, large) — # Mind Mem — Memory + Immune System for AI agents
-- `init_workspace.py` (~6441 tok, huge) — mind-mem workspace initializer. Zero external deps (Postgres optional).
+- `init_workspace.py` (~6584 tok, huge) — mind-mem workspace initializer. Zero external deps (Postgres optional).
 - `intel_scan.py` (~14746 tok, huge) — Mind Mem Intelligence Scanner v2.0 — Self-hosted, zero external dependencies.
 - `intent_router.py` (~3143 tok, huge) — mind-mem Intent Router — 9-type adaptive query intent classification.
 - `interaction_signals.py` (~4425 tok, huge) — # Copyright 2026 STARGA, Inc.
@@ -1066,7 +1066,7 @@
 
 - `smart_chunker.py` (~7592 tok, huge) — mind-mem Smart Chunker — Semantic-boundary document chunking.
 - `smoke_test.sh` (~633 tok, large) — mind-mem Smoke Test — end-to-end verification
-- `spec_binding.py` (~3022 tok, huge) — # Copyright 2026 STARGA, Inc.
+- `spec_binding.py` (~4028 tok, huge) — # Copyright 2026 STARGA, Inc.
 ### `src/mind_mem/spec/`
 
 - `export_asyncapi.py` (~3887 tok, huge) — # Copyright 2026 STARGA, Inc.
@@ -1276,7 +1276,7 @@
 - `test_append_only_audit_log.py` (~3895 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_apply_abort_is_recorded.py` (~4908 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_apply_double_apply_guard.py` (~421 tok, medium) — apply must re-validate proposal status UNDER the workspace lock.
-- `test_apply_engine_audit_gates.py` (~3031 tok, huge) — Apply-engine gates that were reporting a verdict they had not earned.
+- `test_apply_engine_audit_gates.py` (~3085 tok, huge) — Apply-engine gates that were reporting a verdict they had not earned.
 - `test_apply_engine_backend_routing.py` (~1075 tok, large) — v3.2.0 §1.4 PR-6 — apply_engine routes through configured BlockStore."""
 - `test_apply_engine_op_routing.py` (~1849 tok, huge) — v3.2.2 — execute_op routes block-level ops through BlockStore.
 - `test_apply_engine.py` (~13107 tok, huge) — Tests for apply_engine.py — focus on security, validation, and rollback."""
@@ -1300,6 +1300,8 @@
 - `test_bench_hard_timeout.py` (~1824 tok, huge) — The per-question timeout must preempt a NATIVE hang, not just a Python one.
 - `test_bench_hybrid_dispatch.py` (~6303 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_bigrams.py` (~168 tok, small) — Tests for bigram extraction."""
+- `test_binding_restore_integrity.py` (~3931 tok, huge) — # Copyright 2026 STARGA, Inc.
+- `test_binding_restore_round2.py` (~3825 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_bitemporal_edge_validity.py` (~2524 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_block_id_format.py` (~345 tok, medium) — Tests for block ID format validation."""
 - `test_block_lineage.py` (~2303 tok, huge) — Tests for the v3.11.0 typed block-lineage graph (Pattern 3)."""
@@ -1818,7 +1820,7 @@
 - `test_rest_hardening_batch.py` (~2443 tok, huge) — REST-layer defects found inside files that also carried a HIGH finding.
 - `test_rest_local_anonymous_capability.py` (~834 tok, large) — # Copyright 2026 STARGA, Inc.
 - `test_restore44_parked_modules.py` (~6241 tok, huge) — The parked modules from the 5.0.0 restore: still here, still whole, still parked.
-- `test_restore_does_not_rewind.py` (~10722 tok, huge) — # Copyright 2026 STARGA, Inc.
+- `test_restore_does_not_rewind.py` (~10765 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_restore_is_gated_at_the_seam.py` (~5004 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_restore_record_manifest_containment.py` (~2236 tok, huge) — A snapshot MANIFEST.json cannot make the restore record name foreign blocks.
 - `test_retention_class.py` (~2883 tok, huge) — RA.4 — the retention class, and the two things it must refuse to be.
