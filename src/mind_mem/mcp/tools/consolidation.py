@@ -407,7 +407,10 @@ def _granularity_block(block_id: str, status: str, tags: str, raw: dict[str, Any
         entry["Maturity"] = raw["Maturity"]
     # Every frontmatter field travels with the block so the merge check compares
     # who/when/scope fields (Date, Scope, speaker, ...), not only the claim text.
-    entry["fields"] = {k: v for k, v in raw.items() if isinstance(v, (str, int, float)) and not str(k).startswith("_")}
+    # List- and mapping-valued fields (``Participants:\n- Ilona``,
+    # ConstraintSignatures) count too: a who/when held in a list still
+    # separates two blocks.
+    entry["fields"] = {k: v for k, v in raw.items() if not str(k).startswith("_") and v is not None}
     return entry
 
 
@@ -513,9 +516,8 @@ def _granularity_section(
     """
     from mind_mem.granularity_align import (
         DEFAULT_MIN_SIMILARITY,
-        find_merge_candidates,
-        find_similar_pairs,
         merge_blocks,
+        scan_pairs,
     )
 
     min_similarity = _bounded_float(settings.get("min_similarity", DEFAULT_MIN_SIMILARITY), DEFAULT_MIN_SIMILARITY, 0.0, 1.0)
@@ -523,7 +525,8 @@ def _granularity_section(
     max_blocks = _bounded_int(settings.get("max_blocks", _GRANULARITY_MAX_BLOCKS), _GRANULARITY_MAX_BLOCKS, 1, 5000)
 
     blocks = _load_granularity_blocks(db_path, max_blocks, workspace=workspace, canonical_blocks=canonical_blocks)
-    candidates = find_merge_candidates(blocks, min_similarity=min_similarity, max_candidates=max_candidates)
+    # One pairwise pass yields both the exact-duplicate merges and the look-alikes.
+    candidates, similar = scan_pairs(blocks, min_similarity=min_similarity, max_candidates=max_candidates, max_pairs=max_candidates)
 
     entries: list[dict[str, Any]] = []
     for cand in candidates:
@@ -535,6 +538,10 @@ def _granularity_section(
             "tags": str(merged.get("tags", "")),
             "statement": str(merged.get("content") or merged.get("excerpt") or "")[:500],
         }
+        provenance = {k: v for k, v in (merged.get("fields") or {}).items() if k in ("Sources", "Evidence", "History") and v}
+        if provenance:
+            # The union of both duplicates' provenance, so the merge loses no source.
+            entry["merged"]["provenance"] = provenance
         entries.append(entry)
 
     return {
@@ -546,7 +553,7 @@ def _granularity_section(
         "candidates": entries,
         # Look-alike pairs that are NOT exact duplicates: never merge candidates,
         # shown so a reviewer can decide by hand (fact_slots fails closed).
-        "similar_pairs": [p.to_dict() for p in find_similar_pairs(blocks, min_similarity=min_similarity, max_pairs=max_candidates)],
+        "similar_pairs": [p.to_dict() for p in similar],
         "applied": False,
         "route": "propose_update -> approve_apply",
     }

@@ -37,35 +37,54 @@ def _is_digits(tok: str) -> bool:
     return bool(tok) and all(c in _ASCII_DIGITS for c in tok)
 
 
-def _raw_tokens(text: str) -> list[str]:
-    """Word runs (letters, marks, ASCII digits) and single non-space characters, case preserved."""
+def _spaced_tokens(text: str) -> list[tuple[str, bool]]:
+    """(token, preceded_by_whitespace) pairs: word runs (letters, marks, ASCII digits) and single non-space characters."""
     text = unicodedata.normalize("NFC", text)
-    out: list[str] = []
+    out: list[tuple[str, bool]] = []
     cur: list[str] = []
+    cur_space = False
+    space = False
     n = len(text)
     for i, ch in enumerate(text):
         is_word = ch in _ASCII_DIGITS or unicodedata.category(ch)[0] in ("L", "M")
         if not is_word and ch in _DIGIT_JOINERS and cur and cur[-1] in _ASCII_DIGITS and i + 1 < n and text[i + 1] in _ASCII_DIGITS:
             is_word = True
         if is_word:
+            if not cur:
+                cur_space = space
             cur.append(ch)
+            space = False
             continue
         if cur:
-            out.append("".join(cur))
+            out.append(("".join(cur), cur_space))
             cur = []
-        if not ch.isspace():
-            out.append(ch)
+        if ch.isspace():
+            space = True
+        else:
+            out.append((ch, space))
+            space = False
     if cur:
-        out.append("".join(cur))
+        out.append(("".join(cur), cur_space))
     return out
 
 
+def _raw_tokens(text: str) -> list[str]:
+    """Word runs (letters, marks, ASCII digits) and single non-space characters, case preserved."""
+    return [tok for tok, _ in _spaced_tokens(text)]
+
+
 def canonical_tokens(text: str) -> tuple[str, ...]:
-    """The MERGE normal form: NFC, whitespace-insensitive, trailing full stop dropped. Nothing else."""
-    out = _raw_tokens(text)
-    while out and out[-1] in (".", "。"):
-        out.pop()
-    return tuple(out)
+    """The MERGE normal form: NFC, and the amount of whitespace does not matter. Nothing else.
+
+    WHETHER whitespace separates two tokens is kept, so "set_timeout" and
+    "set _timeout", or "/var/log" and "/var/ log", stay different. A final full
+    stop is dropped only when it is attached to a word ("on Tuesday." ==
+    "on Tuesday"); a free-standing "." is content ("the separator is .").
+    """
+    pairs = _spaced_tokens(text)
+    if len(pairs) >= 2 and pairs[-1][0] in (".", "。") and not pairs[-1][1] and pairs[-2][0] not in (".", "。"):
+        pairs = pairs[:-1]
+    return tuple((" " + tok) if (i and space) else tok for i, (tok, space) in enumerate(pairs))
 
 
 def slots_differ(a: str, b: str) -> bool:
@@ -106,23 +125,42 @@ _EQUIV = {
     "nov": "november",
     "dec": "december",
 }
+#: Abbreviations that are also ordinary words or names ("Sun", "Wed", "Jan",
+#: "Mar"): a when-value only in date context. Full weekday names and their
+#: plurals are always values.
+_WEEKDAY_ABBR = frozenset({"tue", "tues", "thu", "thur", "thurs", "fri", "mon", "wed", "sat", "sun"})
 _WEEKDAYS = frozenset({"monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"})
 _MONTHS = frozenset(
     {"january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november", "december"}
 )
-_ZONES = frozenset(
-    "utc gmt pt pst pdt et est edt ct cst cdt mt mst mdt hst akst akdt ist cet cest bst jst aest aedt "
-    "pacific eastern central mountain arizona hawaii alaska".split()
-)
+_MONTH_ABBR = frozenset(k for k, v in _EQUIV.items() if v in _MONTHS)
+#: Zone abbreviations: a value next to a clock or in a time-zone phrase.
+_ZONE_ABBR = frozenset("utc gmt pt pst pdt et est edt ct cst cdt mt mst mdt hst akst akdt ist cet cest bst jst aest aedt az".split())
+#: Zone NAMES are also places ("flies to Arizona"): a value only right after a
+#: clock ("10am Pacific"), before "time" ("Arizona time"), or in a time-zone
+#: phrase ("timezone is Arizona").
+_ZONE_NAMES = frozenset("pacific eastern central mountain arizona hawaii alaska".split())
 _ZONE_CONTEXT = frozenset({"time", "tz", "timezone", "zone"})
 _RELATIVE = frozenset("today tomorrow yesterday tonight morning afternoon evening noon midnight weekend".split())
 _PERIOD_AFTER = frozenset({"next", "this", "last", "every", "following"})
 _PERIODS = frozenset({"week", "month", "year", "weekend"})
+#: Words before a month or abbreviated weekday that make it a date ("in May",
+#: "by Oct 9", "Standup: Tue") rather than a name ("Ask May", "the May report").
+_DATE_PREV = frozenset(
+    "to from for on at in by until till through since before after during of "
+    "early mid late each every next this last following : → ,".split()
+)
+#: Nouns whose following date-shaped token is an identifier ("Invoice 2026-10-08", "Ticket 10/8").
+_ID_NOUNS = frozenset(
+    "invoice ticket order build release version ref id case po issue pr bug incident "
+    "receipt account room flight item sku batch run job commit tag # no".split()
+)
+_YEAR_PREV = frozenset("in since by until till of from to before after during for".split())
 # Correction/function words dropped from both cores anywhere.
 _CORRECTION = frozenset(
     "moved move moving now instead rescheduled reschedule scheduled changed change switched postponed delayed pushed "
-    "up back got get it is was are were has have had been be will of and but correction actually update updated "
-    "again starting as the a an".split()
+    "slipped slip slips shifted bumped up back got get it is was are were am has have had been be will would do does did "
+    "of and but correction actually update updated again starting as the a an with rather than".split()
 )
 # Prepositions dropped only when a when-value follows ("to Thursday" yes, "to Denver" no).
 _VALUE_PREPOSITIONS = frozenset({"to", "from", "for", "on", "at", "in", "by", "until", "till", "through"})
@@ -147,6 +185,7 @@ _CONTRACTION_BASE = {
     "mustn": "must",
     "needn": "need",
 }
+_CLITICS = {"ll": "will", "re": "are", "ve": "have", "m": "am", "d": "would"}
 _MERIDIEM_FORMS = (
     (("a", ".", "m", "."), "am"),
     (("p", ".", "m", "."), "pm"),
@@ -155,36 +194,65 @@ _MERIDIEM_FORMS = (
     (("am",), "am"),
     (("pm",), "pm"),
 )
+_NUMBER_WORDS = {w: i for i, w in enumerate("zero one two three four five six seven eight nine ten eleven twelve".split())}
+#: Words that may follow a bare hour ("at 10 on Tuesday", "at ten sharp"); any
+#: other word means the number is not a time ("at 10 Downing Street").
+_CLOCK_FOLLOWERS = frozenset("on in at for every each daily sharp and or tomorrow today tonight then until till before after".split())
+_BARE_HOUR_PREV = frozenset({"at", "until", "till"})
+_HHMM_PREV = frozenset({"at", "to", "until", "till", "by", "from"})
 _ISO_DATE = re.compile(r"^\d{4}-\d{1,2}-\d{1,2}$")
 _SLASH_DATE = re.compile(r"^\d{1,4}/\d{1,2}(/\d{1,4})?$")
-_CLOCK = re.compile(r"^(\d{1,2})(?::(\d{2}))?(am|pm)?$")
+_CLOCK = re.compile(r"^(\d{1,2})(?:[:.](\d{2}))?(am|pm)?$")
+_H_CLOCK = re.compile(r"^(\d{1,2})h(\d{2})$")
 _CANON_CLOCK = re.compile(r"^t\d{2}:\d{2}a?$")
 _ORDINAL_DAY = re.compile(r"^(\d{1,2})(st|nd|rd|th)$")
+_OFFSET_ZONE = re.compile(r"^(utc|gmt)[+-]\d{1,2}(:\d{2})?$")
+_QUARTER = re.compile(r"^q[1-4]$")
 _APOSTROPHES = ("'", "’")
+_ARROWS = ("→", "⇒", "⟶")
 
 
-def _canon_clock(hour: str, minute: str | None, meridiem: str | None) -> str | None:
-    h = int(hour)
-    m = int(minute) if minute else 0
+def _canon_clock(hour: int, minute: int | None, meridiem: str | None, *, twenty_four: bool = False) -> str | None:
+    m = minute or 0
     if m > 59:
         return None
     if meridiem:
-        if not 1 <= h <= 12:
+        if not 1 <= hour <= 12:
             return None
-        return f"t{h % 12 + (12 if meridiem == 'pm' else 0):02d}:{m:02d}"
-    if minute is None or h > 23:
+        return f"t{hour % 12 + (12 if meridiem == 'pm' else 0):02d}:{m:02d}"
+    if hour > 23:
         return None
-    # A bare "7:00" does not say am or pm: it stays distinct from both ("a" = ambiguous).
-    return f"t{h:02d}:{m:02d}a" if h <= 12 else f"t{h:02d}:{m:02d}"
+    # A bare "7:00" or "at 7" does not say am or pm: it stays distinct from both ("a" = ambiguous).
+    return f"t{hour:02d}:{m:02d}" if (twenty_four or hour > 12) else f"t{hour:02d}:{m:02d}a"
+
+
+def _follower_ok(raw: list[str], j: int) -> bool:
+    """True when what follows a bare number lets it be an hour (end, punctuation, a time word)."""
+    if j >= len(raw):
+        return True
+    nxt = raw[j]
+    if not nxt.isalpha():
+        return True
+    return nxt in _CLOCK_FOLLOWERS or nxt in _ZONE_ABBR or nxt in _ZONE_NAMES or nxt in _RELATIVE or _EQUIV.get(nxt, nxt) in _WEEKDAYS
+
+
+def _plural_noun(tok: str) -> bool:
+    """A counted noun after "3 PM" ("3 PM interns" is a head count, not a time)."""
+    return tok.isalpha() and len(tok) > 3 and tok.endswith("s") and not tok.endswith("ss") and tok not in _ZONE_ABBR
 
 
 def _compare_tokens(text: str) -> list[str]:
-    """Normal form for changed_fact: case-folded; abbreviations, clocks and contractions resolved."""
+    """Normal form for changed_fact: case-folded; contractions, clocks, arrows and offsets resolved.
+
+    Abbreviated month and weekday names are kept as written here: whether one
+    is a date or a name is decided in context by :func:`_value_at`.
+    """
     raw = [t.casefold() for t in _raw_tokens(text)]
     out: list[str] = []
     i, n = 0, len(raw)
     while i < n:
         tok = raw[i]
+        prev = out[-1] if out else ""
         if tok in _CONTRACTION_BASE and i + 2 < n and raw[i + 1] in _APOSTROPHES and raw[i + 2] == "t":
             out.extend((_CONTRACTION_BASE[tok], "not"))
             i += 3
@@ -196,23 +264,89 @@ def _compare_tokens(text: str) -> list[str]:
         if tok in _APOSTROPHES and i + 1 < n and raw[i + 1] == "s":
             i += 2  # "call's" == "call is"; a possessive "Ilona's" drops the same way on both sides
             continue
-        m = _CLOCK.match(tok)
-        if m:
-            mer = m.group(3)
-            j = i + 1
-            if mer is None:
-                for form, value in _MERIDIEM_FORMS:
-                    if tuple(raw[j : j + len(form)]) == form:
-                        mer, j = value, j + len(form)
-                        break
-            clock = _canon_clock(m.group(1), m.group(2), mer)
-            if clock is not None:
-                out.append(clock)
-                i = j
-                continue
-        out.append(_EQUIV.get(tok, tok))
+        if tok in _APOSTROPHES and i + 1 < n and raw[i + 1] in _CLITICS and out and out[-1].isalpha():
+            out.append(_CLITICS[raw[i + 1]])  # "We'll" == "We will"
+            i += 2
+            continue
+        if tok in ("-", "=") and i + 1 < n and raw[i + 1] == ">":
+            out.append("→")
+            i += 2
+            continue
+        if tok in _ARROWS:
+            out.append("→")
+            i += 1
+            continue
+        if tok in ("utc", "gmt") and i + 2 < n and raw[i + 1] in ("+", "-", "−") and raw[i + 2].isdigit():
+            out.append(f"{tok}{'+' if raw[i + 1] == '+' else '-'}{int(raw[i + 2])}")
+            i += 3
+            continue
+        if tok in _MONTH_ABBR and i + 1 < n and raw[i + 1] == ".":
+            out.append(tok)  # "Oct. 9" == "Oct 9"
+            i += 2
+            continue
+        clock, used = _clock_at(raw, i, prev)
+        if clock is not None:
+            out.append(clock)
+            i += used
+            continue
+        out.append(tok)
         i += 1
     return out
+
+
+def _clock_at(raw: list[str], i: int, prev: str) -> tuple[str | None, int]:
+    """A canonical clock starting at raw[i] and the number of tokens it uses, or (None, 0)."""
+    tok = raw[i]
+    n = len(raw)
+    # "half past ten", "quarter to 11"
+    if tok in ("half", "quarter") and i + 2 < n and raw[i + 1] in ("past", "to"):
+        hour = _NUMBER_WORDS.get(raw[i + 2], int(raw[i + 2]) if _is_digits(raw[i + 2]) else None)
+        if hour is not None and 1 <= hour <= 12:
+            minute = 30 if tok == "half" else 15
+            if raw[i + 1] == "to":
+                if tok == "half":
+                    return None, 0
+                hour, minute = (hour - 1) or 12, 45
+            return _canon_clock(hour, minute, None), 3
+    m = _H_CLOCK.match(tok)
+    if m:
+        return _canon_clock(int(m.group(1)), int(m.group(2)), None, twenty_four=True), 1
+    hour_word = _NUMBER_WORDS.get(tok)
+    if hour_word is not None and 1 <= hour_word <= 12:
+        if i + 3 < n + 1 and raw[i + 1 : i + 4] == ["o", "'", "clock"]:
+            return _canon_clock(hour_word, None, None), 4
+        if prev in _BARE_HOUR_PREV and _follower_ok(raw, i + 1):
+            return _canon_clock(hour_word, None, None), 1
+        return None, 0
+    if _is_digits(tok) and len(tok) == 4 and prev in _HHMM_PREV:
+        value = int(tok)
+        is_year = 1900 <= value <= 2099 and prev != "at"
+        if not is_year and value // 100 < 24 and value % 100 < 60:
+            used = 2 if i + 1 < n and raw[i + 1] in ("hours", "hrs") else 1
+            return _canon_clock(value // 100, value % 100, None, twenty_four=True), used
+    m = _CLOCK.match(tok)
+    if not m:
+        return None, 0
+    hour, minute_s, mer = int(m.group(1)), m.group(2), m.group(3)
+    j = i + 1
+    if mer is None:
+        for form, value in _MERIDIEM_FORMS:
+            if tuple(raw[j : j + len(form)]) == form:
+                mer, j = value, j + len(form)
+                break
+    if minute_s is not None and "." in tok and mer is None:
+        return None, 0  # "1.50" is a number, "10.30am" a time
+    if raw[j : j + 3] == ["o", "'", "clock"] and minute_s is None and mer is None:
+        return _canon_clock(hour, None, None), j + 3 - i
+    if mer is not None:
+        if minute_s is None and j < n and _plural_noun(raw[j]):
+            return None, 0  # "Hire 3 PM interns"
+        return _canon_clock(hour, int(minute_s) if minute_s else None, mer), j - i
+    if minute_s is not None:
+        return _canon_clock(hour, int(minute_s), None), 1
+    if prev in _BARE_HOUR_PREV and _follower_ok(raw, i + 1):
+        return _canon_clock(hour, None, None), 1  # "The standup is at 10"
+    return None, 0
 
 
 @dataclass(frozen=True)
@@ -224,48 +358,119 @@ class FactSlots:
     negations: int
 
 
+def _is_clock(tok: str) -> bool:
+    return bool(_CANON_CLOCK.match(tok))
+
+
+def _near_clock(toks: list[str], i: int, span: int = 2) -> bool:
+    return any(_is_clock(toks[k]) for k in range(max(0, i - span), min(len(toks), i + span + 1)) if k != i)
+
+
+def _zone_phrase_before(toks: list[str], i: int) -> bool:
+    return any(toks[k] in _ZONE_CONTEXT for k in range(max(0, i - 3), i))
+
+
+def _date_context(toks: list[str], i: int) -> bool:
+    """Is the month/abbreviated weekday at *i* used as a date?"""
+    prev = toks[i - 1] if i > 0 else ""
+    nxt = toks[i + 1] if i + 1 < len(toks) else ""
+
+    def dayish(t: str) -> bool:
+        return _is_digits(t) or bool(_ORDINAL_DAY.match(t)) or _is_clock(t)
+
+    return prev in _DATE_PREV or dayish(prev) or dayish(nxt) or nxt == "→"
+
+
 def _value_at(toks: list[str], i: int) -> str | None:
     """The when/zone value at position *i*, judged in context, or None."""
     t = toks[i]
+    if len(t) == 1 and not t.isalnum():
+        return None  # punctuation and symbols are never values (fast path)
     n = len(toks)
     prev = toks[i - 1] if i > 0 else ""
     nxt = toks[i + 1] if i + 1 < n else ""
-    if _CANON_CLOCK.match(t) or t in _WEEKDAYS or t in _MONTHS or t in _RELATIVE:
+    if _is_clock(t) or t in _RELATIVE or _OFFSET_ZONE.match(t):
         return t
+    if _QUARTER.match(t):
+        return t if prev in _DATE_PREV else None  # "slipped to Q4" yes, "the Q3 review" no
+    if t in _WEEKDAYS or (t in _EQUIV and _EQUIV[t] in _WEEKDAYS and t not in _WEEKDAY_ABBR):
+        day = _EQUIV.get(t, t)
+        return f"{prev}-{day}" if prev in ("next", "this", "last", "following") else day
+    if t in _WEEKDAY_ABBR:
+        return _EQUIV[t] if _date_context(toks, i) else None
+    if t in _MONTHS or t in _MONTH_ABBR:
+        return _EQUIV.get(t, t) if _date_context(toks, i) else None
     if _ISO_DATE.match(t) or _SLASH_DATE.match(t):
-        return "d" + t
-    if t in _ZONES:
-        near_clock = any(_CANON_CLOCK.match(toks[k]) for k in range(max(0, i - 2), min(n, i + 3)))
-        return t if (near_clock or nxt in _ZONE_CONTEXT) else None
+        return None if prev in _ID_NOUNS else "d" + t
+    if t in _ZONE_ABBR:
+        return t if (_near_clock(toks, i) or nxt in _ZONE_CONTEXT or _zone_phrase_before(toks, i)) else None
+    if t in _ZONE_NAMES:
+        after_clock = i > 0 and _is_clock(prev)
+        return t if (after_clock or nxt in _ZONE_CONTEXT or _zone_phrase_before(toks, i)) else None
     if t in _PERIODS and prev in _PERIOD_AFTER:
         return prev + "-" + t
+    if _is_digits(t) and len(t) == 4 and 1900 <= int(t) <= 2099 and (prev in _YEAR_PREV or prev in _MONTHS or prev in _MONTH_ABBR):
+        return "y" + t
     od = _ORDINAL_DAY.match(t)
-    if (_is_digits(t) or od) and (prev in _MONTHS or nxt in _MONTHS):
+    month_near = prev in _MONTHS or prev in _MONTH_ABBR or nxt in _MONTHS or nxt in _MONTH_ABBR
+    if (_is_digits(t) or od) and len(t) <= 4 and month_near:
         return "n" + (od.group(1) if od else t)
-    if od and prev == "the" and (nxt in ("", "of", "day") or nxt in _MONTHS or (len(nxt) == 1 and not nxt.isalnum())):
+    if od and prev == "the" and (nxt in ("", "of", "day") or len(nxt) == 1 and not nxt.isalnum()):
         return "n" + od.group(1)
     return None
+
+
+def _stem(tok: str) -> str:
+    """Light plural/3rd-person fold for core comparison ("works" == "work", "deploys" == "deploy")."""
+    return tok[:-1] if tok.isalpha() and len(tok) > 3 and tok.endswith("s") and not tok.endswith("ss") else tok
 
 
 def fact_slots(text: str) -> FactSlots:
     toks = _compare_tokens(text)
     n = len(toks)
+    found = [_value_at(toks, i) for i in range(n)]
+    is_value = [v is not None for v in found]
+    for i, v in enumerate(found):
+        if v is not None and i > 0 and (toks[i] in _PERIODS or v.startswith(toks[i - 1] + "-")):
+            is_value[i - 1] = True  # "next" in "next week" / "next Tuesday" is part of the value
+
+    def prev_word(i: int) -> int:
+        k = i - 1
+        while k >= 0 and toks[k] in ("the", "a", "an", "on", "at", "in"):
+            k -= 1
+        return k
+
     values: set[str] = set()
-    is_value = [False] * n
-    for i in range(n):
-        v = _value_at(toks, i)
-        if v is not None:
-            values.add(v)
-            is_value[i] = True
-            if toks[i] in _PERIODS and i > 0:
-                is_value[i - 1] = True  # "next" in "next week" is part of the value
+    rejected: list[tuple[int, str]] = []
+    for i, v in enumerate(found):
+        if v is None:
+            continue
+        k = prev_word(i)
+        if k >= 0 and toks[k] == "from":
+            continue  # "from Tuesday to Thursday": Tuesday is the old value
+        if k >= 1 and (toks[k], toks[k - 1]) in (("of", "instead"), ("than", "rather")):
+            continue  # "Thursday instead of Tuesday": Tuesday is the old value
+        if i + 1 < n and toks[i + 1] == "→":
+            continue  # "Tue → Thu": the value before the arrow is the old one
+        if k >= 0 and toks[k] in _NEGATION:
+            rejected.append((k, v))
+            continue
+        values.add(v)
+    skipped_negation: set[int] = set()
+    if values:
+        # "Thursday, not Tuesday": a contrast names the rejected value; it is not a negated fact.
+        skipped_negation = {k for k, _ in rejected}
+    else:
+        # "The call is not on Tuesday": the negation applies to the fact itself.
+        values.update(v for _, v in rejected)
     core: list[str] = []
     negations = 0
     for i, t in enumerate(toks):
-        if is_value[i]:
+        if is_value[i] or t == "→":
             continue
         if t in _NEGATION or (t == "no" and i + 1 < n and toks[i + 1] == "longer"):
-            negations += 1
+            if i not in skipped_negation:
+                negations += 1
             continue
         if t == "longer" and i > 0 and toks[i - 1] == "no":
             continue
@@ -273,8 +478,10 @@ def fact_slots(text: str) -> FactSlots:
             continue  # "from now on"
         if t in _CORRECTION:
             continue
-        if t in _ZONE_CONTEXT and i > 0 and is_value[i - 1] and toks[i - 1] in _ZONES:
+        if t in _ZONE_CONTEXT and i > 0 and is_value[i - 1] and (toks[i - 1] in _ZONE_ABBR or toks[i - 1] in _ZONE_NAMES):
             continue  # "Arizona time"
+        if t in _ZONE_CONTEXT and any(is_value[k] for k in range(i + 1, min(n, i + 4))):
+            continue  # "timezone is Arizona"
         if t in _VALUE_PREPOSITIONS:
             k = i + 1
             while k < n and toks[k] in ("the", "a", "an"):
@@ -283,15 +490,22 @@ def fact_slots(text: str) -> FactSlots:
                 continue  # "to Thursday", "from Tuesday", "on the 5th"
         if len(t) == 1 and unicodedata.category(t)[0] == "P":
             continue  # punctuation; symbols ($, €, +, <, emoji) stay in the core
-        core.append(t)
-    return FactSlots(core=tuple(core), values=frozenset(values), negations=negations)
+        core.append(_stem(t))
+    return FactSlots(core=tuple(sorted(core)), values=frozenset(values), negations=negations)
 
 
 def changed_fact(new: str, old: str) -> bool:
-    """True when ``new`` corrects ``old``: identical core, and different when/zone values or a negation flip."""
+    """True when ``new`` corrects ``old``.
+
+    The cores (everything but when/zone values and correction words) must hold
+    the same words, in any order ("Ilona's call" == "call with Ilona"). Then
+    either the value sets differ, without one merely adding to the other
+    ("Tuesday" -> "Tuesday and Thursday" is a refinement), or the negation flips.
+    """
     sn, so = fact_slots(new), fact_slots(old)
     if not sn.core or sn.core != so.core:
         return False
     if sn.values and so.values and sn.values != so.values:
-        return True
+        if not (sn.values < so.values or so.values < sn.values):
+            return True
     return (sn.negations % 2) != (so.negations % 2)
