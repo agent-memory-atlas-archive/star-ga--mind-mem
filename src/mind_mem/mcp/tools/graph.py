@@ -528,6 +528,24 @@ def entity_add_observation(entity: str, fact: str) -> str:
     )
 
 
+def _has_observations_column(kg_path: str) -> bool:
+    """Whether the graph's ``entities`` table has the observations column.
+
+    Opened read-only, so asking cannot create a table or a column.
+    """
+    try:
+        con = sqlite3.connect(f"file:{kg_path}?mode=ro", uri=True)
+    except sqlite3.Error:
+        return False
+    try:
+        cols = {row[1] for row in con.execute("PRAGMA table_info(entities)")}
+    except sqlite3.Error:
+        return False
+    finally:
+        con.close()
+    return "observations" in cols
+
+
 @mcp_tool_observe
 def entity_observations(entity: str) -> str:
     """Return an entity's accreted observation facts (user-scope, read-only).
@@ -537,7 +555,7 @@ def entity_observations(entity: str) -> str:
     ``entity_observations`` flag.
     """
     from mind_mem.knowledge_graph import KnowledgeGraph
-    from mind_mem.v4.feature_flags import FeatureDisabledError
+    from mind_mem.v4.feature_flags import FeatureDisabledError, require_enabled
 
     ws = _workspace()
     ws_err = _check_workspace(ws)
@@ -549,8 +567,21 @@ def entity_observations(entity: str) -> str:
     if len(entity) > 512:
         return json.dumps({"error": "entity name must be ≤512 chars"})
 
+    empty = json.dumps({"entity": entity, "observations": [], "count": 0, "_schema_version": "1.0"}, indent=2)
     if not os.path.isfile(_kg_path(ws)):
-        return json.dumps({"entity": entity, "observations": [], "count": 0, "_schema_version": "1.0"}, indent=2)
+        return empty
+
+    # A read must not migrate the schema it reads: ``observations`` runs
+    # ``migrate_observations`` (ALTER TABLE ... ADD COLUMN), a write to the
+    # shared graph store. A graph without the column has never recorded an
+    # observation, so the answer is [] once the flag check has passed; the
+    # migration happens on the write path (entity_add_observation), not here.
+    try:
+        require_enabled("entity_observations")
+    except FeatureDisabledError as exc:
+        return json.dumps({"error": str(exc)})
+    if not _has_observations_column(_kg_path(ws)):
+        return empty
 
     kg = KnowledgeGraph(_kg_path(ws))
     try:

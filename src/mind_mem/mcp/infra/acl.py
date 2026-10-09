@@ -534,6 +534,18 @@ def _gate_dream_cycle(args: dict[str, Any]) -> WriteMode | None:
     return None
 
 
+#: v4 flags under which report_outcome's DEFAULT mode also writes a sidecar
+#: other clients read: ``trajectory`` mirrors the report into
+#: ``trajectories/TRAJ-*.md``, served verbatim by the user-scope
+#: similar_trajectories tool; ``llm_noise_profile`` updates
+#: ``intelligence/llm_profiles.json``, surfaced by calibration_stats. Neither
+#: is HITL staging, so with either flag on the call is an admin write.
+_REPORT_OUTCOME_SIDECAR_FLAGS: dict[str, str] = {
+    "trajectory": "publishes a trajectory every client's similar_trajectories serves",
+    "llm_noise_profile": "updates the shared per-provider reliability profile",
+}
+
+
 def _gate_report_outcome(args: dict[str, Any]) -> WriteMode | None:
     # The default mode appends to recall_outcome only (pinned staging). The
     # projection writes calibration_feedback, which recall reads on every
@@ -543,6 +555,13 @@ def _gate_report_outcome(args: dict[str, Any]) -> WriteMode | None:
             "report_outcome(project_to_calibration=True)",
             "projects outcomes into the calibration weights every client's recall reads",
         )
+    # Same probe the sidecar writers use (quiet, stat-cached), so the gate and
+    # the write cannot disagree about whether a sidecar is on.
+    from mind_mem.v4.feature_flags import is_enabled_quiet
+
+    for flag, detail in _REPORT_OUTCOME_SIDECAR_FLAGS.items():
+        if is_enabled_quiet(flag):
+            return WriteMode(f"report_outcome(v4.{flag})", detail)
     return None
 
 

@@ -273,8 +273,7 @@ def _diff(before: dict[str, str], after: dict[str, str]) -> set[str]:
 # ---------------------------------------------------------------------------
 
 
-@pytest.fixture(scope="module")
-def template() -> Any:
+def _build_template(v4_flags: dict[str, Any]) -> Any:
     from mind_mem import sqlite_index
     from mind_mem.block_metadata import BlockMetadataManager, block_meta_db_path
     from mind_mem.causal_graph import CausalGraph
@@ -290,7 +289,7 @@ def template() -> Any:
     cfg_path = os.path.join(ws, "mind-mem.json")
     with open(cfg_path, encoding="utf-8") as handle:
         cfg = json.load(handle)
-    cfg.setdefault("v4", {}).update({"core_export": {"enabled": True}, "lint": {"enabled": True}})
+    cfg.setdefault("v4", {}).update(v4_flags)
     with open(cfg_path, "w", encoding="utf-8") as handle:
         json.dump(cfg, handle)
     sqlite_index.build_index(ws)
@@ -330,6 +329,28 @@ def template() -> Any:
         shutil.rmtree(root, ignore_errors=True)
 
 
+_BASE_V4 = {"core_export": {"enabled": True}, "lint": {"enabled": True}}
+
+
+@pytest.fixture(scope="module")
+def template() -> Any:
+    yield from _build_template(_BASE_V4)
+
+
+@pytest.fixture(scope="module")
+def template_v4_on() -> Any:
+    """The template with EVERY v4 flag on.
+
+    Flag-gated side writes (a sidecar a default-mode call emits only when its
+    flag is set) are invisible to the base template; measuring the surface
+    with every flag on is what makes the staging pin exact rather than exact
+    only for the default configuration.
+    """
+    from mind_mem.v4.feature_flags import ALL_V4_FLAGS
+
+    yield from _build_template({flag: {"enabled": True} for flag in ALL_V4_FLAGS})
+
+
 @pytest.fixture(scope="module")
 def registered() -> dict[str, Callable[..., Any]]:
     import asyncio
@@ -342,6 +363,16 @@ def registered() -> dict[str, Callable[..., Any]]:
 @pytest.fixture
 def run_tool(template: str, registered: dict[str, Callable[..., Any]], monkeypatch: pytest.MonkeyPatch):
     """Run one registered tool at *scope* on a fresh copy of the template."""
+    yield from _runner(template, registered, monkeypatch)
+
+
+@pytest.fixture
+def run_tool_v4_on(template_v4_on: str, registered: dict[str, Callable[..., Any]], monkeypatch: pytest.MonkeyPatch):
+    """``run_tool`` on the every-v4-flag-on template."""
+    yield from _runner(template_v4_on, registered, monkeypatch)
+
+
+def _runner(template: str, registered: dict[str, Callable[..., Any]], monkeypatch: pytest.MonkeyPatch):
     from mind_mem.mcp.tools import _helpers
 
     saved_ontology = _helpers._ONTOLOGY_REGISTRY
@@ -496,3 +527,75 @@ def test_write_mode_gate_binds_positional_arguments(template: str, monkeypatch: 
     with use_workspace(os.path.join(template, "ws")):
         result = memory_ops.stale_blocks(20, D1)
     assert "requires admin scope" in result, result
+
+
+# ---------------------------------------------------------------------------
+# Flag-gated side writes -- the same measurement with every v4 flag on
+# ---------------------------------------------------------------------------
+
+#: The sidecars report_outcome's DEFAULT mode emits when a v4 flag is on. A
+#: trajectory file is served verbatim to every client by the user-scope
+#: similar_trajectories tool, and the noise profile feeds calibration_stats:
+#: both are cross-client publications, not HITL staging.
+_OUTCOME_SIDECARS = {
+    "trajectory": "trajectories/",
+    "llm_noise_profile": "intelligence/llm_profiles.json",
+}
+
+_OUTCOME_DEFAULT = dict(block_ids=[D1], outcome="success", task_id="deploy the frost service", tool_id="bash", evidence="ok")
+
+
+@pytest.mark.parametrize("name", sorted(USER_TOOLS))
+def test_user_scope_tool_writes_nothing_with_every_v4_flag_on(name: str, run_tool_v4_on) -> None:
+    result, changed, global_changes = run_tool_v4_on(name, "user")
+    allowed = READ_ACCOUNTING | set(USER_STAGING_WRITES.get(name, ()))
+    unexpected = sorted(changed - allowed)
+    assert unexpected == [], f"{name} at USER scope (v4 on) wrote {unexpected}; result={result[:300]}"
+    assert global_changes == {}, f"{name} at USER scope (v4 on) changed process-global state {global_changes}"
+
+
+@pytest.mark.parametrize("name", sorted(USER_STAGING_WRITES))
+def test_staging_tools_write_only_their_store_with_every_v4_flag_on(name: str, run_tool_v4_on) -> None:
+    """The staging pin is exact under every flag, not only the default config."""
+    result, changed, global_changes = run_tool_v4_on(name, "user", STAGING_ARGS.get(name))
+    unexpected = sorted(changed - READ_ACCOUNTING - set(USER_STAGING_WRITES[name]))
+    assert unexpected == [], f"{name} at USER scope (v4 on) wrote {unexpected}; result={result[:300]}"
+    assert global_changes == {}
+
+
+def test_report_outcome_default_mode_sidecars_are_admin_scope(run_tool_v4_on) -> None:
+    """With a sidecar flag on, the default mode is a cross-client write.
+
+    User scope gets the scope error and nothing lands; the identical call at
+    admin scope writes both sidecars (positive control: the snapshot sees
+    them, so the user-scope pass is not blind).
+    """
+    result, changed, _g = run_tool_v4_on("report_outcome", "user", _OUTCOME_DEFAULT)
+    assert "requires admin scope" in result, result[:300]
+    assert not (changed - READ_ACCOUNTING), changed
+
+    result, changed, _g = run_tool_v4_on("report_outcome", "admin", _OUTCOME_DEFAULT)
+    assert json.loads(result).get("status") == "recorded", result[:300]
+    assert any(k.startswith(_OUTCOME_SIDECARS["trajectory"]) for k in changed), changed
+    assert _OUTCOME_SIDECARS["llm_noise_profile"] in changed, changed
+
+
+@pytest.mark.parametrize("flag", sorted(_OUTCOME_SIDECARS))
+def test_each_report_outcome_sidecar_flag_alone_gates_the_default_mode(flag: str, run_tool, template: str) -> None:
+    """Either flag on its own makes the default mode admin-scope."""
+    cfg_path = os.path.join(template, "ws", "mind-mem.json")
+    with open(cfg_path, encoding="utf-8") as handle:
+        original = handle.read()
+    cfg = json.loads(original)
+    cfg["v4"][flag] = {"enabled": True}
+    try:
+        with open(cfg_path, "w", encoding="utf-8") as handle:
+            json.dump(cfg, handle)
+        result, changed, _g = run_tool("report_outcome", "user", _OUTCOME_DEFAULT)
+        assert "requires admin scope" in result, result[:300]
+        assert not (changed - READ_ACCOUNTING), changed
+        _result, admin_changed, _g = run_tool("report_outcome", "admin", _OUTCOME_DEFAULT)
+        assert any(k.startswith(_OUTCOME_SIDECARS[flag]) for k in admin_changed), admin_changed
+    finally:
+        with open(cfg_path, "w", encoding="utf-8") as handle:
+            handle.write(original)

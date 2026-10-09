@@ -5,8 +5,8 @@
 > Re-generate with: `anatomy .`
 
 **Project:** `mind-mem`
-**Files:** 1697 | **Est. tokens:** ~4,969,022
-**Generated:** 2026-10-09 02:41 UTC
+**Files:** 1697 | **Est. tokens:** ~4,970,874
+**Generated:** 2026-10-09 03:00 UTC
 
 ## Token Budget Guide
 
@@ -84,8 +84,8 @@
 | `src/mind_mem/compliance/` | 7 | ~15,436 |
 | `src/mind_mem/importers/` | 10 | ~34,469 |
 | `src/mind_mem/mcp/` | 3 | ~7,307 |
-| `src/mind_mem/mcp/infra/` | 8 | ~18,852 |
-| `src/mind_mem/mcp/tools/` | 29 | ~125,750 |
+| `src/mind_mem/mcp/infra/` | 8 | ~19,102 |
+| `src/mind_mem/mcp/tools/` | 29 | ~126,039 |
 | `src/mind_mem/skill_opt/` | 11 | ~20,899 |
 | `src/mind_mem/spec/` | 4 | ~6,845 |
 | `src/mind_mem/storage/` | 2 | ~11,712 |
@@ -93,7 +93,7 @@
 | `src/mind_mem/tool_output/` | 3 | ~5,895 |
 | `src/mind_mem/v4/` | 24 | ~96,311 |
 | `src/mind_mem/viewer_static/` | 3 | ~865 |
-| `tests/` | 758 | ~2,221,526 |
+| `tests/` | 758 | ~2,222,839 |
 | `tests/fixtures/` | 7 | ~11,912 |
 | `tests/fixtures/importers/` | 5 | ~1,218 |
 | `tests/fixtures/importers/agent_memory/` | 4 | ~383 |
@@ -913,7 +913,7 @@
 - `mcp_entry.py` (~495 tok, medium) — Thin entry point for the ``mind-mem-mcp`` console script.
 ### `src/mind_mem/mcp/infra/`
 
-- `acl.py` (~8295 tok, huge) — Per-tool ACL — scope enforcement for the MCP surface.
+- `acl.py` (~8545 tok, huge) — Per-tool ACL — scope enforcement for the MCP surface.
 - `config.py` (~1315 tok, large) — ``mind-mem.json`` config loading + configurable limits.
 - `constants.py` (~98 tok, small) — MCP-surface-wide constants shared by the infra submodules.
 - `http_auth.py` (~2032 tok, huge) — HTTP bearer-token authentication helpers for the MCP surface.
@@ -944,7 +944,7 @@
 - `encryption.py` (~2670 tok, huge) — At-rest encryption MCP tools — ``encrypt_file`` / ``decrypt_file``.
 - `frames.py` (~2034 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `governance.py` (~16068 tok, huge) — Governance MCP tools — propose / apply / rollback / scan / contradictions / memory_evolution.
-- `graph.py` (~8886 tok, huge) — Knowledge-graph + causal-graph MCP tools.
+- `graph.py` (~9175 tok, huge) — Knowledge-graph + causal-graph MCP tools.
 - `guardrails.py` (~1835 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `_helpers.py` (~1412 tok, large) — Shared tool-internal helpers — workspace paths + lazy-init singletons.
 - `__init__.py` (~107 tok, small) — Per-domain ``@mcp.tool`` modules (v3.2.0 §1.2 PR-3+).
@@ -1255,7 +1255,7 @@
 - `test_accountability_dashboard.py` (~6883 tok, huge) — RA.5 — the lifecycle-tier dashboard, and the four refusals it inherits.
 - `test_accountability_views.py` (~6320 tok, huge) — RA.2 — precision and waste as derived views, and the four refusals that shape them.
 - `test_acl_tool_coverage.py` (~2384 tok, huge) — ACL coverage invariant for the MCP tool surface.
-- `test_acl_user_scope_read_only.py` (~5492 tok, huge) — No USER-scope MCP tool may write, in any argument combination.
+- `test_acl_user_scope_read_only.py` (~6712 tok, huge) — No USER-scope MCP tool may write, in any argument combination.
 - `test_active_only_filter.py` (~312 tok, medium) — Tests for active_only recall filter."""
 - `test_adjacent_public_acl.py` (~3611 tok, huge) — ACL controls for public retrieval doors beside the ranked recall tool."""
 - `test_admissibility_unreadable_status.py` (~1104 tok, large) — An unreadable ``Status`` must be withheld on the stale-index path too.
@@ -1569,7 +1569,7 @@
 - `test_llm_extractor_gate.py` (~2248 tok, huge) — Backend wiring — :func:`mind_mem.llm_extractor._gate_check_local`.
 - `test_llm_extractor.py` (~1842 tok, huge) — Tests for the optional LLM entity/fact extractor module."""
 - `test_llm_noise_profile.py` (~2359 tok, huge) — # Copyright 2026 STARGA, Inc.
-- `test_llm_noise_profile_wiring.py` (~7741 tok, huge) — # Copyright 2026 STARGA, Inc.
+- `test_llm_noise_profile_wiring.py` (~7834 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_locomo_suite.py` (~2743 tok, huge) — Tests for the LoCoMo recall harness (self-asserting adapters).
 - `test_longmemeval_full_run.py` (~1696 tok, huge) — The full-run driver must score the same pool the canonical harness does.
 - `test_m2_custom_namespace_direct_get.py` (~2095 tok, huge) — M2: direct reads and recall for explicitly declared custom roots."""
