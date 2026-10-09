@@ -23,7 +23,7 @@ import os
 from ..infra.constants import MCP_SCHEMA_VERSION
 from ..infra.observability import mcp_tool_observe
 from ..infra.workspace import _check_workspace, _workspace
-from ._helpers import get_logger, metrics
+from ._helpers import _read_scope_or_denied, _workspace_view_denied, get_logger, metrics
 
 _log = get_logger("mcp_server")
 
@@ -57,6 +57,14 @@ def verify_merkle(block_id: str, content_hash: str) -> str:
         return json.dumps({"ok": False, "error": "block_id must be a non-empty string"})
     if not isinstance(content_hash, str) or not content_hash.strip():
         return json.dumps({"ok": False, "error": "content_hash must be a non-empty string"})
+    # An inclusion proof carries the sibling hashes of neighbouring blocks, and
+    # "ok" confirms a guessed content hash: both are oracles over blocks the
+    # caller may not read. The tree spans the whole corpus, so only a caller
+    # whose view is the whole corpus gets one; every other id, present or not,
+    # gets the same refusal.
+    denied = _workspace_view_denied(ws)
+    if denied is not None:
+        return denied
 
     try:
         from mind_mem.sqlite_index import merkle_leaves
@@ -262,6 +270,9 @@ def list_evidence(
 
         gate = get_gate(ws)
         evidence = gate.evidence
+        scope, denied = _read_scope_or_denied(ws)
+        if denied is not None:
+            return denied
 
         if block_id:
             records = evidence.get_evidence_for_block(block_id)
@@ -280,8 +291,11 @@ def list_evidence(
                 )
             records = evidence.get_evidence_by_action(ev_action)
         else:
-            records = evidence.get_latest(limit)
+            # a restricted caller's rows may sit anywhere in the chain: read it all, filter, then cut
+            records = evidence.get_latest(limit if not scope.restricted else 1_000_000)
 
+        # An evidence row names the block it acted on, its file and its actor.
+        records = scope.keep(records, key=lambda rec: rec.target_block_id)
         records = records[-limit:] if len(records) > limit else records
 
     except Exception as exc:

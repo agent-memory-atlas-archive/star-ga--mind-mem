@@ -1515,6 +1515,7 @@ def recall(
             since=since,
             until=until,
             return_k=_wide_pool_k,
+            agent_id=agent_id,
         )
         indexed_source = hits
         indexed_marker = getattr(hits, "degraded", None)

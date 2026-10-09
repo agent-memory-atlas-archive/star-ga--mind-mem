@@ -36,7 +36,7 @@ from mind_mem.v4.feature_flags import is_enabled_quiet as _v4_enabled_quiet
 from ..infra.constants import MCP_SCHEMA_VERSION
 from ..infra.observability import _is_db_locked, _sqlite_busy_error, mcp_tool_observe
 from ..infra.workspace import _check_workspace, _workspace
-from ._helpers import get_logger, metrics
+from ._helpers import _read_scope_or_denied, get_logger, metrics
 from ._helpers import traced as _traced
 
 _log = get_logger("mcp_server")
@@ -1048,6 +1048,29 @@ def _world_staleness_summary(ws: str) -> dict[str, Any]:
         }
 
 
+def _root_corpus_denied(ws: str, rel_paths: tuple[str, ...]) -> str | None:
+    """A refusal body when the bound caller may not read every root file, else ``None``.
+
+    ``scan`` and ``list_contradictions`` summarise or return root-corpus content
+    and used to ignore the caller's namespace ACL; the decision is the shared
+    :func:`mind_mem.read_authz.source_readable`, the one ``get_block`` makes. An
+    unbound caller (stdio / operator) is unrestricted; an unresolvable caller is
+    refused.
+    """
+    from mind_mem.read_authz import CallerUnresolved, caller_principal, source_readable
+
+    try:
+        principal = caller_principal()
+    except CallerUnresolved:
+        return json.dumps({"_schema_version": MCP_SCHEMA_VERSION, "error": "namespace access denied"})
+    if all(source_readable(ws, rel, principal) for rel in rel_paths):
+        return None
+    return json.dumps({"_schema_version": MCP_SCHEMA_VERSION, "error": "namespace access denied"})
+
+
+_SCAN_ROOT_FILES = ("decisions/DECISIONS.md", "intelligence/CONTRADICTIONS.md", "intelligence/SIGNALS.md")
+
+
 @mcp_tool_observe
 @_traced("scan")
 def scan() -> str:
@@ -1068,6 +1091,9 @@ def scan() -> str:
     ws_err = _check_workspace(ws)
     if ws_err:
         return ws_err
+    denied = _root_corpus_denied(ws, _SCAN_ROOT_FILES)
+    if denied is not None:
+        return denied
 
     backend = _resolve_backend(ws)
     is_markdown = backend in _MARKDOWN_BACKENDS
@@ -1164,6 +1190,9 @@ def scan() -> str:
 def list_contradictions() -> str:
     """List detected contradictions with resolution analysis."""
     ws = _workspace()
+    denied = _root_corpus_denied(ws, ("decisions/DECISIONS.md", "intelligence/CONTRADICTIONS.md"))
+    if denied is not None:
+        return denied
 
     from mind_mem.conflict_resolver import resolve_contradictions
 
@@ -1542,6 +1571,9 @@ def memory_evolution(block_id: str, action: str = "get") -> str:
     if not _re_mod.match(r"^[A-Z]+-[a-zA-Z0-9_.-]+$", block_id):
         return json.dumps({"error": f"Invalid block_id format: {block_id}"})
     ws = _workspace()
+    scope, denied = _read_scope_or_denied(ws)
+    if denied is not None:
+        return denied
 
     try:
         from mind_mem.block_metadata import BlockMetadataManager, block_meta_db_path
@@ -1565,9 +1597,21 @@ def memory_evolution(block_id: str, action: str = "get") -> str:
                 },
                 indent=2,
             )
+        elif not scope.allows(block_id):
+            # Importance, co-retrieval partners and provenance of a block the
+            # caller cannot read: answer as for a block with no telemetry.
+            return json.dumps(
+                {
+                    "_schema_version": MCP_SCHEMA_VERSION,
+                    "block_id": block_id,
+                    "importance": 1.0,
+                    "co_occurring_blocks": [],
+                },
+                indent=2,
+            )
         else:
             importance = mgr.get_importance_boost(block_id)
-            co_blocks = mgr.get_co_occurring_blocks(block_id)
+            co_blocks = scope.keep(mgr.get_co_occurring_blocks(block_id))
             metrics.inc("mcp_evolution_reads")
             payload: dict[str, Any] = {
                 "_schema_version": MCP_SCHEMA_VERSION,

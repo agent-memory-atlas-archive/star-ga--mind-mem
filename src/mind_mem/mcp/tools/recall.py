@@ -22,7 +22,7 @@ is the shared choke point they all ultimately lean on.
 from __future__ import annotations
 
 import json
-import os
+import os  # noqa: F401 - tests reach os.lstat through this module (test_unresolved_anchor_boundary)
 import re as _re_mod
 import sqlite3
 import time
@@ -36,7 +36,7 @@ from mind_mem.recall_cache import corpus_stamp as _corpus_stamp
 from mind_mem.recall_cache import retrieval_config_fingerprint
 from mind_mem.retrieval_graph import retrieval_diagnostics as _retrieval_diag
 from mind_mem.scoring_instant import format_scoring_instant, resolve_scoring_instant
-from mind_mem.sqlite_index import _db_path as fts_db_path
+from mind_mem.sqlite_index import _index_present as fts_index_present
 from mind_mem.sqlite_index import query_index as fts_query
 
 from ..infra.config import QUERY_TIMEOUT_SECONDS, _get_limits, _load_config
@@ -46,6 +46,7 @@ from ..infra.workspace import _check_workspace, _workspace
 from ._helpers import (
     _context_budget_enabled,
     _retrieval_metrics_enabled,
+    _workspace_view_denied,
     error_envelope,
     get_logger,
     metrics,
@@ -1094,7 +1095,10 @@ def _recall_impl_uncached(
 
     if used_backend != "hybrid":
         try:
-            if os.path.isfile(fts_db_path(ws)):
+            # The FTS schema is the question, not the file: recall.db is created by
+            # side tables on the first recall and would otherwise divert every later
+            # recall off the scan leg while holding no index.
+            if fts_index_present(ws):
                 config = _load_config(ws)
                 loaded_recall_cfg = config.get("recall", {})
                 recall_cfg = loaded_recall_cfg if isinstance(loaded_recall_cfg, dict) else {}
@@ -1118,6 +1122,7 @@ def _recall_impl_uncached(
                     scoring_instant=scoring_instant,
                     since=since,
                     until=until,
+                    agent_id=agent_id,
                 )
                 if agent_id:
                     from mind_mem._recall_core import _filter_indexed_hits_for_agent
@@ -1894,6 +1899,11 @@ def intent_classify(query: str) -> str:
 def retrieval_diagnostics(last_n: int = 50, max_age_days: int = 7) -> str:
     """Pipeline diagnostics: per-stage rejection rates, intent distribution, and hard negative summary."""
     ws = _workspace()
+    # The retrieval log holds every caller's query text and per-stage counts
+    # over every namespace: not something a namespace-restricted caller may read.
+    denied = _workspace_view_denied(ws)
+    if denied is not None:
+        return denied
     try:
         result = _retrieval_diag(ws, last_n=last_n, max_age_days=max_age_days)
     except sqlite3.OperationalError as exc:

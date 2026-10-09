@@ -1632,8 +1632,16 @@ def _query_index_impl(
     since: str | None = None,
     until: str | None = None,
     return_k: int | None = None,
+    agent_id: str | None = None,
 ) -> list[dict]:
     """Query the FTS5 index. Returns ranked results matching recall() format.
+
+    ``agent_id`` is the caller's namespace principal. The index itself is not
+    filtered by it (callers apply the ACL to the hits); it exists so that when
+    this function falls back to the filesystem scan -- no index, or a database
+    without the FTS schema -- the scan runs AS that principal and walks only
+    the namespaces it may read. A fallback that dropped the principal answered
+    a bound caller from the root corpus alone.
 
     Falls back to filesystem scan (recall.recall()) if index doesn't exist.
 
@@ -1712,6 +1720,7 @@ def _query_index_impl(
                 # bounded query from an unbounded pool.
                 since=since,
                 until=until,
+                agent_id=agent_id,
             )
         finally:
             _active.discard(workspace)
@@ -1894,6 +1903,7 @@ def _query_index_impl(
             scoring_instant=scoring_instant,
             since=since,
             until=until,
+            agent_id=agent_id,
         )
         for r in fallback_results:
             r["_fallback"] = "bm25_scan"

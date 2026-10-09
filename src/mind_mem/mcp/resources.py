@@ -76,6 +76,7 @@ from typing import Any
 from mind_mem.admission import admit_read
 from mind_mem.block_parser import get_active, parse_file
 from mind_mem.observability import get_logger
+from mind_mem.read_authz import CallerUnresolved, caller_principal, readable_blocks, source_readable
 from mind_mem.recall import recall as recall_engine
 
 from .infra.acl import USER_RESOURCES, bind_auth_snapshot, check_tool_acl
@@ -136,6 +137,17 @@ def _admitted_corpus(
         path that leaves the workspace, which is a refusal and not a read.
     """
     ws = _workspace()
+    # NAMESPACE ACL, before any byte is read. These resources serve fixed
+    # workspace-relative corpus files; the tool path (``get_block``) refuses a
+    # bound caller a source its ACL does not grant, and a resource must not be
+    # the door next to it. ``caller_principal`` raises ``CallerUnresolved`` when
+    # the identity cannot be established -- the read fails closed, it is never
+    # downgraded to an unbound (workspace-wide) caller. A denied file answers
+    # exactly like an absent one: no blocks, no withheld count.
+    principal = caller_principal()
+    if not source_readable(ws, rel_path, principal):
+        _log.info("resource_acl_denied", surface=surface)
+        return [], 0
     try:
         path = _validate_path(ws, rel_path)
     except ValueError:
@@ -235,9 +247,12 @@ def get_health() -> str:
         "signals": "intelligence/SIGNALS.md",
     }
 
+    principal = caller_principal()
     for label, rel_path in corpus.items():
         path = os.path.join(ws, rel_path)
-        if os.path.isfile(path):
+        # Counts are content: a bound caller gets zeros for a file its ACL
+        # does not grant, the same answer an absent file gives.
+        if os.path.isfile(path) and source_readable(ws, rel_path, principal):
             blocks = parse_file(path)
             result["files"][label] = {
                 "total": len(blocks),
@@ -248,7 +263,7 @@ def get_health() -> str:
 
     # State snapshot metrics
     state_path = os.path.join(ws, "memory", "intel-state.json")
-    if os.path.isfile(state_path):
+    if os.path.isfile(state_path) and source_readable(ws, "memory/intel-state.json", principal):
         with open(state_path, "r", encoding="utf-8") as f:
             try:
                 state = json.load(f)
@@ -269,7 +284,12 @@ def get_recall(query: str) -> str:
     serialized text or expose a new direct-read receipt contract.
     """
     ws = _workspace()
-    results = recall_engine(ws, query, limit=10)
+    principal = caller_principal()
+    # The engine filters by principal; the post-filter is the shared source
+    # check again, so a result whose source cannot be resolved is dropped
+    # rather than trusted (fail closed), exactly as the tool path does.
+    results = recall_engine(ws, query, limit=10, agent_id=principal)
+    results = readable_blocks(ws, results, principal)
     return json.dumps(results, indent=2, default=str)
 
 
@@ -320,7 +340,11 @@ def _gated(fn: Callable[..., str]) -> Callable[..., str]:
             if name not in USER_RESOURCES:
                 _log.warning("acl_unknown_resource", resource=name)
                 return json.dumps({"error": f"Resource '{name}' is not in ACL policy", "_schema_version": "1.0"})
-            return fn(*args, **kwargs)
+            try:
+                return fn(*args, **kwargs)
+            except CallerUnresolved:
+                _log.warning("resource_caller_unresolved", resource=name)
+                return check_tool_acl(name, "deny") or json.dumps({"error": "Permission denied"})
 
     return _resource
 

@@ -22,7 +22,7 @@ from ..infra.config import _get_limits, _load_extra_categories
 from ..infra.constants import MCP_SCHEMA_VERSION
 from ..infra.observability import mcp_tool_observe
 from ..infra.workspace import _workspace
-from ._helpers import get_logger, metrics
+from ._helpers import _read_scope_or_denied, get_logger, metrics
 
 _log = get_logger("mcp_server")
 
@@ -56,7 +56,10 @@ def _category_sections(context: str) -> tuple[str, list[tuple[str, str]]]:
     return context[: matches[0].start()], sections
 
 
-def _admit_category_context(workspace: str, context: str) -> tuple[str, int]:
+_CATEGORY_COUNT_LINE = re.compile(r"^\*\d+ blocks? in this category\*\n", re.MULTILINE)
+
+
+def _admit_category_context(workspace: str, context: str, scope: Any = None) -> tuple[str, int]:
     """Drop the sections of *context* whose blocks are not servable.
 
     Category files are a DERIVED artifact: the distiller reads the corpus and
@@ -83,6 +86,12 @@ def _admit_category_context(workspace: str, context: str) -> tuple[str, int]:
     rows = [{"_id": block_id, "Status": live.get(block_id, _UNRESOLVED_STATUS)} for block_id, _ in sections]
     decision = admit_read(rows, workspace=workspace, surface="category_summary")
     servable = {str(row["_id"]) for row in decision.admitted}
+    if scope is not None and scope.restricted:
+        # admission says the block may be served to anyone; the namespace ACL
+        # says whether THIS caller may read the file it lives in
+        servable = {block_id for block_id in servable if scope.allows(block_id)}
+        # the file's own "N blocks in this category" line counts blocks the caller cannot read
+        preamble = _CATEGORY_COUNT_LINE.sub("", preamble)
     kept = "".join(text for block_id, text in sections if block_id in servable)
     return preamble + kept, decision.withheld
 
@@ -172,6 +181,9 @@ def category_summary(topic: str, limit: int = 3) -> str:
         ``withheld_count``.
     """
     ws = _workspace()
+    scope, denied = _read_scope_or_denied(ws)
+    if denied is not None:
+        return denied
     limits = _get_limits(ws)
     try:
         from mind_mem.category_distiller import CategoryDistiller
@@ -179,11 +191,12 @@ def category_summary(topic: str, limit: int = 3) -> str:
         extra_cats = _load_extra_categories(ws)
         distiller = CategoryDistiller(extra_categories=extra_cats if extra_cats else None)
         context = distiller.get_category_context(topic, ws, limit=max(1, min(limit, limits["max_category_results"])))
-        context, withheld = _admit_category_context(ws, context)
+        context, withheld = _admit_category_context(ws, context, scope)
         cats = distiller.get_categories_for_query(topic)
         metrics.inc("mcp_category_summary")
         _log.info("mcp_category_summary", topic=topic, matched_categories=cats[:limit])
-        kind_sections = _kind_summaries_section(ws)
+        # per-kind summaries digest every namespace's blocks and cannot be scoped
+        kind_sections = _kind_summaries_section(ws) if scope.whole else None
         if not context:
             empty: dict = {
                 "_schema_version": MCP_SCHEMA_VERSION,

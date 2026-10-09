@@ -24,7 +24,7 @@ from typing import Any
 from ..infra.constants import MCP_SCHEMA_VERSION
 from ..infra.observability import mcp_tool_observe
 from ..infra.workspace import _check_workspace, _workspace
-from ._helpers import get_logger, metrics
+from ._helpers import _workspace_view_denied, get_logger, metrics
 
 _log = get_logger("mcp_server")
 
@@ -697,6 +697,11 @@ def dream_cycle(
     from ..infra.acl import request_has_admin_scope
 
     ws = _workspace()
+    # Findings carry entity slugs, cited ids, source files and quoted fact text
+    # from every namespace.
+    denied = _workspace_view_denied(ws)
+    if denied is not None:
+        return denied
     persist = request_has_admin_scope()
 
     try:

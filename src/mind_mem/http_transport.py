@@ -73,6 +73,7 @@ Usage::
 
 from __future__ import annotations
 
+import functools
 import hashlib
 import hmac
 import inspect
@@ -775,6 +776,37 @@ def _summarise(block: dict[str, Any]) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 
 
+def _refuse_under_namespace_acl(handler: Any) -> Any:
+    """Guard a READ handler of this workspace-level transport.
+
+    This door authenticates with a flat credential and carries no namespace
+    principal (the body's ``agent_id`` is a claim, not an identity), so it
+    reads as an unbound caller. While no per-agent ACL exists that is the whole
+    contract; once ``mind-mem-acl.json`` declares one, serving a read here
+    would return what the MCP tool path denies. Refuse -- loudly and
+    content-free -- rather than bypass.
+
+    The guard sits on the handler, not in the dispatcher, so a caller that
+    reaches the function any other way is refused too, and
+    ``tests/test_read_surface_acl.py`` fails the build for any non-mutating route
+    whose handler lacks it. Liveness (``GET /status``) serves no block content
+    and is the one exemption; mutating routes keep their own admin gate.
+    """
+
+    @functools.wraps(handler)
+    def guarded(workspace: str, *args: Any, **kwargs: Any) -> tuple[int, dict[str, Any]]:
+        from .read_authz import WORKSPACE_LEVEL_TRANSPORT_REFUSAL, namespace_acl_configured
+
+        if namespace_acl_configured(workspace):
+            _log.warning("http_read_refused_namespace_acl", extra={"handler": _safe_log(handler.__name__)})
+            return (403, {"error": WORKSPACE_LEVEL_TRANSPORT_REFUSAL})
+        result: tuple[int, dict[str, Any]] = handler(workspace, *args, **kwargs)
+        return result
+
+    guarded._namespace_acl_guarded = True  # type: ignore[attr-defined]
+    return guarded
+
+
 def _handle_status(workspace: str) -> tuple[int, dict[str, Any]]:
     """``GET /status`` — health + memory count + last-scan timestamp."""
     from .storage import get_block_store
@@ -822,6 +854,7 @@ def _handle_status(workspace: str) -> tuple[int, dict[str, Any]]:
     )
 
 
+@_refuse_under_namespace_acl
 def _handle_query(workspace: str, body: dict[str, Any]) -> tuple[int, dict[str, Any]]:
     """``POST /query`` — natural-language search.
 
@@ -907,6 +940,7 @@ def _handle_query(workspace: str, body: dict[str, Any]) -> tuple[int, dict[str, 
     return (200, payload)
 
 
+@_refuse_under_namespace_acl
 def _handle_list_memories(workspace: str, params: dict[str, str]) -> tuple[int, dict[str, Any]]:
     """``GET /memories?limit=N&active_only=true`` — the admitted listing.
 
@@ -961,6 +995,7 @@ def _handle_list_memories(workspace: str, params: dict[str, str]) -> tuple[int, 
     )
 
 
+@_refuse_under_namespace_acl
 def _handle_walkthrough(workspace: str, body: dict[str, Any]) -> tuple[int, dict[str, Any]]:
     """``POST /walkthrough`` — dependency-ordered walkthrough.
 
@@ -1492,6 +1527,7 @@ def _handle_clear(workspace: str, body: dict[str, Any], *, actor: str = DIRECT_C
 # ---------------------------------------------------------------------------
 
 
+@_refuse_under_namespace_acl
 def _handle_fed_vclock(workspace: str, block_id: str) -> tuple[int, dict[str, Any]]:
     """GET /federation/vclock/<block_id> — read per-agent version vector.
 
@@ -1533,6 +1569,7 @@ def _fed_error_response(exc: Exception, endpoint: str) -> tuple[int, dict[str, A
     return (503, {"ok": False, "error": "federation unavailable"})
 
 
+@_refuse_under_namespace_acl
 def _handle_fed_conflicts(workspace: str, params: dict[str, str]) -> tuple[int, dict[str, Any]]:
     """GET /federation/conflicts?limit=N — list outstanding (unresolved) conflicts."""
     try:

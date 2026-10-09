@@ -31,7 +31,7 @@ from typing import Any
 from ..infra.constants import MCP_SCHEMA_VERSION
 from ..infra.observability import mcp_tool_observe
 from ..infra.workspace import _check_workspace, _workspace
-from ._helpers import get_logger
+from ._helpers import _workspace_view_denied, get_logger
 
 _log = get_logger("mcp_server")
 
@@ -82,6 +82,10 @@ def lint(rule: str = "") -> str:
 
     if not flag_enabled(ws):
         return _disabled_payload(ws)
+    # Findings name files and block ids across the corpus.
+    denied = _workspace_view_denied(ws)
+    if denied is not None:
+        return denied
 
     if not isinstance(rule, str):
         return json.dumps({"error": "rule must be a string", "got": type(rule).__name__})
