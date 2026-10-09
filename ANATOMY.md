@@ -5,8 +5,8 @@
 > Re-generate with: `anatomy .`
 
 **Project:** `mind-mem`
-**Files:** 1698 | **Est. tokens:** ~4,977,228
-**Generated:** 2026-10-09 03:30 UTC
+**Files:** 1698 | **Est. tokens:** ~4,978,593
+**Generated:** 2026-10-09 03:58 UTC
 
 ## Token Budget Guide
 
@@ -84,7 +84,7 @@
 | `src/mind_mem/compliance/` | 7 | ~15,436 |
 | `src/mind_mem/importers/` | 10 | ~34,469 |
 | `src/mind_mem/mcp/` | 3 | ~7,307 |
-| `src/mind_mem/mcp/infra/` | 8 | ~21,120 |
+| `src/mind_mem/mcp/infra/` | 8 | ~20,532 |
 | `src/mind_mem/mcp/tools/` | 29 | ~126,039 |
 | `src/mind_mem/skill_opt/` | 11 | ~20,899 |
 | `src/mind_mem/spec/` | 4 | ~6,845 |
@@ -93,7 +93,7 @@
 | `src/mind_mem/tool_output/` | 3 | ~5,895 |
 | `src/mind_mem/v4/` | 24 | ~96,311 |
 | `src/mind_mem/viewer_static/` | 3 | ~865 |
-| `tests/` | 759 | ~2,227,175 |
+| `tests/` | 759 | ~2,229,128 |
 | `tests/fixtures/` | 7 | ~11,912 |
 | `tests/fixtures/importers/` | 5 | ~1,218 |
 | `tests/fixtures/importers/agent_memory/` | 4 | ~383 |
@@ -913,7 +913,7 @@
 - `mcp_entry.py` (~495 tok, medium) — Thin entry point for the ``mind-mem-mcp`` console script.
 ### `src/mind_mem/mcp/infra/`
 
-- `acl.py` (~10559 tok, huge) — Per-tool ACL — scope enforcement for the MCP surface.
+- `acl.py` (~9971 tok, huge) — Per-tool ACL — scope enforcement for the MCP surface.
 - `config.py` (~1315 tok, large) — ``mind-mem.json`` config loading + configurable limits.
 - `constants.py` (~98 tok, small) — MCP-surface-wide constants shared by the infra submodules.
 - `http_auth.py` (~2032 tok, huge) — HTTP bearer-token authentication helpers for the MCP surface.
@@ -1254,9 +1254,9 @@
 - `test_abstention_classifier.py` (~3963 tok, huge) — Tests for the adversarial abstention classifier."""
 - `test_accountability_dashboard.py` (~6883 tok, huge) — RA.5 — the lifecycle-tier dashboard, and the four refusals it inherits.
 - `test_accountability_views.py` (~6320 tok, huge) — RA.2 — precision and waste as derived views, and the four refusals that shape them.
-- `test_acl_staging_readers.py` (~3790 tok, huge) — A user-scope staging write is allowed only while no reader serves it to others.
+- `test_acl_staging_readers.py` (~5568 tok, huge) — A user-scope staging write is allowed only while no reader serves it to others.
 - `test_acl_tool_coverage.py` (~2384 tok, huge) — ACL coverage invariant for the MCP tool surface.
-- `test_acl_user_scope_read_only.py` (~7258 tok, huge) — No USER-scope MCP tool may write, in any argument combination.
+- `test_acl_user_scope_read_only.py` (~7270 tok, huge) — No USER-scope MCP tool may write, in any argument combination.
 - `test_active_only_filter.py` (~312 tok, medium) — Tests for active_only recall filter."""
 - `test_adjacent_public_acl.py` (~3611 tok, huge) — ACL controls for public retrieval doors beside the ranked recall tool."""
 - `test_admissibility_unreadable_status.py` (~1104 tok, large) — An unreadable ``Status`` must be withheld on the stale-index path too.
@@ -1607,7 +1607,7 @@
 - `test_mcp_quality_preview_matches_enforcement.py` (~1206 tok, large) — # Copyright 2026 STARGA, Inc.
 - `test_mcp_server.py` (~5336 tok, huge) — Tests for mcp_server.py — tests the MCP server resources and tool logic.
 - `test_mcp_thread_leak.py` (~3511 tok, huge) — Regression tests for the MCP-server thread leak (2026-07-04).
-- `test_mcp_tools_model.py` (~2909 tok, huge) — Tests for ``mind_mem.mcp.tools.model`` — MCP wrappers for audit / sign / verify."""
+- `test_mcp_tools_model.py` (~2998 tok, huge) — Tests for ``mind_mem.mcp.tools.model`` — MCP wrappers for audit / sign / verify."""
 - `test_mcp_tools.py` (~277 tok, medium) — Tests for MCP server tool definitions."""
 - `test_mcp_tool_surface_v3_2.py` (~2006 tok, huge) — v3.2.0 — consolidated MCP public dispatcher tests."""
 - `test_mcp_traverse_graph.py` (~5735 tok, huge) — ``traverse_graph`` — the causal-graph tool that nothing tested.
@@ -1682,7 +1682,7 @@
 - `test_opencode_install.py` (~2947 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_optional_requirements_lock.py` (~504 tok, large) — Checks for the reproducible optional dependency lock."""
 - `test_outcome_attribution_bounds.py` (~3311 tok, huge) — Abuse bounds for outcome attribution — one reporter, one vote.
-- `test_outcome_attribution.py` (~4120 tok, huge) — Regression gate for outcome attribution — did the memory actually help?
+- `test_outcome_attribution.py` (~4161 tok, huge) — Regression gate for outcome attribution — did the memory actually help?
 - `test_paired_scorecard_gate.py` (~6587 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_payload_admission.py` (~5425 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_personas.py` (~1336 tok, large) — Tests for the v3.9 persona-aware recall projection."""
@@ -1766,7 +1766,7 @@
 - `test_recall_priority.py` (~414 tok, medium) — Tests for priority boost in recall."""
 - `test_recall.py` (~3898 tok, huge) — Tests for recall.py — zero external deps (stdlib unittest)."""
 - `test_recall_quality_locomo.py` (~2613 tok, huge) — LoCoMo recall-quality regression gate.
-- `test_recall_query_id_join.py` (~7740 tok, huge) — RA.1's residual, closed: the recall envelope publishes the run identity.
+- `test_recall_query_id_join.py` (~7773 tok, huge) — RA.1's residual, closed: the recall envelope publishes the run identity.
 - `test_recall_recursion_fix.py` (~2069 tok, huge) — Regression tests for the recall ↔ query_index mutual recursion bug.
 - `test_recall_references.py` (~270 tok, medium) — Tests for reference-based recall."""
 - `test_recall_replaced_demotion_invariants.py` (~1917 tok, huge) — Dead-status demotion keeps every recall invariant it sits next to.

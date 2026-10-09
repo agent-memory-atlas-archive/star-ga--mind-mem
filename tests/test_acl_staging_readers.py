@@ -56,18 +56,25 @@ _EXCLUDED_MODULES = frozenset({"mind_mem.mcp.infra.acl"})
 class _Source:
     """Parsed ``src/mind_mem`` with just enough name resolution for the scan."""
 
-    def __init__(self) -> None:
+    def __init__(self, extra: dict[str, str] | None = None) -> None:
         self.text: dict[str, str] = {}
         self.funcs: dict[str, ast.AST] = {}  # "module.Qual.name" -> node
         self.module_of: dict[str, str] = {}
         self.class_methods: dict[tuple[str, str], set[str]] = defaultdict(set)
         self.by_leaf: dict[str, set[str]] = defaultdict(set)
+        # Module- and class-level assignments: a store named only in a constant
+        # (a schema, a query string, a file name) is reached through the name.
+        self.consts: dict[str, ast.AST] = {}
+        self.const_module: dict[str, str] = {}
+        modules: list[tuple[str, str, bool]] = []
         for path in sorted(SRC.rglob("*.py")):
             parts = path.relative_to(SRC).with_suffix("").parts
             mod = ".".join(parts[:-1] if parts[-1] == "__init__" else parts)
-            if mod in _EXCLUDED_MODULES:
-                continue
-            text = path.read_text(encoding="utf-8")
+            if mod not in _EXCLUDED_MODULES:
+                modules.append((mod, path.read_text(encoding="utf-8"), path.name == "__init__.py"))
+        for mod, text in (extra or {}).items():
+            modules = [m for m in modules if m[0] != mod] + [(mod, text, False)]
+        for mod, text, is_pkg in modules:
             self.text[mod] = text
             tree = ast.parse(text)
             for node in tree.body:
@@ -78,13 +85,30 @@ class _Source:
                         if isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef)):
                             self._add(mod, f"{node.name}.{item.name}", item)
                             self.class_methods[(mod, node.name)].add(item.name)
-            self._imports(mod, tree, path.name == "__init__.py")
+                        else:
+                            self._add_const(mod, f"{node.name}.", item)
+                else:
+                    self._add_const(mod, "", node)
+            self._imports(mod, tree, is_pkg)
 
     def _add(self, mod: str, qual: str, node: ast.AST) -> None:
         key = f"{mod}.{qual}"
         self.funcs[key] = node
         self.module_of[key] = mod
         self.by_leaf[qual.rsplit(".", 1)[-1]].add(key)
+
+    def _add_const(self, mod: str, prefix: str, node: ast.AST) -> None:
+        targets: list[ast.expr] = []
+        if isinstance(node, ast.Assign):
+            targets = list(node.targets)
+        elif isinstance(node, (ast.AnnAssign, ast.AugAssign)) and node.value is not None:
+            targets = [node.target]
+        for target in targets:
+            for name in ast.walk(target):
+                if isinstance(name, ast.Name):
+                    key = f"{mod}.{prefix}{name.id}"
+                    self.consts[key] = node
+                    self.const_module[key] = mod
 
     def _imports(self, mod: str, tree: ast.AST, is_pkg: bool) -> None:
         table: dict[str, tuple[str, str | None]] = {}
@@ -114,9 +138,13 @@ class _Source:
         """Function keys *key* may call: names resolved through imports, methods
         through ``Class(...)``/``var = Class(...)``/``self``, else a leaf name
         when every definition of it is a candidate (decided by the caller)."""
+        if key in self.consts:
+            mod = self.const_module[key]
+            return self._refs(mod, self.consts[key], key[len(mod) + 1 :].split(".")[0] if "." in key[len(mod) + 1 :] else None)
         mod = self.module_of[key]
-        node = self.funcs[key]
-        owner = key[len(mod) + 1 :].split(".")[0] if "." in key[len(mod) + 1 :] else None
+        return self._refs(mod, self.funcs[key], key[len(mod) + 1 :].split(".")[0] if "." in key[len(mod) + 1 :] else None)
+
+    def _refs(self, mod: str, node: ast.AST, owner: str | None) -> set[str]:
         local_cls: dict[str, str] = {}
         for sub in ast.walk(node):
             if isinstance(sub, ast.Assign) and isinstance(sub.value, ast.Call) and isinstance(sub.value.func, ast.Name):
@@ -139,6 +167,10 @@ class _Source:
                 elif isinstance(value, ast.Name) and self._import_table[mod].get(value.id, ("", "x"))[1] is None:
                     out.add(f"{self._import_table[mod][value.id][0]}.{sub.attr}")
                     continue
+                elif isinstance(value, ast.Name) and f"{self._resolve_name(mod, value.id)}" in self.text:
+                    # ``from pkg import module`` then ``module.NAME``
+                    out.add(f"{self._resolve_name(mod, value.id)}.{sub.attr}")
+                    continue
                 if cls:
                     out.add(f"{cls}.{sub.attr}")
                 else:
@@ -148,8 +180,27 @@ class _Source:
     def touching(self, token: str, terminals: frozenset[str]) -> set[str]:
         """Every function reaching *token*, stopping at classified terminals."""
         pattern = re.compile(rf"\b{re.escape(token)}\b")
-        found = {k for k, n in self.funcs.items() if pattern.search(ast.get_source_segment(self.text[self.module_of[k]], n) or "")}
+
+        def names(k: str, n: ast.AST, mod: str) -> bool:
+            return bool(pattern.search(ast.get_source_segment(self.text[mod], n) or ""))
+
+        # Constants first, to a fixed point: one naming the store, or built
+        # from another that does, is the store as far as a reader is concerned.
+        hits = {k for k, n in self.consts.items() if names(k, n, self.const_module[k])}
+        const_refs = {k: self.references(k) for k in self.consts}
+        while True:
+            grown = {k for k, r in const_refs.items() if k not in hits and r & hits}
+            if not grown:
+                break
+            hits |= grown
+        by_leaf: dict[str, set[str]] = defaultdict(set)
+        for k in self.consts:
+            by_leaf[k.rsplit(".", 1)[-1]].add(k)
+        # ``obj.NAME`` the scan cannot type: matched by leaf when every
+        # constant of that name is a hit (the same rule methods get below).
+        hits |= {f"*.{leaf}" for leaf, keys in by_leaf.items() if keys <= hits}
         refs = {k: self.references(k) for k in self.funcs}
+        found = {k for k, n in self.funcs.items() if names(k, n, self.module_of[k]) or refs[k] & hits}
         while True:
             live = {k for k in found if k not in terminals}
             names = set(live)
@@ -172,7 +223,13 @@ def _terminals(token: str) -> frozenset[str]:
     return frozenset(k for k, r in STAGING_STORE_READERS[token].items() if r.role != "plumbing")
 
 
-@pytest.mark.parametrize("token", sorted({staging_store_token(s) for v in USER_STAGING_WRITES.values() for s in v}))
+#: Every store whose readers are held to the code: each one a user-scope tool
+#: stages into, plus each one taken OUT of user scope because a reader serves
+#: it to other clients (the table is the evidence for that decision).
+_SCANNED_TOKENS = sorted({staging_store_token(s) for v in USER_STAGING_WRITES.values() for s in v} | set(STAGING_STORE_READERS))
+
+
+@pytest.mark.parametrize("token", _SCANNED_TOKENS)
 def test_every_function_touching_a_staged_store_is_classified(token: str, source: _Source) -> None:
     """A new reader of a staged store fails here until it is classified.
 
@@ -186,6 +243,41 @@ def test_every_function_touching_a_staged_store_is_classified(token: str, source
     assert unclassified == [], f"functions touching {token!r} with no reader classification: {unclassified}"
     stale = sorted(set(STAGING_STORE_READERS[token]) - set(source.funcs))
     assert stale == [], f"classified functions that no longer exist: {stale}"
+
+
+#: The blind spot the previous scan had: the store named only in a
+#: module-level constant (calibration.py's schema is written this way).
+_CONST_READER = (
+    "\n_OUTCOME_SQL = \"SELECT block_id, COUNT(*) FROM recall_outcome WHERE outcome='failure' GROUP BY block_id\"\n"
+    "def _sneaky_outcome_penalty(conn):\n    return dict(conn.execute(_OUTCOME_SQL).fetchall())\n"
+)
+
+
+def _with(source: _Source, mod: str, tail: str) -> _Source:
+    return _Source({mod: source.text[mod] + tail})
+
+
+def test_the_scan_sees_a_store_named_through_a_module_constant(source: _Source) -> None:
+    mutated = _with(source, "mind_mem.validity_gate", _CONST_READER)
+    touching = mutated.touching("recall_outcome", _terminals("recall_outcome"))
+    assert "mind_mem.validity_gate._sneaky_outcome_penalty" in touching
+    assert sorted(touching - set(STAGING_STORE_READERS["recall_outcome"])) == ["mind_mem.validity_gate._sneaky_outcome_penalty"]
+
+
+def test_the_scan_follows_constants_across_imports_and_composition() -> None:
+    mutated = _Source(
+        {
+            "mind_mem._scan_probe_a": '_TABLE = "recall_outcome"\n_SQL = "SELECT * FROM " + _TABLE\n',
+            "mind_mem._scan_probe_b": (
+                "from mind_mem._scan_probe_a import _SQL\n"
+                "from mind_mem import _scan_probe_a\n"
+                "def via_import(conn):\n    return conn.execute(_SQL)\n"
+                "def via_module(conn):\n    return conn.execute(_scan_probe_a._TABLE)\n"
+            ),
+        }
+    )
+    touching = mutated.touching("recall_outcome", _terminals("recall_outcome"))
+    assert {"mind_mem._scan_probe_b.via_import", "mind_mem._scan_probe_b.via_module"} <= touching
 
 
 def test_the_scan_is_not_blind(source: _Source) -> None:
@@ -286,35 +378,87 @@ def _report(ws: str, scope: str, monkeypatch: pytest.MonkeyPatch) -> str:
         return str(report_outcome(**_OUTCOME))
 
 
-def test_outcome_attribution_reader_makes_report_outcome_admin(workspace: str, monkeypatch: pytest.MonkeyPatch) -> None:
-    _set_validity_gate(workspace, _OA_ON)
+_READER_CONFIGS = [
+    None,
+    {"enabled": False, "outcome_attribution": {"enabled": True}},
+    {"enabled": True, "outcome_attribution": {"enabled": False}},
+    {"enabled": True},
+    _OA_ON,
+]
+_READER_CONFIG_IDS = ["no-gate", "gate-off", "attribution-off", "attribution-absent", "attribution-on"]
+
+
+@pytest.mark.parametrize("section", _READER_CONFIGS, ids=_READER_CONFIG_IDS)
+def test_user_scope_report_outcome_is_denied_whatever_the_reader_config(
+    section: Any, workspace: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A row written while the reader is OFF is served once the operator turns
+    it ON (load_outcome_signals counts every row, no actor or scope filter), so
+    a config probe at write time only delays the demotion. The write is denied
+    at user scope under every config; the admin call lands it (positive control)."""
+    _set_validity_gate(workspace, section)
     result = _report(workspace, "user", monkeypatch)
     assert "requires admin scope" in result, result[:300]
-    assert "outcome_attribution" in result, result[:300]
     assert _outcome_rows(workspace) == 0
-    # Positive control: the identical call at admin scope lands the row.
     admin = json.loads(_report(workspace, "admin", monkeypatch))
     assert admin.get("status") == "recorded", admin
     assert _outcome_rows(workspace) == 1
 
 
-@pytest.mark.parametrize(
-    "section",
-    [
-        None,
-        {"enabled": False, "outcome_attribution": {"enabled": True}},
-        {"enabled": True, "outcome_attribution": {"enabled": False}},
-        {"enabled": True},
-    ],
-    ids=["no-gate", "gate-off", "attribution-off", "attribution-absent"],
-)
-def test_report_outcome_stays_staging_while_the_reader_is_off(section: Any, workspace: str, monkeypatch: pytest.MonkeyPatch) -> None:
-    """Mutation: with any one enabling key off the reader is dead, so the row is
-    staging again -- the denial above is caused by the reader, nothing else."""
-    _set_validity_gate(workspace, section)
-    result = json.loads(_report(workspace, "user", monkeypatch))
-    assert result.get("status") == "recorded", result
-    assert _outcome_rows(workspace) == 1
+def test_no_user_row_is_waiting_when_the_reader_is_turned_on(workspace: str, monkeypatch: pytest.MonkeyPatch) -> None:
+    """The pre-seed: user reports while the opt-in is off, then the operator
+    enables it. Nothing the user sent may reach the served signals."""
+    from mind_mem.outcome_attribution import load_outcome_signals
+
+    _set_validity_gate(workspace, {"enabled": True, "outcome_attribution": {"enabled": False}})
+    for _ in range(3):
+        _report(workspace, "user", monkeypatch)
+    _set_validity_gate(workspace, _OA_ON)
+    assert _outcome_rows(workspace) == 0
+    assert not load_outcome_signals(workspace, [D1])
+    # Positive control: an admin report does reach the signals the reader serves.
+    _report(workspace, "admin", monkeypatch)
+    assert load_outcome_signals(workspace, [D1])[D1].failure == 1
+
+
+def _mcp_writers(token: str) -> set[str]:
+    return {
+        func.rsplit(".", 1)[-1]
+        for func, reader in STAGING_STORE_READERS[token].items()
+        if reader.role == "writer" and func.startswith("mind_mem.mcp.tools.")
+    }
+
+
+def _serving(token: str) -> bool:
+    return any(r.role == "serving" for r in STAGING_STORE_READERS.get(token, {}).values())
+
+
+def test_a_store_some_reader_serves_to_others_has_only_admin_writers() -> None:
+    """Derived from the reader table, config-independent: a serving reader --
+    on or off today -- makes every MCP writer of its store admin-scope."""
+    served = [t for t in STAGING_STORE_READERS if _serving(t)]
+    assert served, "positive control: recall_outcome has a serving reader"
+    for token in served:
+        assert _mcp_writers(token), f"{token}: no MCP writer classified"
+        assert _mcp_writers(token) <= ADMIN_TOOLS, (
+            f"{token} is served to other clients but user tools write it: {_mcp_writers(token) - ADMIN_TOOLS}"
+        )
+        staged_by = sorted(name for name, stores in USER_STAGING_WRITES.items() if token in {staging_store_token(s) for s in stores})
+        assert staged_by == [], f"{token} is served to other clients but staged at user scope by {staged_by}"
+
+
+def test_the_runtime_gate_denies_a_served_store_with_every_reader_off(workspace: str, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Backstop and mutation: pin a user staging write onto a served store and
+    the gate denies it even with no reader config at all; on an unserved store
+    it stays staging."""
+    from mind_mem.mcp.infra import acl
+
+    _set_validity_gate(workspace, None)
+    monkeypatch.setitem(acl.USER_STAGING_WRITES, "probe_writer", (".mind-mem-index/recall.db::recall_outcome",))
+    mode = acl.write_mode_of("probe_writer", {})
+    assert mode is not None and "outcome_attribution" in mode.capability, mode
+    monkeypatch.setitem(acl.USER_STAGING_WRITES, "probe_writer", ("memory/interaction_signals.jsonl",))
+    assert acl.write_mode_of("probe_writer", {}) is None
 
 
 def test_the_reader_the_gate_names_really_reads_the_store(workspace: str, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -324,12 +468,6 @@ def test_the_reader_the_gate_names_really_reads_the_store(workspace: str, monkey
 
     assert _load_outcome_signals({"enabled": True}, workspace, [D1]) is None
     assert _load_outcome_signals(_OA_ON, workspace, [D1]) is not None
-
-
-def test_malformed_config_fails_closed(workspace: str, monkeypatch: pytest.MonkeyPatch) -> None:
-    with open(os.path.join(workspace, "mind-mem.json"), "w", encoding="utf-8") as handle:
-        handle.write("{not json")
-    assert check_write_mode_acl("report_outcome", dict(_OUTCOME, project_to_calibration=False), "user") is not None
 
 
 def test_admin_scope_is_never_gated_by_a_reader(workspace: str) -> None:

@@ -98,6 +98,10 @@ def _probe_args(ext: str) -> dict[str, dict[str, Any]]:
         # Recall reads calibration_feedback on every query (CalibrationManager
         # in _recall_core) and reweights served scores: a cross-client write.
         "calibration_feedback": dict(query_id="q1", block_ids_useful=[D1]),
+        # recall_outcome has a serving reader (the validity gate's outcome
+        # attribution): a row is served once that opt-in turns on, whenever
+        # it was written, so every mode of report_outcome is admin.
+        "report_outcome": dict(block_ids=[D1], outcome="failure", task_id="t1"),
         "compiled_truth_add_evidence": dict(entity_id="ent1", observation="observed"),
         "export_core": dict(name="aclprobe-1.0.mmcore"),
         "governance_health_bench": {},
@@ -113,7 +117,6 @@ def _probe_args(ext: str) -> dict[str, dict[str, Any]]:
         "graph": dict(action="add_edge", subject="a", predicate="related_to", object="b", source_block_id=D1),
         "memory_evolution": dict(block_id=D1, action="update"),
         "reindex_dirty": dict(dry_run=False),
-        "report_outcome": dict(block_ids=[D1], outcome="failure", task_id="t1", project_to_calibration=True),
         "stale_blocks": dict(clear_block_id=D1),
         # --- HITL staging (pinned USER_STAGING_WRITES) -------------------
         "observe_signal": dict(
@@ -210,9 +213,7 @@ WRITE_CONTROLS = (
 
 #: Staging tools whose write-shaped probe is a GATED mode: the positive
 #: control for the staging allowance runs the default (staging-only) mode.
-STAGING_ARGS: dict[str, dict[str, Any]] = {
-    "report_outcome": dict(block_ids=[D1], outcome="success", task_id="t1"),
-}
+STAGING_ARGS: dict[str, dict[str, Any]] = {}
 
 
 # ---------------------------------------------------------------------------
@@ -473,7 +474,6 @@ def test_staging_exceptions_are_exactly_pinned() -> None:
         "observe_signal",
         "propose_edge",
         "propose_entity_merge",
-        "report_outcome",
     }
     assert set(USER_STAGING_WRITES) <= USER_TOOLS
 
@@ -526,7 +526,6 @@ def test_dream_cycle_default_mode_is_a_read_at_user_scope(run_tool) -> None:
         ("core", {"action": "list"}),
         ("compiled_truth", {"action": "load", "entity_id": "ent1"}),
         ("graph", {"action": "stats"}),
-        ("report_outcome", {"block_ids": [D1], "outcome": "failure", "task_id": "t2"}),
     ],
 )
 def test_read_modes_of_gated_tools_still_work_at_user_scope(name: str, args: dict[str, Any], run_tool) -> None:
@@ -606,8 +605,9 @@ def test_report_outcome_default_mode_sidecars_are_admin_scope(run_tool_v4_on) ->
 
 
 @pytest.mark.parametrize("flag", sorted(_OUTCOME_SIDECARS))
-def test_each_report_outcome_sidecar_flag_alone_gates_the_default_mode(flag: str, run_tool, template: str) -> None:
-    """Either flag on its own makes the default mode admin-scope."""
+def test_each_report_outcome_sidecar_flag_alone_is_admin_only(flag: str, run_tool, template: str) -> None:
+    """With one sidecar flag on, the user call is denied and writes nothing;
+    the admin call writes that sidecar (positive control per flag)."""
     cfg_path = os.path.join(template, "ws", "mind-mem.json")
     with open(cfg_path, encoding="utf-8") as handle:
         original = handle.read()
@@ -626,6 +626,16 @@ def test_each_report_outcome_sidecar_flag_alone_gates_the_default_mode(flag: str
             handle.write(original)
 
 
+def test_report_outcome_is_admin_with_every_flag_and_reader_off(run_tool) -> None:
+    """No config makes report_outcome staging: rows written now are served as
+    soon as an operator turns the outcome-attribution reader on."""
+    result, changed, _g = run_tool("report_outcome", "user", _OUTCOME_DEFAULT)
+    assert "requires admin scope" in result, result[:300]
+    assert not (changed - READ_ACCOUNTING), changed
+    _result, admin_changed, _g = run_tool("report_outcome", "admin", _OUTCOME_DEFAULT)
+    assert ".mind-mem-index/recall.db::recall_outcome" in admin_changed, admin_changed
+
+
 def _serves_others(name: str) -> bool:
     return any(
         reader.role == "serving"
@@ -634,20 +644,10 @@ def _serves_others(name: str) -> bool:
     )
 
 
-@pytest.mark.parametrize("name", sorted(USER_STAGING_WRITES))
-def test_staging_write_is_admin_while_a_reader_serves_it_to_others(name: str, run_tool_v4_on) -> None:
-    """Under the all-readers-on template a staged store some reader serves to
-    other clients is no longer staging: the user call is denied and writes
-    nothing, the admin call writes the store (positive control)."""
-    if not _serves_others(name):
-        pytest.skip(f"no reader serves {name}'s store to other clients")
-    result, changed, _g = run_tool_v4_on(name, "user", STAGING_ARGS.get(name))
-    assert "requires admin scope" in result, result[:300]
-    assert not (changed - READ_ACCOUNTING), changed
-    result, changed, _g = run_tool_v4_on(name, "admin", STAGING_ARGS.get(name))
-    assert changed & set(USER_STAGING_WRITES[name]), f"{name} at admin wrote nothing visible: {result[:300]}"
-
-
-def test_some_staged_store_has_a_serving_reader() -> None:
-    """The parametrized test above must not skip everything."""
-    assert any(_serves_others(name) for name in USER_STAGING_WRITES)
+def test_no_staged_store_has_a_serving_reader() -> None:
+    """A serving reader -- on or off -- takes its store out of user scope."""
+    assert [name for name in USER_STAGING_WRITES if _serves_others(name)] == []
+    assert any(r.role == "serving" for readers in STAGING_STORE_READERS.values() for r in readers.values()), (
+        "positive control: the reader table still knows the served store"
+    )
+    assert "report_outcome" in ADMIN_TOOLS
