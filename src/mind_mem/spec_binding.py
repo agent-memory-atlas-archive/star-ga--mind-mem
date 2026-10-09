@@ -77,10 +77,12 @@ def record_arming(config_path: str, workspace: Optional[str] = None, *, spec_has
     gate STRICTER (a missing binding reads as drift, not as "unbound").
     A path that is a symlink is replaced, never written through.
     """
+    # No clock and no absolute path: the record's presence is the signal, and
+    # two identical workspaces must stay byte-identical (the flag-off
+    # byte-identity gates compare whole workspace trees).
     record = {
         "config_file": os.path.basename(os.path.abspath(config_path)),
         "spec_hash": spec_hash,
-        "armed_at": datetime.now(timezone.utc).isoformat(),
         "version": _CURRENT_VERSION,
     }
     data = json.dumps(record, indent=2, sort_keys=True)

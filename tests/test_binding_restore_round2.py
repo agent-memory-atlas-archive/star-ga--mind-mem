@@ -318,3 +318,18 @@ class TestRollbackNeedsAnAppliedReceipt:
         _append_later_block(applied_ws)
         assert rollback(applied_ws, ts) is False
         assert _later_survives(applied_ws)
+
+
+class TestArmingRecordIsDeterministic:
+    def test_two_inits_write_byte_identical_arming_records(self, tmp_path: Path) -> None:
+        from mind_mem.spec_binding import arming_record_paths
+
+        blobs = []
+        for name in ("a", "b"):
+            ws = str(tmp_path / name)
+            init(ws)
+            try:
+                blobs.append([Path(p).read_bytes() for p in arming_record_paths(config_path_for(ws), ws)])
+            finally:
+                evict_gate(ws)
+        assert blobs[0] and blobs[0] == blobs[1], "no clock in the arming record"

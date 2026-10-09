@@ -5,8 +5,8 @@
 > Re-generate with: `anatomy .`
 
 **Project:** `mind-mem`
-**Files:** 1691 | **Est. tokens:** ~4,948,967
-**Generated:** 2026-10-09 00:44 UTC
+**Files:** 1691 | **Est. tokens:** ~4,949,144
+**Generated:** 2026-10-09 01:18 UTC
 
 ## Token Budget Guide
 
@@ -78,7 +78,7 @@
 | `skills/mind-mem/` | 1 | ~1,671 |
 | `skills/mind-mem/references/` | 6 | ~18,811 |
 | `src/` | 1 | ~280 |
-| `src/mind_mem/` | 242 | ~1,079,531 |
+| `src/mind_mem/` | 242 | ~1,079,567 |
 | `src/mind_mem/api/` | 5 | ~27,259 |
 | `src/mind_mem/bench/` | 17 | ~48,632 |
 | `src/mind_mem/compliance/` | 7 | ~15,436 |
@@ -93,7 +93,7 @@
 | `src/mind_mem/tool_output/` | 3 | ~5,895 |
 | `src/mind_mem/v4/` | 24 | ~96,311 |
 | `src/mind_mem/viewer_static/` | 3 | ~865 |
-| `tests/` | 752 | ~2,205,052 |
+| `tests/` | 752 | ~2,205,193 |
 | `tests/fixtures/` | 7 | ~11,912 |
 | `tests/fixtures/importers/` | 5 | ~1,218 |
 | `tests/fixtures/importers/agent_memory/` | 4 | ~383 |
@@ -1066,7 +1066,7 @@
 
 - `smart_chunker.py` (~7592 tok, huge) — mind-mem Smart Chunker — Semantic-boundary document chunking.
 - `smoke_test.sh` (~633 tok, large) — mind-mem Smoke Test — end-to-end verification
-- `spec_binding.py` (~3992 tok, huge) — # Copyright 2026 STARGA, Inc.
+- `spec_binding.py` (~4028 tok, huge) — # Copyright 2026 STARGA, Inc.
 ### `src/mind_mem/spec/`
 
 - `export_asyncapi.py` (~3887 tok, huge) — # Copyright 2026 STARGA, Inc.
@@ -1301,7 +1301,7 @@
 - `test_bench_hybrid_dispatch.py` (~6303 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_bigrams.py` (~168 tok, small) — Tests for bigram extraction."""
 - `test_binding_restore_integrity.py` (~3931 tok, huge) — # Copyright 2026 STARGA, Inc.
-- `test_binding_restore_round2.py` (~3684 tok, huge) — # Copyright 2026 STARGA, Inc.
+- `test_binding_restore_round2.py` (~3825 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_bitemporal_edge_validity.py` (~2524 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_block_id_format.py` (~345 tok, medium) — Tests for block ID format validation."""
 - `test_block_lineage.py` (~2303 tok, huge) — Tests for the v3.11.0 typed block-lineage graph (Pattern 3)."""
