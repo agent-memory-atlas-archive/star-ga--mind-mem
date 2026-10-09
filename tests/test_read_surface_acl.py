@@ -376,15 +376,15 @@ def test_scan_and_contradictions_tools_follow_the_same_acl(ws: Path) -> None:
 def test_namespace_acl_configured_predicate(tmp_path: Path) -> None:
     assert read_authz.namespace_acl_configured(str(tmp_path)) is False  # no file
     acl = tmp_path / "mind-mem-acl.json"
-    acl.write_text(json.dumps({"default_policy": "read", "agents": {}}))
+    acl.write_text(json.dumps({"default_policy": "read", "agents": {}}), encoding="utf-8")
     assert read_authz.namespace_acl_configured(str(tmp_path)) is False
-    acl.write_text(json.dumps({"default_policy": "deny"}))
+    acl.write_text(json.dumps({"default_policy": "deny"}), encoding="utf-8")
     assert read_authz.namespace_acl_configured(str(tmp_path)) is True
-    acl.write_text(json.dumps({"agents": {"a": {"read": ["shared"]}}}))
+    acl.write_text(json.dumps({"agents": {"a": {"read": ["shared"]}}}), encoding="utf-8")
     assert read_authz.namespace_acl_configured(str(tmp_path)) is True
-    acl.write_text("{ not json")
+    acl.write_text("{ not json", encoding="utf-8")
     assert read_authz.namespace_acl_configured(str(tmp_path)) is True  # cannot tell -> restricted
-    acl.write_text("[]")
+    acl.write_text("[]", encoding="utf-8")
     assert read_authz.namespace_acl_configured(str(tmp_path)) is True
 
 
