@@ -297,13 +297,23 @@ _QUADRATIC = [
 ]
 
 
-@pytest.mark.parametrize(("a", "b"), _QUADRATIC)
-def test_linear_time(a, b):
+def _compare_seconds(a: str, b: str) -> float:
     start = time.perf_counter()
     slots_differ(a, b)
     changed_fact(a, b)
     find_merge_candidates([{"_id": "A", "excerpt": a}, {"_id": "B", "excerpt": b}], min_similarity=0.0)
-    assert time.perf_counter() - start < 3.0
+    return time.perf_counter() - start
+
+
+@pytest.mark.parametrize(("a", "b"), _QUADRATIC)
+def test_linear_time(a, b):
+    # Linearity is the property: doubling the input must not much more than double the time.
+    # A wall-clock budget alone fails on a loaded host; the ratio does not. The absolute cap
+    # still catches a pathological constant.
+    half = _compare_seconds(a[: len(a) // 2], b[: len(b) // 2])
+    full = _compare_seconds(a, b)
+    assert full < 30.0
+    assert full <= 3.0 * half + 0.25, f"doubling the input took {full:.2f}s vs {half:.2f}s: super-linear"
 
 
 def test_end_to_end_contradiction_check(tmp_path: Path):

@@ -142,6 +142,14 @@ _ZONE_ABBR = frozenset("utc gmt pt pst pdt et est edt ct cst cdt mt mst mdt hst 
 #: phrase ("timezone is Arizona").
 _ZONE_NAMES = frozenset("pacific eastern central mountain arizona hawaii alaska".split())
 _ZONE_CONTEXT = frozenset({"time", "tz", "timezone", "zone"})
+#: Spellings of one US zone ("PT" == "Pacific" == "PST"/"PDT" as people write them).
+_ZONE_CANON = {
+    **{z: "pacific" for z in ("pt", "pst", "pdt", "pacific")},
+    **{z: "eastern" for z in ("et", "est", "edt", "eastern")},
+    **{z: "central" for z in ("ct", "cst", "cdt", "central")},
+    **{z: "mountain" for z in ("mt", "mst", "mdt", "mountain")},
+    **{z: "arizona" for z in ("az", "arizona")},
+}
 _RELATIVE = frozenset("today tomorrow yesterday tonight morning afternoon evening weekend".split())
 _PERIOD_AFTER = frozenset({"next", "this", "last", "every", "following"})
 _PERIODS = frozenset({"week", "month", "year", "weekend"})
@@ -161,7 +169,10 @@ _SCHEDULING = frozenset(
     "moved move moves moving rescheduled reschedule postponed delayed pushed slipped shifted bumped "
     "due deadline scheduled starts start begins ends launch launches".split()
 )
-_MOVE_WORDS = frozenset("moved move moving changed change switched rescheduled postponed delayed pushed shifted bumped slipped".split())
+_MOVE_WORDS = frozenset(
+    "moved move moving changed change switched rescheduled postponed delayed pushed shifted bumped slipped "
+    "went goes go increased decreased raised lowered rose fell grew dropped cut reduced extended shortened upped".split()
+)
 _SPAN_OF = frozenset({"end", "start", "beginning", "middle", "mid", "rest", "first", "last"})
 _QUARTER_PREV = frozenset("in by to until till before after during through from since".split())
 #: Nouns whose following date-shaped token is an identifier ("Invoice 2026-10-08", "Ticket 10/8").
@@ -174,12 +185,17 @@ _ID_NOUNS = frozenset(
 _LABEL_PREV = frozenset({"project", "operation", "codename", "club", "team"})
 _ID_GLUE = frozenset({"-", "_", "#", ".", "/"})
 _ID_SKIP = frozenset({"is", "was", ":", "=", "no", "number", "#"})
+#: Identifier nouns that are also verbs: an identifier only at the start or after a determiner ("Run 12", "the run 12").
+_VERB_OR_ID = frozenset({"run", "build", "order", "release", "tag", "commit"})
+_ID_DETERMINERS = frozenset("the a an this that each every last next our your their ci test job nightly per #".split())
 _YEAR_PREV = frozenset("in since by until till from to before after during".split())
 # Correction/function words dropped from both cores anywhere.
 _CORRECTION = frozenset(
     "moved move moving now instead rescheduled reschedule scheduled changed change switched postponed delayed pushed "
     "slipped slip slips shifted bumped up back got get it is was are were am has have had been be will would do does did "
-    "of and but correction actually update updated again starting as the a an with rather than anymore".split()
+    "of and but correction actually update updated again starting as the a an with rather than anymore "
+    "went goes increased decreased raised lowered rose fell grew dropped reduced extended shortened upped "
+    "we they i you he she us them our their my your".split()
 )
 # Prepositions dropped only when a when-value follows ("to Thursday" yes, "to Denver" no).
 _VALUE_PREPOSITIONS = frozenset(
@@ -228,6 +244,12 @@ _MERIDIEM_FORMS = (
     (("pm",), "pm"),
 )
 _NUMBER_WORDS = {w: i for i, w in enumerate("zero one two three four five six seven eight nine ten eleven twelve".split())}
+_NUMBER_WORDS.update({w: 13 + i for i, w in enumerate("thirteen fourteen fifteen sixteen seventeen eighteen nineteen".split())})
+_TENS = {w: 20 + 10 * i for i, w in enumerate("twenty thirty forty fifty sixty seventy eighty ninety".split())}
+_NUMBER_WORDS.update(_TENS)
+_COMPOUND_NUMBER = re.compile(
+    r"\b(twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety)-(one|two|three|four|five|six|seven|eight|nine)\b", re.IGNORECASE
+)
 #: Words that may follow a bare hour ("at 10 on Tuesday", "at ten sharp"); any
 #: other word means the number is not a time ("at 10 Downing Street").
 _CLOCK_FOLLOWERS = frozenset("on in at for every each daily sharp and or tomorrow today tonight then until till before after".split())
@@ -816,6 +838,7 @@ def _compare_tokens_cased(text: str) -> tuple[list[str], list[bool]]:
     text = re.sub(r"(?<=\d)[–—](?=\d)", "-", text)  # "5–10%" == "5-10%"
     text = _SPACED_THOUSANDS.sub(lambda m: m.group(1) + re.sub(r"\D", "", m.group(2)) + m.group(3), text)  # "40 000" == "40000"
     text = _PT_WEEKDAY.sub(lambda m: _PT_DAYS[m.group(1).casefold()], text)  # "terça-feira" == "tuesday"
+    text = _COMPOUND_NUMBER.sub(lambda m: str(_TENS[m.group(1).casefold()] + _NUMBER_WORDS[m.group(2).casefold()]), text)
     orig = _signed_tokens(_cjk_spaced(_ascii_digits(unicodedata.normalize("NFKC", text))))
     raw = [t.casefold() for t in orig]
     out: list[str] = []
@@ -1076,6 +1099,9 @@ def _zone_phrase_before(toks: list[str], i: int) -> bool:
     return any(toks[k] in _ZONE_CONTEXT for k in range(max(0, i - 5), i))  # "timezone for reports is UTC"
 
 
+#: Words before a bare weekday abbreviation that make it a date ("review is Tue", "Meet Sat").
+_ABBR_DAY_PREV = frozenset("is are was were be meet meeting meets see until till by due every on moved moves".split())
+
 #: Words before "<Day> at <clock>" that make the day a person's name ("Lunch with Sun at noon", "Ask Wed at 5").
 _DAY_AT_NOT_PREV = frozenset("with ask tell call thank thanks dear hi hello cc ping email text".split())
 
@@ -1112,6 +1138,8 @@ def _id_context(toks: list[str], i: int) -> bool:
     k = i - 1
     while k >= 0 and toks[k] in _ID_SKIP and i - k <= 3:
         k -= 1
+    if k >= 0 and toks[k] in _VERB_OR_ID and not (k == 0 or toks[k - 1] in _ID_DETERMINERS):
+        return False  # "We run 1.3.2": the verb, not "run 12"
     return k >= 0 and (toks[k] in _ID_NOUNS or prev in _ID_NOUNS)
 
 
@@ -1146,12 +1174,17 @@ _VERSION_VERBS = frozenset(
 )
 
 
+#: Words that make a glued "30s" a duration in seconds rather than a decade.
+_SECONDS_CUES = frozenset(
+    "timeout ttl latency delay interval every after wait waits takes took lasts expiry expires retry backoff poll".split()
+)
+
 #: Words before a glued "14h" that make it a clock, not a duration ("à 14h", "um 14h", "at 14h").
 _H_CLOCK_PREV = frozenset("at à a las um om alle às kl klo kello ore vers dès gegen o".split())
 
 _TEMP_CUES = frozenset(
     "thermostat temperature temp degrees heat heating cool cooling freezer fridge oven warm cold celsius fahrenheit "
-    "room ac hvac indoor outdoor weather forecast".split()
+    "room ac hvac indoor outdoor weather forecast setpoint set-point heat".split()
 )
 _DURATION_CUES = frozenset(
     "lasts last takes take took duration long for every runs run within after in about "
@@ -1222,13 +1255,28 @@ _COUNT_NOUNS = frozenset("people persons staff children men women employees".spl
 #: name or label ("Route 66 runs", "UA 10.30 departs") is an identifier, not a count.
 _COUNT_PREV = frozenset(
     "has have had having of with needs need needed hire hires hired hiring are is was were be "
-    "about around approximately only just exactly employs employ employed total totals to from by".split()
+    "about around approximately only just exactly employs employ employed total totals to from by "
+    "approved approve approves added add adds onboarded hired hire budgeted staffed".split()
 )
 
 
 def _counted_noun(tok: str) -> bool:
     """A plural noun after a number ("7 engineers", "2 cores", "50 people"): a count of it."""
     return tok in _COUNT_NOUNS or (_plural_noun(tok) and tok not in _MEASURE_UNITS and tok not in _DURATION_UNITS)
+
+
+def _numval(t: str) -> str:
+    """'ten' -> '10', '5,000' -> '5000'."""
+    return str(_NUMBER_WORDS[t]) if t in _NUMBER_WORDS else _canon_num(t)
+
+
+_MAGNITUDE_SCALE = {"k": 1_000, "m": 1_000_000, "b": 1_000_000_000, "bn": 1_000_000_000}
+
+
+def _scaled(num: str, mag: str) -> str:
+    """'5', 'k' -> '5000'; '2.5', 'm' -> '2500000' (exact)."""
+    value = Decimal(num.replace(",", ".")) * _MAGNITUDE_SCALE[mag]
+    return str(value.to_integral_value()) if value == value.to_integral_value() else str(value.normalize())
 
 
 def _year_like(t: str) -> bool:
@@ -1342,7 +1390,13 @@ def _value_at(toks: list[str], i: int, titled: list[bool] | None = None, schedul
         return f"d{y}-{int(mth)}-{int(d)}"  # "31.12.2026" == "2026-12-31"
     if _id_context(toks, i) and (_SEMVER.match(t) or _DOT_ISO.match(t) or _VERSION.match(t)):
         return None  # "section 1.2.3", "Ticket 2026.10.09": identifiers
-    if (_VERSION.match(t) or _SEMVER.match(t) or _DECIMAL_TOKEN.match(t)) and prev in ("version", "release", "v", "build") and i <= 2:
+    verb_first = i >= 2 and toks[i - 2] in _VERSION_VERBS
+    if (
+        (_VERSION.match(t) or _SEMVER.match(t) or _DECIMAL_TOKEN.match(t))
+        and prev in ("version", "release", "v", "build")
+        and i <= 2
+        and not verb_first
+    ):
         return None  # "Release 10.8 is out": the version names the subject, not a changed value
     unit_next = nxt in _DURATION_UNITS or nxt in _CURRENCY_WORDS or nxt in ("%", "°", "degrees", "percent")
     money_near = nxt in _CURRENCY or nxt in _CURRENCY_CODES or nxt in _CURRENCY_WORDS or prev in _CURRENCY or prev in _CURRENCY_CODES
@@ -1356,13 +1410,16 @@ def _value_at(toks: list[str], i: int, titled: list[bool] | None = None, schedul
         return f"v:{t.lstrip('v')}{suffix}"  # "v1.3", "1.2.3"
     if _DECIMAL_TOKEN.match(t) and i > 0 and not unit_next and _version_object(toks, i):
         return f"v:{t}"  # "Use Python 3.12", "runs version 2.1"
-    if t[:1].isdigit() and _id_context(toks, i):
-        return None  # "INV-10%": part of an identifier
+    if t[:1].isdigit() and _id_context(toks, i) and nxt not in _MEASURE_UNITS and nxt not in _DURATION_UNITS:
+        return None  # "INV-10%": part of an identifier; "The run is 5 km" keeps its distance
     sign = "-" if (prev in ("-", "−") and (i < 2 or not toks[i - 2].isalnum())) else ""
     num = bool(_NUMBER_TOKEN.match(t)) or t in _NUMBER_WORDS
     hour_h = _HOUR_H.match(t)
     if hour_h and int(hour_h.group(1)) <= 23 and (prev in _H_CLOCK_PREV or _EQUIV.get(prev, prev) in _WEEKDAYS):
         return _canon_clock(int(hour_h.group(1)), 0, None, twenty_four=True)  # "à 14h", "um 14h", "mardi 14h"
+    secs = re.match(r"^(\d+(?:\.\d+)?)s$", t)
+    if secs and any(w in _SECONDS_CUES for w in toks[max(0, i - _CLAUSE_WINDOW) : i + 3]):
+        return f"q:{_canon_num(secs.group(1))}s"  # "Timeout is 30s" (not "the 30s")
     measured = _MEASURE_GLUED.match(t)
     if measured and not _id_context(toks, i):
         return f"q:{_canon_num(measured.group(1))}{_MEASURE_UNITS.get(measured.group(2), measured.group(2))}"  # "120ms", "500GB"
@@ -1387,7 +1444,9 @@ def _value_at(toks: list[str], i: int, titled: list[bool] | None = None, schedul
             return f"r:{t}:{unit}"  # the lower bound of "-5 to 5 degrees"
     mag = _MAGNITUDE.match(t)
     if mag and (prev in _CURRENCY or prev in _CURRENCY_CODES):
-        return f"m:{prev}{mag.group(1)}{mag.group(2)}"  # "$5k"
+        return f"m:{prev}{_scaled(mag.group(1), mag.group(2))}"  # "$5k" == "$5,000"
+    if num and nxt == "grand":
+        return f"m:${_scaled(_numval(t), 'k')}"  # "5 grand" == "$5,000"
     if num and (nxt in _CURRENCY or nxt in _CURRENCY_CODES):
         neg = "-" if (prev in ("-", "−")) else ""
         return f"m:{nxt}{neg}{_canon_num(t, nxt, postfix=True)}"  # "12 USD", "10€", "500円"
@@ -1396,7 +1455,7 @@ def _value_at(toks: list[str], i: int, titled: list[bool] | None = None, schedul
     if num and prev in _CURRENCY and i >= 2 and toks[i - 2] in ("-", "−"):
         return f"m:{prev}-{_canon_num(t)}"  # "-$50"
     if num and (nxt in _PERCENT_WORDS or (nxt == "per" and i + 2 < n and toks[i + 2] == "cent")):
-        return f"p:{sign}{_canon_num(t)}"
+        return f"p:{sign}{_numval(t)}"  # "ten percent" == "10%"
     if num and nxt in ("°", "degrees", "°c", "°f", "deg"):
         scale = toks[i + 2] if nxt == "°" and i + 2 < n and toks[i + 2] in ("c", "f") else ""
         return f"deg:{sign}{_canon_num(t)}{scale}"  # "21°C" != "21°F"
@@ -1408,8 +1467,10 @@ def _value_at(toks: list[str], i: int, titled: list[bool] | None = None, schedul
         return f"q:{_canon_num(t)}{_RATE_NOUNS.get(nxt, _stem(nxt))}/{_RATE_PER[toks[i + 3]]}"  # "10 messages per minute"
     if num and nxt in _RATE_NOUNS and i + 3 < n and toks[i + 2] == "/" and toks[i + 3] in _RATE_PER:
         return f"q:{_canon_num(t)}{_RATE_NOUNS[nxt]}/{_RATE_PER[toks[i + 3]]}"  # "100 req/s" != "100 req/min"
-    if num and nxt in _MEASURE_UNITS and not _id_context(toks, i):
-        return f"q:{_canon_num(t)}{_MEASURE_UNITS[nxt]}"  # "500 GB", "2.5 kg", "200 ms"
+    if num and nxt in _MEASURE_UNITS and prev not in _ID_NOUNS:
+        return f"q:{_numval(t)}{_MEASURE_UNITS[nxt]}"  # "500 GB", "2.5 kg", "200 ms", "5 km"
+    if num and nxt in ("f", "c") and any(w in _TEMP_CUES for w in toks[max(0, i - _CLAUSE_WINDOW) : i + 3]):
+        return f"deg:{sign}{_canon_num(t)}{nxt}"  # "72 F"
     if num and nxt in _CJK_COUNTERS:
         return f"c:{_canon_num(t)}{nxt}"  # "12명", "1.5万人"
     count_and = prev == "and" and i >= 3 and _counted_noun(toks[i - 2]) and _NUMBER_TOKEN.match(toks[i - 3]) is not None
@@ -1418,6 +1479,17 @@ def _value_at(toks: list[str], i: int, titled: list[bool] | None = None, schedul
     if num and nxt == "%":
         return f"p:{sign}{_canon_num(t)}"  # "12%", "-5%"
     rng = _NUMBER_RANGE.match(t)
+    if rng and not rng.group(3):
+        lo, hi = _canon_num(rng.group(1)), _canon_num(rng.group(2))
+        if nxt in _MEASURE_UNITS:
+            return f"q:{lo}-{hi}{_MEASURE_UNITS[nxt]}"
+        if nxt in _DURATION_UNITS:
+            return f"q:{lo}-{hi}{_DURATION_UNITS[nxt]}"
+        if nxt in ("°", "degrees"):
+            scale = toks[i + 2] if nxt == "°" and i + 2 < n and toks[i + 2] in ("c", "f") else ""
+            return f"deg:{lo}-{hi}{scale}"
+        if _counted_noun(nxt) and prev in _COUNT_PREV:
+            return f"q:{lo}-{hi}{_stem(nxt)}"  # "band is 10-12 people", not "Locker 5-10 belongs"
     if rng:
         cur = (
             _CURRENCY_WORDS.get(nxt)
@@ -1431,7 +1503,10 @@ def _value_at(toks: list[str], i: int, titled: list[bool] | None = None, schedul
         return f"p:{t}"  # "5-10%"
     if _DAY_RANGE.match(t) and (prev in _MONTHS or prev in _MONTH_ABBR or nxt in _MONTHS or nxt in _MONTH_ABBR):
         return "r" + t  # "9-10 Oct"
-    if _is_digits(t) and len(t) <= 3 and i > 0 and titled[i - 1] and toks[i - 1].isalpha() and _version_object(toks, i):
+    product_before = (i > 0 and titled[i - 1] and toks[i - 1].isalpha()) or (
+        prev == "to" and i >= 2 and titled[i - 2] and toks[i - 2].isalpha()
+    )
+    if _is_digits(t) and len(t) <= 3 and product_before and _version_object(toks, i):
         return f"v:{t}"  # "CI uses Node 20", "requires Java 17": a major version named after the product
     if t in _WEEKDAYS or (t in _EQUIV and _EQUIV[t] in _WEEKDAYS and t not in _WEEKDAY_ABBR):
         day = _EQUIV.get(t, t)
@@ -1439,7 +1514,7 @@ def _value_at(toks: list[str], i: int, titled: list[bool] | None = None, schedul
             return f"{prev}-{day}"  # "next Tuesday", "first Monday", "every other Tuesday"
         return day
     if t in _WEEKDAY_ABBR:
-        return _EQUIV[t] if _date_context(toks, i, scheduling) else None
+        return _EQUIV[t] if (_date_context(toks, i, scheduling) or prev in _ABBR_DAY_PREV) else None
     if t in _MONTHS or t in _MONTH_ABBR:
         return _EQUIV.get(t, t) if _date_context(toks, i, scheduling) else None
     if _ISO_DATE.match(t) and "t" not in t:
@@ -1448,18 +1523,24 @@ def _value_at(toks: list[str], i: int, titled: list[bool] | None = None, schedul
     if _DOT_ISO.match(t):
         y, mth, d = t.split(".")
         return None if _id_context(toks, i) else f"d{int(y)}-{int(mth)}-{int(d)}"
+    slash = re.match(r"^(\d{1,2})/(\d{1,2})/(\d{4})$", t)
+    if slash and not _id_context(toks, i):
+        a, b, y = int(slash.group(1)), int(slash.group(2)), int(slash.group(3))
+        mth, day = (b, a) if a > 12 else (a, b)  # month-first unless the first part cannot be a month
+        if 1 <= mth <= 12 and 1 <= day <= 31:
+            return f"d{y}-{mth}-{day}"
     if _ISO_DATE.match(t) or _SLASH_DATE.match(t) or _DOT_DATE.match(t):
         return None if _id_context(toks, i) else "d" + t
     if t in _ZONE_ABBR:
         in_zone = prev == "in" and len(t) >= 3  # "Ilona is in CET"
-        return t if (_near_clock(toks, i) or nxt in _ZONE_CONTEXT or _zone_phrase_before(toks, i) or in_zone) else None
+        return _ZONE_CANON.get(t, t) if (_near_clock(toks, i) or nxt in _ZONE_CONTEXT or _zone_phrase_before(toks, i) or in_zone) else None
     if t in _ZONE_NAMES or t in _ZONE_ABBR:
         if nxt == "time" and i + 3 < n and toks[i + 2] == "to" and toks[i + 3] == "time":
             return None  # "from Arizona time to time": the idiom, not a zone
     if t in _ZONE_NAMES:
         if i + 1 < n and titled[i + 1] and nxt.isalpha() and not _time_word(nxt) and nxt not in _ZONE_CONTEXT:
             return None  # "6am Pacific Surfliner": part of a proper name
-        return t if (_zone_name_by_clock(toks, i) or nxt in _ZONE_CONTEXT or _zone_phrase_before(toks, i)) else None
+        return _ZONE_CANON.get(t, t) if (_zone_name_by_clock(toks, i) or nxt in _ZONE_CONTEXT or _zone_phrase_before(toks, i)) else None
     if t in _PERIODS and prev in _PERIOD_AFTER:
         return prev + "-" + t
     if _is_digits(t) and len(t) == 4 and 1900 <= int(t) <= 2099 and (prev in _YEAR_PREV or prev in _MONTHS or prev in _MONTH_ABBR):
@@ -1518,7 +1599,7 @@ def fact_slots(text: str) -> FactSlots:
 
     def prev_word(i: int) -> int:
         k = i - 1
-        while k >= 0 and toks[k] in ("the", "a", "an", "on", "at", "in"):
+        while k >= 0 and (toks[k] in ("the", "a", "an", "on", "at", "in") or toks[k] in _CURRENCY or toks[k] in _CURRENCY_CODES):
             k -= 1
         return k
 
@@ -1583,7 +1664,18 @@ def fact_slots(text: str) -> FactSlots:
     names = tuple(
         t for t, cap in zip(toks, titled) if cap and t.isalpha() and t not in _WEEKDAYS and t not in _MONTHS and t not in _ZONE_NAMES
     )
-    return FactSlots(core=tuple(sorted(core)), values=frozenset(values), negations=negations, names=names)
+    return FactSlots(core=tuple(sorted(core)), values=frozenset(_full_dates(values)), negations=negations, names=names)
+
+
+def _full_dates(values: set[str]) -> set[str]:
+    """One month + one day + one year ("1 April 2026") is the same value as the ISO date."""
+    months = [v for v in values if v in _MONTHS]
+    days = [v for v in values if v.startswith("n") and v[1:].isdigit()]
+    years = [v for v in values if v.startswith("y") and v[1:].isdigit()]
+    if len(months) == 1 and len(days) == 1 and len(years) == 1:
+        iso = f"d{years[0][1:]}-{_MONTH_NAMES.index(months[0]) + 1}-{int(days[0][1:])}"
+        return (values - {months[0], days[0], years[0]}) | {iso}
+    return values
 
 
 def _resolve_ambiguous(slots: FactSlots, other: frozenset[str]) -> FactSlots:

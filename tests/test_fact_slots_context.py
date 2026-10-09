@@ -750,9 +750,15 @@ def test_round9_not_changes(new: str, old: str) -> None:
 def test_context_checks_stay_linear(text: str) -> None:
     import time
 
-    start = time.perf_counter()
-    changed_fact(text, text + " x")
-    assert time.perf_counter() - start < 3.0
+    def seconds(t: str) -> float:
+        start = time.perf_counter()
+        changed_fact(t, t + " x")
+        return time.perf_counter() - start
+
+    half = seconds(text[: len(text) // 2])
+    full = seconds(text)
+    assert full < 30.0
+    assert full <= 3.0 * half + 0.25, f"doubling the input took {full:.2f}s vs {half:.2f}s: super-linear"
 
 
 @pytest.mark.parametrize("superseder", [{"_id": "D-9", "Supersedes": "C"}, {"_id": "D-9", "Supersedes": "C", "content": "x"}])
@@ -830,3 +836,55 @@ def test_cjk_ten_thousands_never_overflow(digits: int) -> None:
     text = "予算は" + "9" * digits + "万円です。"
     fact_slots(text)
     changed_fact(text, text.replace("予算", "費用"))
+
+
+@pytest.mark.parametrize(
+    "old,new",
+    [
+        ("EOD note: ship review is Tue.", "EOD note: ship review is Thu."),
+        ("Meet Tues.", "Meet Thurs."),
+        ("We pushed the review from Mon to Wed.", "The review is on Mon."),
+        ("The price changed from $19 to $29.", "The price is $19."),
+        ("The stipend went from $2k to $3k.", "The stipend is $2k."),
+        ("The budget is 5 grand.", "The budget is 8 grand."),
+        ("The discount is thirteen percent.", "The discount is fourteen percent."),
+        ("The run is 5 km.", "The run is 8 km."),
+        ("The run is 5 km.", "The run is 5 mi."),
+        ("Timeout is 30s.", "Timeout is 45s."),
+        ("Set the thermostat to 72 F.", "Set the thermostat to 68 F."),
+        ("Setpoint is 21C.", "setpoint is 23C"),
+        ("We pinned Postgres to 15.", "We pinned Postgres to 16."),
+        ("Install version 3.1.0.", "Install version 3.2.0."),
+        ("We run 1.3.2.", "We now run 1.4.0, not 1.3.2."),
+        ("We run 1.2.4 in prod.", "we now run 1.2.5 in prod"),
+        ("The SLA is 100-200 ms.", "The SLA is 100-300 ms."),
+        ("The temperature range is 68-72°F.", "The temperature range is 65-72°F."),
+        ("Headcount band is 10-12 people.", "Headcount band is 10-15 people."),
+        ("The approved range is 3-5 days.", "The approved range is 3-8 days."),
+        ("Minutes: approved 10 contractors.", "Minutes: approved 14 contractors."),
+        ("We have thirteen engineers.", "We have fourteen engineers."),
+        ("We have twenty engineers.", "We have twenty-one engineers."),
+    ],
+)
+def test_round11_changes(old: str, new: str) -> None:
+    assert changed_fact(new, old) is True
+
+
+@pytest.mark.parametrize(
+    "old,new",
+    [
+        ("The call is at 10am PT.", "The call is at 10am Pacific."),
+        ("The call is at 10am ET.", "The call is at 10am Eastern."),
+        ("The demo is Thu at 4pm ET.", "The demo is Thursday at 4:00 PM Eastern."),
+        ("The report is due on 10/09/2026.", "The report is due on 2026-10-09."),
+        ("Ship target is 2026-04-01.", "Ship target is 1 April 2026."),
+        ("The budget is $5,000.", "The budget is $5k."),
+        ("The budget is $2,500,000.", "The budget is $2.5m."),
+        ("Travel cap is 3000 dollars.", "Travel cap is $3k."),
+        ("The discount is 10%.", "The discount is ten percent."),
+        ("Locker 5-10 belongs to Ilona", "Locker 5-12 belongs to Ilona"),
+        ("Run 12 failed", "Run 14 failed"),
+    ],
+)
+def test_round11_not_changes(old: str, new: str) -> None:
+    assert changed_fact(new, old) is False
