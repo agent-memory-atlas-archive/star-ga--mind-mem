@@ -5,8 +5,8 @@
 > Re-generate with: `anatomy .`
 
 **Project:** `mind-mem`
-**Files:** 1695 | **Est. tokens:** ~4,958,091
-**Generated:** 2026-10-09 01:35 UTC
+**Files:** 1697 | **Est. tokens:** ~4,964,486
+**Generated:** 2026-10-09 02:29 UTC
 
 ## Token Budget Guide
 
@@ -78,14 +78,14 @@
 | `skills/mind-mem/` | 1 | ~1,671 |
 | `skills/mind-mem/references/` | 6 | ~18,811 |
 | `src/` | 1 | ~280 |
-| `src/mind_mem/` | 242 | ~1,079,567 |
+| `src/mind_mem/` | 242 | ~1,081,007 |
 | `src/mind_mem/api/` | 5 | ~27,259 |
 | `src/mind_mem/bench/` | 17 | ~48,632 |
 | `src/mind_mem/compliance/` | 7 | ~15,436 |
 | `src/mind_mem/importers/` | 10 | ~34,469 |
 | `src/mind_mem/mcp/` | 3 | ~6,672 |
 | `src/mind_mem/mcp/infra/` | 8 | ~16,195 |
-| `src/mind_mem/mcp/tools/` | 29 | ~125,497 |
+| `src/mind_mem/mcp/tools/` | 29 | ~125,684 |
 | `src/mind_mem/skill_opt/` | 11 | ~20,899 |
 | `src/mind_mem/spec/` | 4 | ~6,845 |
 | `src/mind_mem/storage/` | 2 | ~11,712 |
@@ -93,7 +93,7 @@
 | `src/mind_mem/tool_output/` | 3 | ~5,895 |
 | `src/mind_mem/v4/` | 24 | ~96,311 |
 | `src/mind_mem/viewer_static/` | 3 | ~865 |
-| `tests/` | 756 | ~2,214,140 |
+| `tests/` | 758 | ~2,218,908 |
 | `tests/fixtures/` | 7 | ~11,912 |
 | `tests/fixtures/importers/` | 5 | ~1,218 |
 | `tests/fixtures/importers/agent_memory/` | 4 | ~383 |
@@ -740,7 +740,7 @@
 - `abstention_classifier.py` (~3261 tok, huge) — Deterministic adversarial abstention classifier for Mind-Mem.
 - `accountability_dashboard.py` (~6670 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `accountability_views.py` (~10307 tok, huge) — # Copyright 2026 STARGA, Inc.
-- `admissibility.py` (~6440 tok, huge) — What recall is allowed to serve — the servability allow-list.
+- `admissibility.py` (~6855 tok, huge) — What recall is allowed to serve — the servability allow-list.
 - `admission.py` (~13245 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `agent_bridge.py` (~5340 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `agent_messaging.py` (~2877 tok, huge) — # Copyright 2026 STARGA, Inc.
@@ -842,9 +842,9 @@
 - `cross_ledger.py` (~7869 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `daemon.py` (~3623 tok, huge) — Background daemon — `mm daemon` (v3.9.0 candidate).
 - `data_marking.py` (~1133 tok, large) — # Copyright 2026 STARGA, Inc.
-- `dead_ends.py` (~3855 tok, huge) — # Copyright 2026 STARGA, Inc.
+- `dead_ends.py` (~3972 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `dedup.py` (~4593 tok, huge) — mind-mem 4-layer deduplication filter for search results.
-- `dream_cycle.py` (~15033 tok, huge) — mind-mem Dream Cycle — autonomous memory enrichment. Zero external deps.
+- `dream_cycle.py` (~15513 tok, huge) — mind-mem Dream Cycle — autonomous memory enrichment. Zero external deps.
 - `drift_detector.py` (~5752 tok, huge) — mind-mem Semantic Belief Drift Detection.
 - `edge_grounded_answer.py` (~6356 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `encryption.py` (~8391 tok, huge) — mind-mem Encryption at Rest — optional authenticated encryption for blocks.
@@ -872,7 +872,7 @@
 - `graph_recall.py` (~4634 tok, huge) — Multi-hop graph traversal for recall (v3.3.0 Tier 1 #2).
 - `graph_schema.py` (~2082 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `guardrail_patterns.py` (~1463 tok, large) — # Copyright 2026 STARGA, Inc.
-- `guardrails.py` (~5942 tok, huge) — # Copyright 2026 STARGA, Inc.
+- `guardrails.py` (~6254 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `guardrail_surface.py` (~1704 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `hash_chain_v2.py` (~11016 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `hook_installer.py` (~11417 tok, huge) — # Copyright 2026 STARGA, Inc.
@@ -939,8 +939,8 @@
 - `benchmark.py` (~2387 tok, huge) — Benchmark + category-summary MCP tools.
 - `calibration.py` (~2915 tok, huge) — Calibration MCP tools — feedback (quality) + outcome attribution (utility).
 - `chat.py` (~1130 tok, large) — Chat surface — grounded question answering over the workspace.
-- `consolidation.py` (~7500 tok, huge) — Memory-consolidation MCP tools.
-- `core.py` (~2862 tok, huge) — Context-core MCP tools — ``.mmcore`` bundle lifecycle.
+- `consolidation.py` (~7653 tok, huge) — Memory-consolidation MCP tools.
+- `core.py` (~2896 tok, huge) — Context-core MCP tools — ``.mmcore`` bundle lifecycle.
 - `encryption.py` (~2670 tok, huge) — At-rest encryption MCP tools — ``encrypt_file`` / ``decrypt_file``.
 - `frames.py` (~2034 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `governance.py` (~16068 tok, huge) — Governance MCP tools — propose / apply / rollback / scan / contradictions / memory_evolution.
@@ -1084,7 +1084,7 @@
 ### `src/mind_mem/`
 
 - `streaming.py` (~6278 tok, huge) — Rate-limited front gate for the ingest webhook (v3.3.0, wired 5.0.1).
-- `task_frames.py` (~3571 tok, huge) — # Copyright 2026 STARGA, Inc.
+- `task_frames.py` (~3687 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `_task_status_literals.sh` (~118 tok, small) — AUTO-GENERATED — do not edit by hand.
 - `telemetry.py` (~3174 tok, huge) — mind-mem Telemetry — OpenTelemetry traces + Prometheus metrics.
 ### `src/mind_mem/templates/`
@@ -1258,6 +1258,7 @@
 - `test_active_only_filter.py` (~312 tok, medium) — Tests for active_only recall filter."""
 - `test_adjacent_public_acl.py` (~3611 tok, huge) — ACL controls for public retrieval doors beside the ranked recall tool."""
 - `test_admissibility_unreadable_status.py` (~1104 tok, large) — An unreadable ``Status`` must be withheld on the stale-index path too.
+- `test_admission_routing_read_legs.py` (~2957 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_admission_seam.py` (~12891 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_admit_proposal_openers.py` (~3596 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_adversarial_corpus.py` (~2329 tok, huge) — # Copyright 2026 STARGA, Inc.
@@ -1528,7 +1529,7 @@
 - `test_indexed_filter_metadata.py` (~1879 tok, huge) — Real SQLite/public-path coverage for compound recall filters."""
 - `test_indexed_namespace_acl.py` (~3227 tok, huge) — Namespace ACLs must guard indexed recall before any result processing."""
 - `test_indexed_source_admission.py` (~1124 tok, large) — # Copyright 2026 STARGA, Inc.
-- `test_indexed_source_hash_admission.py` (~598 tok, large) — # Copyright 2026 STARGA, Inc.
+- `test_indexed_source_hash_admission.py` (~636 tok, large) — # Copyright 2026 STARGA, Inc.
 - `test_indexed_source_status_overlay.py` (~471 tok, medium) — # Copyright 2026 STARGA, Inc.
 - `test_indexed_validity_topk.py` (~2073 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_index_stats_b1.py` (~523 tok, large) — # Copyright 2026 STARGA, Inc.
@@ -1753,7 +1754,7 @@
 - `test_recall_filter_pushdown.py` (~5733 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_recall_filters_reach_the_surface.py` (~1901 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_recall_format_cache_isolation.py` (~1682 tok, huge) — ``format`` is not in the recall-cache key, so it must not be applied inside it.
-- `test_recall_hot_path_5_0_2.py` (~4311 tok, huge) — # Copyright 2026 STARGA, Inc.
+- `test_recall_hot_path_5_0_2.py` (~4348 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_recall_intent_router.py` (~1212 tok, large) — Tests for IntentRouter integration in recall pipeline."""
 - `test_recall_large_workspace.py` (~343 tok, medium) — Tests for recall with large workspaces."""
 - `test_recall_limit.py` (~395 tok, medium) — Tests for recall limit parameter behavior."""
@@ -1890,6 +1891,7 @@
 - `test_spend_approval_consumer.py` (~2487 tok, huge) — Controls for the approval parser and the RunPod launch boundary."""
 - `test_sqlite_handle_close_tool_output_hnsw.py` (~2197 tok, huge) — Every SQLite connection ``tool_output/store.py`` opens must be CLOSED before
 - `test_sqlite_index_backends.py` (~2781 tok, huge) — Backend-parity regression tests for ``sqlite_index`` (audit bugs 4, 9, 13, 14).
+- `test_sqlite_index_edit_detection.py` (~1736 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_sqlite_index.py` (~5547 tok, huge) — Tests for sqlite_index.py — SQLite FTS5 index for mind-mem recall."""
 - `test_stopwords.py` (~247 tok, medium) — Tests for stopword handling."""
 - `test_storage_factory.py` (~3280 tok, huge) — Tests for mind_mem.storage.get_block_store factory (v3.2.0)."""

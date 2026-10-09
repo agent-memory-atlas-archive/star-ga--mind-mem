@@ -640,28 +640,40 @@ def project_profile(name: str = "", top_k: int = 10) -> str:
         conn = _sqlite3.connect(f"file:{db_path}?mode=ro", uri=True, timeout=30.0)
         conn.row_factory = _sqlite3.Row
         try:
-            rows = conn.execute("SELECT id, type, file, date, json_blob FROM blocks LIMIT 50000").fetchall()
-            for r in rows:
-                entry: dict[str, Any] = {
-                    "_id": r["id"],
-                    "type": r["type"],
-                    "file": r["file"],
-                    "date": r["date"],
-                }
-                try:
-                    raw = json.loads(r["json_blob"] or "{}")
-                except (json.JSONDecodeError, TypeError, ValueError):
-                    raw = {}
-                if isinstance(raw, dict):
-                    for key in ("text", "statement", "excerpt", "content"):
-                        if key in raw:
-                            entry[key] = raw[key]
-                    for key in ("entities", "mentions"):
-                        if key in raw:
-                            entry[key] = raw[key]
-                blocks.append(entry)
+            rows = conn.execute("SELECT id, type, file, date, status, json_blob FROM blocks LIMIT 50000").fetchall()
         finally:
             conn.close()
+        # ADMISSION GATE. Selecting rows is not admitting them: this unbound
+        # path mined QUARANTINED / PENDING block text into a USER-scope
+        # tool's output. The cached ``status`` column is refreshed from the
+        # corpus when the index is stale, then the shared filter decides.
+        from mind_mem.admissibility import admit_workspace_blocks, live_statuses, with_live_statuses
+
+        candidates = with_live_statuses(
+            [{"_id": r["id"], "Status": r["status"], "_row": r} for r in rows],
+            live_statuses(ws),
+            status_key="Status",
+        )
+        for admitted in admit_workspace_blocks(candidates, workspace=ws):
+            r = admitted["_row"]
+            entry: dict[str, Any] = {
+                "_id": r["id"],
+                "type": r["type"],
+                "file": r["file"],
+                "date": r["date"],
+            }
+            try:
+                raw = json.loads(r["json_blob"] or "{}")
+            except (json.JSONDecodeError, TypeError, ValueError):
+                raw = {}
+            if isinstance(raw, dict):
+                for key in ("text", "statement", "excerpt", "content"):
+                    if key in raw:
+                        entry[key] = raw[key]
+                for key in ("entities", "mentions"):
+                    if key in raw:
+                        entry[key] = raw[key]
+            blocks.append(entry)
     else:
         _log.warning("consolidation_index_missing", tool="project_profile", path=db_path)
 

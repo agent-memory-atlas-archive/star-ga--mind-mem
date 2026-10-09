@@ -79,7 +79,9 @@ def build_core(namespace: str, version: str, filename: str = "") -> str:
     try:
         from mind_mem.sqlite_index import merkle_leaves as _leaves
 
-        for bid, content_hash in _leaves(ws):
+        # A bundle ships what recall may serve, never the withheld rows the
+        # integrity anchor also covers.
+        for bid, content_hash in _leaves(ws, admitted_only=True):
             blocks.append({"_id": bid, "content_hash": content_hash})
     except (ImportError, AttributeError):
         pass

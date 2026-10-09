@@ -28,6 +28,7 @@ import os
 import re
 import sqlite3
 import threading
+import time
 from datetime import date, datetime
 
 from ._recall_constants import _STOPWORDS
@@ -399,7 +400,10 @@ def _init_schema(conn: sqlite3.Connection) -> None:
             mtime    REAL NOT NULL,
             mtime_ns INTEGER,
             size     INTEGER NOT NULL,
-            hash     TEXT NOT NULL
+            hash     TEXT NOT NULL,
+            ctime_ns INTEGER,
+            ino      INTEGER,
+            observed_ns INTEGER
         );
 
         CREATE TABLE IF NOT EXISTS meta (
@@ -492,6 +496,19 @@ def _init_schema(conn: sqlite3.Connection) -> None:
     except sqlite3.OperationalError:
         pass  # Column already exists
 
+    # Edit-detection migration: ``(size, mtime_ns)`` cannot see a same-size
+    # rewrite whose mtime was put back, nor one that landed in the tick the
+    # index observed the file in. ``ctime_ns`` + ``ino`` catch the first (the
+    # kernel stamps ctime on every write and ``utime`` cannot set it back; an
+    # atomic replace changes the inode); ``observed_ns`` scopes a content
+    # hash to files racily close to their observation. Legacy NULL rows are
+    # reported changed once, so the next build records the coordinate.
+    for column in ("ctime_ns", "ino", "observed_ns"):
+        try:
+            conn.execute(f"ALTER TABLE file_state ADD COLUMN {column} INTEGER")  # nosec B608 — fixed column names
+        except sqlite3.OperationalError:
+            pass  # Column already exists
+
     # Secondary indexes for common query patterns
     conn.execute("CREATE INDEX IF NOT EXISTS idx_blocks_parent_id ON blocks(parent_id)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_blocks_file ON blocks(file)")
@@ -505,6 +522,14 @@ def _init_schema(conn: sqlite3.Connection) -> None:
 
 
 _FILE_HASH_CHUNK = 1 << 20  # 1 MiB
+
+#: A file whose last change is within this window of the moment the index
+#: observed it is "racily clean": a further write in the same timestamp tick
+#: would leave size, mtime and ctime identical, so only its content can say
+#: whether it changed. Two seconds covers the coarsest common timestamp
+#: granularity (FAT); on ext4/xfs the tick is milliseconds. Only racy files
+#: are hashed on the query path.
+_RACY_WINDOW_NS = 2_000_000_000
 
 
 def _file_hash(path: str) -> str:
@@ -567,12 +592,14 @@ def _get_changed_files(
     the full hash made it linear in corpus BYTES (10.6 ms on 24 MB, ~20% of
     an indexed query — see :func:`_file_hash`).
 
-    RESIDUAL, stated rather than hidden. With ``verify_hash=False`` a file
-    rewritten in place that preserves BOTH its byte size and its
-    *nanosecond* mtime is reported unchanged. It is still caught by the
-    next build (which hashes), so the index cannot end up permanently
-    wrong; what the query path loses is only the ability to notice that
-    one class of edit before the next reindex.
+    RESIDUAL, closed. ``verify_hash=False`` used to report a same-size
+    rewrite that kept its nanosecond mtime as unchanged until the next
+    build. The row now also records ``ctime_ns`` and the inode (which a
+    restored mtime or an atomic replace cannot hide) and the moment the
+    file was observed; a file whose last change is within
+    :data:`_RACY_WINDOW_NS` of that moment — where a same-tick write could
+    leave every coordinate identical — is content-hashed even here. Files
+    outside the window, i.e. the steady state, are still never hashed.
 
     Discovery is :func:`~mind_mem.corpus_registry.discover_corpus_files`
     (I-14): the corpus table PLUS every ``.md`` directly inside a corpus
@@ -603,7 +630,7 @@ def _get_changed_files(
 
         stat = os.stat(full_path)
         row = conn.execute(
-            "SELECT mtime, mtime_ns, size, hash FROM file_state WHERE path = ?",
+            "SELECT mtime, mtime_ns, size, hash, ctime_ns, ino, observed_ns FROM file_state WHERE path = ?",
             (rel_path,),
         ).fetchone()
 
@@ -628,11 +655,24 @@ def _get_changed_files(
             changed.append((label, rel_path))
             continue
 
-        # Same size + same nanosecond mtime — verify the full hash to
-        # catch in-place edits that kept the metadata stable. Skipped on
-        # the query path, which is the only reason this branch was linear
-        # in corpus bytes on a corpus where nothing changed.
-        if not verify_hash:
+        # Same size + same mtime. ``ctime`` and the inode still move on a
+        # rewrite whose mtime was restored, or on an atomic replace; a row
+        # that predates these columns cannot vouch for the file at all.
+        if row["ctime_ns"] is None or row["ino"] is None or row["observed_ns"] is None:
+            changed.append((label, rel_path))
+            continue
+        if stat.st_ctime_ns != row["ctime_ns"] or stat.st_ino != row["ino"]:
+            changed.append((label, rel_path))
+            continue
+
+        # Every coordinate matches. That proves nothing for a file whose
+        # last change is racily close to the moment the index observed it:
+        # a write in the same timestamp tick leaves size, mtime and ctime
+        # all identical. Only such a file is content-hashed on the query
+        # path, so the steady state (files older than the window) hashes
+        # nothing — the cost the query path was rid of stays gone.
+        racy = max(stat.st_mtime_ns, stat.st_ctime_ns) + _RACY_WINDOW_NS >= row["observed_ns"]
+        if not verify_hash and not racy:
             continue
         current_hash = _file_hash(full_path)
         if current_hash != row["hash"]:
@@ -676,9 +716,12 @@ def _update_file_state(conn: sqlite3.Connection, workspace: str, rel_path: str) 
 
     stat = os.stat(full_path)
     h = _file_hash(full_path)
+    # Observed AFTER the hash: an edit that lands while hashing has an mtime
+    # inside the racy window of this instant, so the query path re-hashes it.
+    observed_ns = time.time_ns()
     conn.execute(
-        "INSERT OR REPLACE INTO file_state (path, mtime, mtime_ns, size, hash) VALUES (?, ?, ?, ?, ?)",
-        (rel_path, stat.st_mtime, stat.st_mtime_ns, stat.st_size, h),
+        "INSERT OR REPLACE INTO file_state (path, mtime, mtime_ns, size, hash, ctime_ns, ino, observed_ns) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        (rel_path, stat.st_mtime, stat.st_mtime_ns, stat.st_size, h, stat.st_ctime_ns, stat.st_ino, observed_ns),
     )
 
 
@@ -2396,8 +2439,16 @@ def is_stale(workspace: str, *, verify_hash: bool = False) -> bool:
         return True
 
 
-def merkle_leaves(workspace: str) -> list[tuple[str, str]]:
+def merkle_leaves(workspace: str, *, admitted_only: bool = False) -> list[tuple[str, str]]:
     """Return (block_id, content_hash) tuples for Merkle tree construction.
+
+    *admitted_only* is for a caller that SHIPS the leaf set rather than
+    attesting it — ``build_core`` packs these ids into a portable bundle.
+    The integrity anchor (the default) covers every indexed block, withheld
+    ones included, so it does not churn on a release; a bundle must carry
+    only what recall may serve, so its rows go through the shared admission
+    filter on the LIVE status (the index column is a cache that can be
+    stale in the fail-open direction — see ``admissibility.live_statuses``).
 
     Used by :func:`mcp_server.verify_merkle` and the standalone
     ``mind-mem-verify`` CLI. Leaves are sorted by block_id so two calls
@@ -2424,19 +2475,22 @@ def merkle_leaves(workspace: str) -> list[tuple[str, str]]:
             return []
         rows = conn.execute(
             """
-            SELECT im.block_id AS block_id, im.content_hash AS content_hash
+            SELECT im.block_id AS block_id, im.content_hash AS content_hash, b.status AS status
             FROM index_meta im
             JOIN blocks b ON b.id = im.block_id
             WHERE im.content_hash IS NOT NULL AND im.content_hash != ''
             ORDER BY im.block_id
             """
         ).fetchall()
+        admitted: set[str] | None = None
+        if admitted_only:
+            admitted = _admitted_leaf_ids(workspace, [(r["block_id"], r["status"]) for r in rows])
         # De-dupe when the same block_id appears in multiple files.
         seen: set[str] = set()
         leaves: list[tuple[str, str]] = []
         for r in rows:
             bid = r["block_id"]
-            if bid in seen:
+            if bid in seen or (admitted is not None and bid not in admitted):
                 continue
             seen.add(bid)
             leaves.append((bid, r["content_hash"]))
@@ -2444,6 +2498,19 @@ def merkle_leaves(workspace: str) -> list[tuple[str, str]]:
     finally:
         if conn is not None:
             conn.close()
+
+
+def _admitted_leaf_ids(workspace: str, pairs: list[tuple[str, str]]) -> set[str]:
+    """Ids among ``(block_id, cached status)`` *pairs* the shared filter admits.
+
+    The cached ``status`` column is refreshed from the corpus when the index
+    is stale, then the whole decision — allow-list, governed releases,
+    revoked credentials — is :func:`admissibility.admit_workspace_blocks`'s.
+    """
+    from .admissibility import admit_workspace_blocks, live_statuses, with_live_statuses
+
+    rows = with_live_statuses([{"_id": bid, "Status": status} for bid, status in pairs], live_statuses(workspace), status_key="Status")
+    return {str(row["_id"]) for row in admit_workspace_blocks(rows, workspace=workspace)}
 
 
 def _indexed_block_counts(conn: sqlite3.Connection, workspace: str) -> tuple[int, int]:
