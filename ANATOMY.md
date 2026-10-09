@@ -5,8 +5,8 @@
 > Re-generate with: `anatomy .`
 
 **Project:** `mind-mem`
-**Files:** 1698 | **Est. tokens:** ~4,969,956
-**Generated:** 2026-10-09 04:11 UTC
+**Files:** 1699 | **Est. tokens:** ~4,979,828
+**Generated:** 2026-10-09 04:12 UTC
 
 ## Token Budget Guide
 
@@ -35,7 +35,7 @@
 | `deploy/docker/` | 1 | ~824 |
 | `deploy/edge/` | 2 | ~1,149 |
 | `deploy/grafana/` | 1 | ~1,145 |
-| `docs/` | 95 | ~216,167 |
+| `docs/` | 95 | ~220,356 |
 | `docs/adr/` | 2 | ~521 |
 | `docs/advisories/` | 1 | ~834 |
 | `docs/audit/` | 1 | ~4,973 |
@@ -62,7 +62,7 @@
 | `lib/` | 1 | ~2,451 |
 | `mind/` | 27 | ~9,634 |
 | `.roo/` | 1 | ~22 |
-| `scripts/` | 24 | ~80,756 |
+| `scripts/` | 24 | ~82,843 |
 | `sdk/go/` | 11 | ~9,920 |
 | `sdk/go/testdata/contract/` | 6 | ~675 |
 | `sdk/js/` | 6 | ~4,864 |
@@ -78,14 +78,14 @@
 | `skills/mind-mem/` | 1 | ~1,671 |
 | `skills/mind-mem/references/` | 6 | ~18,811 |
 | `src/` | 1 | ~280 |
-| `src/mind_mem/` | 242 | ~1,081,911 |
+| `src/mind_mem/` | 242 | ~1,082,469 |
 | `src/mind_mem/api/` | 5 | ~27,259 |
 | `src/mind_mem/bench/` | 17 | ~48,632 |
 | `src/mind_mem/compliance/` | 7 | ~15,436 |
 | `src/mind_mem/importers/` | 10 | ~34,469 |
 | `src/mind_mem/mcp/` | 3 | ~6,672 |
 | `src/mind_mem/mcp/infra/` | 8 | ~16,195 |
-| `src/mind_mem/mcp/tools/` | 29 | ~126,782 |
+| `src/mind_mem/mcp/tools/` | 29 | ~126,821 |
 | `src/mind_mem/skill_opt/` | 11 | ~20,899 |
 | `src/mind_mem/spec/` | 4 | ~6,845 |
 | `src/mind_mem/storage/` | 2 | ~11,712 |
@@ -93,7 +93,7 @@
 | `src/mind_mem/tool_output/` | 3 | ~5,895 |
 | `src/mind_mem/v4/` | 24 | ~96,311 |
 | `src/mind_mem/viewer_static/` | 3 | ~865 |
-| `tests/` | 759 | ~2,222,376 |
+| `tests/` | 760 | ~2,225,375 |
 | `tests/fixtures/` | 7 | ~11,912 |
 | `tests/fixtures/importers/` | 5 | ~1,218 |
 | `tests/fixtures/importers/agent_memory/` | 4 | ~383 |
@@ -293,7 +293,7 @@
 - `agent-comm.md` (~1251 tok, large) — Agent-to-agent messaging (`mm send` / `mm inbox`)
 - `AGENTIC-MEMORY-SOTA.md` (~1675 tok, huge) — mind-mem → SOTA Agentic Memory (v4.5.0+ design brief)
 - `agent-memory-protocol.md` (~700 tok, large) — Agent Memory Protocol — canonical system-prompt snippet
-- `api-reference.md` (~3361 tok, huge) — API Reference
+- `api-reference.md` (~7542 tok, huge) — API Reference
 - `append-only-audit-logs.md` (~1626 tok, huge) — Append-Only Audit Logs — Operator Runbook
 - `architecture.md` (~3506 tok, huge) — Architecture
 ### `docs/audit/`
@@ -452,7 +452,7 @@
 - `migration.md` (~2761 tok, huge) — Migration Guide: mem-os to MIND-Mem
 - `MIND_CONFIG_VS_MIND_LANG.md` (~743 tok, large) — Pipeline configuration and MIND language sources
 - `mind-kernels.md` (~398 tok, medium) — MIND Kernels
-- `mind-mem-4b-setup.md` (~3193 tok, huge) — Setting up the mind-mem-4b model
+- `mind-mem-4b-setup.md` (~3199 tok, huge) — Setting up the mind-mem-4b model
 - `mind-mem-4b-training-runbook.md` (~3586 tok, huge) — mind-mem-4b training runbook (post-v3.10.2 lessons)
 - `mind-mem-4b-v2-training-recipe.md` (~2636 tok, huge) — mind-mem 4B full fine-tune — Qwen3.8-4B preparation plan
 - `odc-retrieval.md` (~834 tok, large) — Observer-Dependent Cognition in MIND-Mem
@@ -504,7 +504,7 @@
 - `testing-guide.md` (~391 tok, medium) — Testing Guide
 - `tool-output-architecture.md` (~2067 tok, huge) — Tool-output offload — architecture
 - `trajectory-memory.md` (~1346 tok, large) — Trajectory memory
-- `troubleshooting.md` (~809 tok, large) — Troubleshooting
+- `troubleshooting.md` (~811 tok, large) — Troubleshooting
 - `usage.md` (~2927 tok, huge) — Usage
 - `v3.11.0-implementation-plan.md` (~1609 tok, huge) — v3.11.0 Implementation Plan — synthesis from cross-model review
 - `v3.11.0-mind-mem-4b-retrain-plan.md` (~1529 tok, huge) — mind-mem-4b v3.11.0 Retrain Plan
@@ -627,11 +627,11 @@
 - `check_ci_green.py` (~5240 tok, huge) — Release gate: CI must have concluded success for the EXACT commit being released.
 - `check_claims.sh` (~385 tok, medium) — Cross-repo docs-claim regression gate (mind-mem side).
 - `check_code_scanning_alerts.py` (~5185 tok, huge) — Release gate: zero open code-scanning alerts, AND proof the scanner actually ran.
-- `check_docs_alignment.py` (~17092 tok, huge) — Recompute every counted doc claim from its authority and fail on drift.
+- `check_docs_alignment.py` (~17242 tok, huge) — Recompute every counted doc claim from its authority and fail on drift.
 - `check_index_absence.py` (~2246 tok, huge) — Release gate: the version being released must not exist on the index in ANY state.
 - `check_reachable_modules.py` (~5034 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `check_roadmap_ticks.py` (~4387 tok, huge) — # Copyright 2026 STARGA, Inc.
-- `check_tool_surface.py` (~2214 tok, huge) — Reachability, applied to the MCP tool surface.
+- `check_tool_surface.py` (~4151 tok, huge) — Reachability, applied to the MCP tool surface.
 - `count_mcp_tools.py` (~5819 tok, huge) — Count registered MCP tools and assert the count matches CLAUDE.md.
 - `docs-alignment-hook.sh` (~454 tok, medium) — docs-alignment-hook.sh — Git pre-commit step to refresh derived doc counts.
 - `gen_skill_cli_reference.py` (~2937 tok, huge) — # Copyright 2026 STARGA, Inc.
@@ -737,7 +737,7 @@
 - `mcp_server.py` (~280 tok, medium) — Wheel-level compatibility module for `mind_mem.mcp_server`.
 ### `src/mind_mem/`
 
-- `abstention_classifier.py` (~3261 tok, huge) — Deterministic adversarial abstention classifier for Mind-Mem.
+- `abstention_classifier.py` (~3315 tok, huge) — Deterministic adversarial abstention classifier for Mind-Mem.
 - `accountability_dashboard.py` (~6670 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `accountability_views.py` (~10307 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `admissibility.py` (~6855 tok, huge) — What recall is allowed to serve — the servability allow-list.
@@ -927,7 +927,7 @@
 - `resources.py` (~3242 tok, huge) — MCP ``@mcp.resource`` declarations.
 ### `src/mind_mem/`
 
-- `mcp_server.py` (~1877 tok, huge) — Mind-Mem MCP Server — public facade (v3.2.0 §1.2 PR-final shim).
+- `mcp_server.py` (~2381 tok, huge) — Mind-Mem MCP Server — public facade (v3.2.0 §1.2 PR-final shim).
 ### `src/mind_mem/mcp/`
 
 - `server.py` (~3215 tok, huge) — FastMCP instance + ``main()`` entry point for the Mind-Mem MCP server.
@@ -947,7 +947,7 @@
 - `graph.py` (~8747 tok, huge) — Knowledge-graph + causal-graph MCP tools.
 - `guardrails.py` (~1835 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `_helpers.py` (~1412 tok, large) — Shared tool-internal helpers — workspace paths + lazy-init singletons.
-- `__init__.py` (~107 tok, small) — Per-domain ``@mcp.tool`` modules (v3.2.0 §1.2 PR-3+).
+- `__init__.py` (~146 tok, small) — Per-domain ``@mcp.tool`` modules (v3.2.0 §1.2 PR-3+).
 - `kernels.py` (~1902 tok, huge) — MIND kernel + compiled-truth MCP tools.
 - `lineage.py` (~725 tok, large) — MCP wrapping for the v3.11.0 typed block-lineage graph (Pattern 3).
 - `lint.py` (~1511 tok, huge) — # Copyright 2026 STARGA, Inc.
@@ -1917,6 +1917,7 @@
 - `test_token_rotation.py` (~2724 tok, huge) — Regression tests for the token rotation primitive (roadmap v4.0.x).
 - `test_tool_output_postgres_backend.py` (~1615 tok, huge) — ``ToolOutputStore`` on the Postgres backend the module advertises.
 - `test_tool_output.py` (~2168 tok, huge) — Tests for mind_mem.tool_output — the context-offload store (§5).
+- `test_tool_registry_alignment.py` (~2999 tok, huge) — The MCP tool registry, its re-exports, and the docs that describe it agree.
 - `test_tracking_online_trainer_wiring.py` (~1519 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_tracking_wiring.py` (~8018 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_train_corpus_cli.py` (~549 tok, large) — Corpus CLI inspection and bad arguments must never regenerate training data.
