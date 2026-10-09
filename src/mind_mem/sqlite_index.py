@@ -22,6 +22,9 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import atexit
+import contextlib
+import functools
 import hashlib
 import json
 import os
@@ -29,12 +32,15 @@ import re
 import sqlite3
 import threading
 import time
+from collections.abc import Iterator
 from datetime import date, datetime
+from typing import Any
 
 from ._recall_constants import _STOPWORDS
 from .admissibility import is_admissible_status, workspace_release_ids
 from .block_parser import canonical_day, parse_file
 from .block_provenance import PROVENANCE_FIELD_NAMES
+from ._conn_lease import ConnLeases
 from .connection_manager import ConnectionManager
 from .corpus_registry import corpus_label_for, discover_corpus_files
 from .enums import TaskStatus
@@ -270,20 +276,33 @@ _conn_managers: dict[str, ConnectionManager] = {}
 _conn_managers_lock = threading.Lock()
 
 
-def _evict_conn_managers_locked() -> None:
-    """Close and drop least-recently-used managers past the bound.
+_leases = ConnLeases()
+_pinned = threading.local()
 
-    Caller must hold ``_conn_managers_lock``. Closing is best-effort for the
-    same reason the stale-file path is: a manager whose backing file is gone
-    can raise on close, and that must not block the eviction it is part of.
+
+def _evict_conn_managers_locked() -> list[ConnectionManager]:
+    """Drop least-recently-used managers past the bound and return them.
+
+    Caller must hold ``_conn_managers_lock`` and, after releasing it, pass each
+    victim to ``_leases.close_or_retire`` (which defers the close of a manager
+    that is mid-query rather than closing it under the running statement).
     """
+    victims: list[ConnectionManager] = []
     while len(_conn_managers) > _CONN_MANAGER_CACHE_MAX:
-        _path = next(iter(_conn_managers))
-        victim = _conn_managers.pop(_path)
-        try:
-            victim.close()
-        except Exception:  # nosec B110 - eviction must not be blocked by a dying manager
-            _log.warning("conn_manager_evict_close_failed", db_path=_path)
+        victims.append(_conn_managers.pop(next(iter(_conn_managers))))
+    return victims
+
+
+def close_all_conn_managers() -> None:
+    """Close and drop every cached manager (teardown / atexit)."""
+    with _conn_managers_lock:
+        victims = list(_conn_managers.values())
+        _conn_managers.clear()
+    for mgr in victims:
+        _leases.close_or_retire(mgr)
+
+
+atexit.register(close_all_conn_managers)
 
 
 # Per-thread re-entrancy guard for query_index.  When the index file is
@@ -310,6 +329,10 @@ def _get_conn_manager(workspace: str) -> ConnectionManager:
     """
     path = _db_path(workspace)
     os.makedirs(os.path.dirname(path), exist_ok=True)
+    pinned = getattr(_pinned, "mgrs", {}).get(path)
+    if pinned is not None and os.path.isfile(path):
+        return pinned  # this thread holds a lease on it; do not swap it mid-query
+    stale: list[ConnectionManager] = []
     with _conn_managers_lock:
         mgr = _conn_managers.get(path)
         if mgr is not None and not os.path.isfile(path):
@@ -320,19 +343,8 @@ def _get_conn_manager(workspace: str) -> ConnectionManager:
             # thread-local connection to the now-unlinked inode is harmless
             # (the manager is removed from the cache, so no new caller can
             # reach it, and the OS reclaims the inode once those fds close).
-            try:
-                mgr.close()
-            except Exception:  # nosec B110 — see rationale below.
-                # Best-effort close of a stale ``ConnectionManager`` whose
-                # backing DB file has already been unlinked (workspace was
-                # deleted between runs). Any failure here is non-fatal:
-                # the manager is dropped from the cache on the next line,
-                # so no caller can reach the dead manager again, and the
-                # OS reclaims fds + inode once existing thread-local
-                # connections close. Re-raising would block the legitimate
-                # fresh-manager creation in the common "workspace rebuilt"
-                # path. Audited 2026-05-19 for alert #191.
-                pass
+            # (Retired, not closed outright, if a query is still using it.)
+            stale.append(mgr)
             mgr = None
         if mgr is None:
             mgr = ConnectionManager(path)
@@ -342,8 +354,35 @@ def _get_conn_manager(workspace: str) -> ConnectionManager:
             # the genuinely cold entries rather than whichever was created
             # first.
             _conn_managers[path] = _conn_managers.pop(path)
-        _evict_conn_managers_locked()
+        stale.extend(_evict_conn_managers_locked())
+    for victim in stale:
+        _leases.close_or_retire(victim)
     return mgr
+
+
+@contextlib.contextmanager
+def leased_conn_manager(workspace: str) -> Iterator[ConnectionManager]:
+    """Yield the workspace's manager, guaranteed not to be closed until exit.
+
+    Use this around any raw ``get_read_connection()`` work: an LRU eviction
+    that lands mid-query is deferred to the end of the block instead of
+    closing the handle under the running statement (a C-layer use-after-free).
+    """
+    mgr = _get_conn_manager(workspace)
+    path = mgr.db_path
+    with _leases.leased(mgr):
+        pins = getattr(_pinned, "mgrs", None)
+        if pins is None:
+            pins = _pinned.mgrs = {}
+        prev = pins.get(path)
+        pins[path] = mgr
+        try:
+            yield mgr
+        finally:
+            if prev is None:
+                pins.pop(path, None)
+            else:
+                pins[path] = prev
 
 
 # Core index tables whose presence indicates the FTS schema has been built.
@@ -1579,7 +1618,7 @@ def _aggregate_facts_to_parents(
 # ---------------------------------------------------------------------------
 
 
-def query_index(
+def _query_index_impl(
     workspace: str,
     query: str,
     limit: int = 10,
@@ -2062,6 +2101,14 @@ def query_index(
     )
     metrics.inc("index_queries")
     return top
+
+
+@functools.wraps(_query_index_impl)
+def query_index(workspace: str, *args: Any, **kwargs: Any) -> list[dict]:
+    # Lease the workspace's manager for the whole query so an LRU eviction on
+    # another thread cannot close the raw read connection under it.
+    with leased_conn_manager(workspace):
+        return _query_index_impl(workspace, *args, **kwargs)
 
 
 #: How much wider the FTS fetch goes when the caller still holds a filter this

@@ -57,6 +57,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any
 
+from ._conn_lease import ConnLeases
 from .connection_manager import ConnectionManager
 from .observability import get_logger, metrics
 from .outcome_attribution import (
@@ -227,39 +228,19 @@ _conn_managers: dict[str, ConnectionManager] = {}
 _conn_managers_lock = threading.Lock()
 
 
-def _close_quietly(mgr: ConnectionManager, path: str) -> None:
-    try:
-        mgr.close()
-    except Exception:  # nosec B110 - eviction/teardown must not be blocked by a dying manager
-        _log.warning("calibration_conn_close_failed", db_path=path)
-
-
-# Managers with an in-flight CalibrationManager call. Closing a sqlite3 handle
-# while a statement runs on it is a use-after-free that SEGFAULTS the
-# interpreter (measured with a thread race on this module), and the raw
-# read connections handed out here carry no lock close() could wait on.
-# So an evicted manager that is mid-call is only RETIRED; the last call to
-# finish closes it.
-_leases: dict[ConnectionManager, int] = {}
-_retired: set[ConnectionManager] = set()
-
-
-def _lease(mgr: ConnectionManager) -> None:
+def _close_all_conn_managers() -> None:
+    """Close and drop every cached manager (teardown / atexit)."""
     with _conn_managers_lock:
-        _leases[mgr] = _leases.get(mgr, 0) + 1
+        victims = list(_conn_managers.values())
+        _conn_managers.clear()
+    for mgr in victims:
+        _leases.close_or_retire(mgr)
 
 
-def _release(mgr: ConnectionManager) -> None:
-    with _conn_managers_lock:
-        left = _leases.get(mgr, 1) - 1
-        if left > 0:
-            _leases[mgr] = left
-            return
-        _leases.pop(mgr, None)
-        close_now = mgr in _retired
-        _retired.discard(mgr)
-    if close_now:
-        _close_quietly(mgr, mgr.db_path)
+atexit.register(_close_all_conn_managers)
+
+# In-flight protection shared with sqlite_index; see _conn_lease.
+_leases = ConnLeases()
 
 
 def _leased(fn: Any) -> Any:
@@ -267,50 +248,26 @@ def _leased(fn: Any) -> Any:
 
     @functools.wraps(fn)
     def wrapper(self: "CalibrationManager", *args: Any, **kwargs: Any) -> Any:
-        mgr = self._mgr
-        _lease(mgr)
-        try:
+        with _leases.leased(self._mgr):
             return fn(self, *args, **kwargs)
-        finally:
-            _release(mgr)
 
     return wrapper
-
-
-def _close_all_conn_managers() -> None:
-    """Close and drop every cached manager (teardown / atexit)."""
-    with _conn_managers_lock:
-        victims = [(p, m) for p, m in _conn_managers.items() if m not in _leases]
-        for _p, m in _conn_managers.items():
-            if m in _leases:
-                _retired.add(m)
-        _conn_managers.clear()
-    for path, mgr in victims:
-        _close_quietly(mgr, path)
-
-
-atexit.register(_close_all_conn_managers)
 
 
 def _get_conn_manager(workspace: str) -> ConnectionManager:
     """Return a shared ConnectionManager for the workspace DB."""
     path = _db_path(workspace)
     os.makedirs(os.path.dirname(path), exist_ok=True)
-    victims: list[tuple[str, ConnectionManager]] = []
+    victims: list[ConnectionManager] = []
     with _conn_managers_lock:
         mgr = _conn_managers.pop(path, None)
         if mgr is None:
             mgr = ConnectionManager(path)
         _conn_managers[path] = mgr  # most-recently-used goes last
         while len(_conn_managers) > _CONN_MANAGER_CACHE_MAX:
-            old = next(iter(_conn_managers))
-            victim = _conn_managers.pop(old)
-            if victim in _leases:
-                _retired.add(victim)
-            else:
-                victims.append((old, victim))
-    for old_path, victim in victims:
-        _close_quietly(victim, old_path)
+            victims.append(_conn_managers.pop(next(iter(_conn_managers))))
+    for victim in victims:
+        _leases.close_or_retire(victim)
     return mgr
 
 
