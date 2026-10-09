@@ -43,12 +43,24 @@ marker block. Returns `{agent, path, written, skipped, reason}`.
 
 #### `install_mcp_config(agent: str, workspace: str, *, force: bool = False, dry_run: bool = False) -> dict`
 **(New in v3.1.0)** Write the native MCP server entry for `agent` into
-its MCP config file. Supports 12 MCP-aware clients: `codex` /
-`grok-build` / `vibe` (TOML), `gemini` / `cursor` / `continue` /
-`cline` / `roo` / `windsurf` / `copilot-cli` (JSON `mcpServers`),
-`zed` (JSON `context_servers`). Returns
-`{agent, path, written, merged, skipped, reason}`. Skipped with
-`reason="no_mcp_format"` for clients that don't speak MCP.
+its MCP config file. Supports 41 MCP-aware clients across TOML
+(`[mcp_servers.mind-mem]`, `[[mcp_servers]]`), YAML (Goose `extensions`,
+Hermes `mcp_servers`, Continue `mcpServers` list)
+and JSON dialects (`mcpServers`, VS Code `servers`, Zed `context_servers`,
+OpenClaw `mcp.servers`, Amp `"amp.mcpServers"`, OpenCode-style `mcp`); the
+per-client table is in `docs/client-integrations.md`. Only the mind-mem entry
+changes; further documented locations that exist are written too and returned
+under `also`. Returns `{agent, path, written, merged, skipped, reason}`.
+Skipped with `reason="agent does not support native MCP"` for clients
+without MCP, and `reason="manual setup required"` (steps in `content`) for
+clients whose MCP list lives in their UI.
+
+#### `uninstall_mcp_config(agent: str, workspace: str, *, dry_run: bool = False) -> dict`
+Remove only the `mind-mem` entry from `agent`'s MCP config file(s); other
+servers and settings are kept and a changed file is backed up first. Returns
+`{agent, path, written, removed, reason}`. `uninstall_all(workspace, *,
+agents=None, dry_run=False)` applies it to every detected or named client
+(CLI: `mm uninstall-all`).
 
 #### `install_all(workspace: str, *, agents: list[str] | None = None, include_mcp: bool = True, force: bool = False, dry_run: bool = False) -> list[dict]`
 **(Updated in v3.1.0)** Install configs for every detected agent. When

@@ -5,8 +5,8 @@
 > Re-generate with: `anatomy .`
 
 **Project:** `mind-mem`
-**Files:** 1732 | **Est. tokens:** ~5,114,992
-**Generated:** 2026-10-09 12:16 UTC
+**Files:** 1741 | **Est. tokens:** ~5,150,131
+**Generated:** 2026-10-09 14:07 UTC
 
 ## Token Budget Guide
 
@@ -22,7 +22,7 @@
 
 | Directory | Files | Est. tokens |
 |-----------|-------|-------------|
-| `./` | 37 | ~74,405 |
+| `./` | 37 | ~75,510 |
 | `.agents/skills/mind-mem-development/` | 1 | ~456 |
 | `.arch-mind/` | 7 | ~5,887 |
 | `audits/` | 5 | ~24,039 |
@@ -35,7 +35,7 @@
 | `deploy/docker/` | 1 | ~824 |
 | `deploy/edge/` | 2 | ~1,149 |
 | `deploy/grafana/` | 1 | ~1,145 |
-| `docs/` | 95 | ~221,542 |
+| `docs/` | 95 | ~232,492 |
 | `docs/adr/` | 2 | ~521 |
 | `docs/advisories/` | 1 | ~834 |
 | `docs/audit/` | 1 | ~4,973 |
@@ -62,7 +62,7 @@
 | `lib/` | 1 | ~2,451 |
 | `mind/` | 27 | ~9,634 |
 | `.roo/` | 1 | ~22 |
-| `scripts/` | 24 | ~83,399 |
+| `scripts/` | 24 | ~83,416 |
 | `sdk/go/` | 11 | ~9,920 |
 | `sdk/go/testdata/contract/` | 6 | ~675 |
 | `sdk/js/` | 6 | ~4,864 |
@@ -76,9 +76,9 @@
 | `skills/integrity-scan/` | 1 | ~376 |
 | `skills/memory-recall/` | 1 | ~549 |
 | `skills/mind-mem/` | 1 | ~1,671 |
-| `skills/mind-mem/references/` | 6 | ~18,811 |
+| `skills/mind-mem/references/` | 6 | ~19,194 |
 | `src/` | 1 | ~280 |
-| `src/mind_mem/` | 247 | ~1,120,273 |
+| `src/mind_mem/` | 253 | ~1,133,262 |
 | `src/mind_mem/api/` | 5 | ~28,329 |
 | `src/mind_mem/bench/` | 17 | ~48,632 |
 | `src/mind_mem/compliance/` | 7 | ~15,436 |
@@ -93,7 +93,7 @@
 | `src/mind_mem/tool_output/` | 3 | ~5,895 |
 | `src/mind_mem/v4/` | 24 | ~96,311 |
 | `src/mind_mem/viewer_static/` | 3 | ~865 |
-| `tests/` | 787 | ~2,303,499 |
+| `tests/` | 790 | ~2,313,194 |
 | `tests/fixtures/` | 8 | ~16,356 |
 | `tests/fixtures/importers/` | 5 | ~1,218 |
 | `tests/fixtures/importers/agent_memory/` | 4 | ~383 |
@@ -120,7 +120,7 @@
 
 - `AGENTS.md` (~995 tok, large) — mind-mem: agent instructions (auto-written)
 - `AUDIT_FINDINGS_FOR_CLAUDE.md` (~995 tok, large) — Comprehensive Architectural Audit: MIND-Mem (Commit 30d8b71)
-- `CLAUDE.md` (~4451 tok, huge) — MIND-Mem — Persistent AI Memory System
+- `CLAUDE.md` (~4461 tok, huge) — MIND-Mem — Persistent AI Memory System
 - `conftest.py` (~1010 tok, large) — Shared pytest fixtures for mind-mem test suite."""
 - `conftest_trace.py` (~466 tok, medium) — Opt-in pytest plugin: find which test/product code leaks live sqlite3 handles.
 - `CONTRIBUTING.md` (~753 tok, large) — Contributing to MIND-Mem
@@ -136,7 +136,7 @@
 - `.gitignore` (~494 tok, medium) — *.pyc
 - `.gitleaks.toml` (~314 tok, medium) — title = "mind-mem gitleaks config"
 - `install-bootstrap.sh` (~1756 tok, huge) — mind-mem one-command bootstrap installer
-- `install.sh` (~5444 tok, huge) — mind-mem installer — installs the package + wires MCP config for AI clients
+- `install.sh` (~6047 tok, huge) — mind-mem installer — installs the package + wires MCP config for AI clients
 - `LICENSE` (~2695 tok, huge)
 - `Makefile` (~1097 tok, large) — .PHONY: test lint bench install dev clean smoke help regen-bash-literals
 - `mcp_server.py` (~683 tok, large) — Source-checkout entrypoint for the packaged Mind-Mem MCP server.
@@ -153,7 +153,7 @@
 - `SPEC.md` (~6430 tok, huge) — Mind Mem Formal Specification v1.5.1
 - `train_mind7b_runpod.py` (~1659 tok, huge)
 - `.trivyignore` (~137 tok, small) — # Trivy ignore file — intentionally empty.
-- `uninstall.sh` (~1505 tok, huge) — mind-mem uninstaller — removes the mind-mem MCP server entry from client configs.
+- `uninstall.sh` (~1997 tok, huge) — mind-mem uninstaller — removes the mind-mem MCP server entry from client configs.
 - `.windsurfrules` (~18 tok, tiny) — # mind-mem
 ### `.agents/skills/mind-mem-development/`
 
@@ -293,7 +293,7 @@
 - `agent-comm.md` (~1251 tok, large) — Agent-to-agent messaging (`mm send` / `mm inbox`)
 - `AGENTIC-MEMORY-SOTA.md` (~1675 tok, huge) — mind-mem → SOTA Agentic Memory (v4.5.0+ design brief)
 - `agent-memory-protocol.md` (~700 tok, large) — Agent Memory Protocol — canonical system-prompt snippet
-- `api-reference.md` (~7549 tok, huge) — API Reference
+- `api-reference.md` (~7751 tok, huge) — API Reference
 - `append-only-audit-logs.md` (~1626 tok, huge) — Append-Only Audit Logs — Operator Runbook
 - `architecture.md` (~3506 tok, huge) — Architecture
 ### `docs/audit/`
@@ -387,8 +387,8 @@
 - `changelog-format.md` (~217 tok, medium) — Changelog Format Guide
 - `ci-workflows.md` (~861 tok, large) — CI Workflows
 - `claude-desktop-setup.md` (~807 tok, large) — Claude Desktop Setup Guide
-- `client-integrations.md` (~5015 tok, huge) — Client Integrations
-- `cli-reference.md` (~8426 tok, huge) — CLI Reference
+- `client-integrations.md` (~14943 tok, huge) — Client Integrations
+- `cli-reference.md` (~8456 tok, huge) — CLI Reference
 - `companion-tools.md` (~1111 tok, large) — Companion Tools
 - `comparison.md` (~599 tok, large) — Comparison with Alternatives
 - `competitive-analysis-persistent-memory-2026.md` (~4089 tok, huge) — Comprehensive Competitive Analysis: Persistent Memory Systems for AI Coding Agents (2025–2026)
@@ -440,7 +440,7 @@
 - `hf-mind-mem-4b-v2-README.md` (~2426 tok, huge) — mind-mem-4b v2 (2026-04-21)
 - `HYPEREDGE_DESIGN_2026-06-17.md` (~1350 tok, large) — Hyperedge + temporal-anchor design (Hyper-Extract steal)
 - `install-guide.md` (~2881 tok, huge) — Installation guide — every step + every option
-- `integrations.md` (~1845 tok, huge) — Integrations
+- `integrations.md` (~2527 tok, huge) — Integrations
 - `local-viewer.md` (~629 tok, large) — Local memory viewer
 - `locomo-v3.4-conv0-results.md` (~475 tok, medium) — LoCoMo v3.4.0 conv-0 results (2026-04-22)
 - `maintenance-namespaces.md` (~1625 tok, huge) — `maintenance/` namespaces
@@ -487,7 +487,7 @@
 ### `docs/`
 
 - `security-model.md` (~823 tok, large) — Security Model
-- `setup.md` (~2274 tok, huge) — Setup
+- `setup.md` (~2310 tok, huge) — Setup
 - `SOTA_GAP_RULING_2026-09-03.md` (~8053 tok, huge) — mind-mem SOTA gap ruling — architecture seat, 2026-09-03
 ### `docs/specs/`
 
@@ -496,7 +496,7 @@
 - `retrieval-receipt-local-v1.json` (~570 tok, large) — Keys: $schema, $id, title, type, additionalProperties
 ### `docs/`
 
-- `status.md` (~2088 tok, huge) — MIND-Mem — implementation status (alignment companion)
+- `status.md` (~2160 tok, huge) — MIND-Mem — implementation status (alignment companion)
 - `storage-backends.md` (~1620 tok, huge) — Storage Backends
 - `storage-migration.md` (~2391 tok, huge) — Storage Backend Migration Guide
 - `supply-chain-security.md` (~1096 tok, large) — Supply-Chain Security
@@ -634,7 +634,7 @@
 - `check_tool_surface.py` (~4151 tok, huge) — Reachability, applied to the MCP tool surface.
 - `count_mcp_tools.py` (~6315 tok, huge) — Count registered MCP tools and assert the count matches CLAUDE.md.
 - `docs-alignment-hook.sh` (~454 tok, medium) — docs-alignment-hook.sh — Git pre-commit step to refresh derived doc counts.
-- `gen_skill_cli_reference.py` (~2937 tok, huge) — # Copyright 2026 STARGA, Inc.
+- `gen_skill_cli_reference.py` (~2954 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `pre-commit-hook.sh` (~489 tok, medium) — STARGA author guard (chained first: a wrong-identity commit must never be created).
 - `pre-push-hook.sh` (~460 tok, medium) — pre-push-hook.sh — the last LOCAL gate before an identity becomes public.
 - `reachability_baseline.txt` (~366 tok, medium) — api.grpc_server  # waiting: a named client integration that requires gRPC (strea
@@ -723,10 +723,10 @@
 - `SKILL.md` (~549 tok, large) — /recall — Memory Search
 ### `skills/mind-mem/references/`
 
-- `cli.md` (~13419 tok, huge) — `mm` command reference
+- `cli.md` (~13562 tok, huge) — `mm` command reference
 - `configuration.md` (~1375 tok, large) — Configuration
 - `faq.md` (~884 tok, large) — FAQ
-- `install.md` (~1125 tok, large) — Installing mind-mem
+- `install.md` (~1365 tok, large) — Installing mind-mem
 - `mcp-vs-cli.md` (~730 tok, large) — MCP server or CLI?
 - `troubleshooting.md` (~1278 tok, large) — Troubleshooting
 ### `skills/mind-mem/`
@@ -811,6 +811,12 @@
 - `chat_memory.py` (~10891 tok, huge) — Conversational chat layer — grounded answers with ``[[block_id]]`` citations.
 - `check_version.py` (~1189 tok, large) — Version consistency checker for mind-mem.
 - `client_config_io.py` (~1088 tok, large) — # Copyright 2026 STARGA, Inc.
+- `client_mcp.py` (~2886 tok, huge) — # Copyright 2026 STARGA, Inc.
+- `client_paths.py` (~760 tok, large) — # Copyright 2026 STARGA, Inc.
+- `client_registry_data.py` (~6077 tok, huge) — # Copyright 2026 STARGA, Inc.
+- `client_registry.py` (~2115 tok, huge) — # Copyright 2026 STARGA, Inc.
+- `client_restore.py` (~1459 tok, large) — # Copyright 2026 STARGA, Inc.
+- `client_writers.py` (~5521 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `closed_slots.py` (~6827 tok, huge) — Closed, versioned fact slots on the governed Markdown store.
 - `codepoint_sanitize.py` (~2007 tok, huge) — Invisible-Unicode codepoint sanitization for block ingestion (security).
 - `coding_schemas.py` (~2127 tok, huge) — mind-mem Coding-Native Memory Schemas.
@@ -877,7 +883,7 @@
 - `guardrails.py` (~6254 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `guardrail_surface.py` (~1704 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `hash_chain_v2.py` (~11016 tok, huge) — # Copyright 2026 STARGA, Inc.
-- `hook_installer.py` (~11441 tok, huge) — # Copyright 2026 STARGA, Inc.
+- `hook_installer.py` (~5612 tok, huge) — # Copyright 2026 STARGA, Inc.
 ### `src/mind_mem/importers/`
 
 - `engine.py` (~9872 tok, huge) — # Copyright 2026 STARGA, Inc.
@@ -1187,7 +1193,7 @@
 - `world_symbol_probe.py` (~1454 tok, large) — # Copyright 2026 STARGA, Inc.
 ### `tests/`
 
-- `conftest.py` (~4413 tok, huge) — Shared test fixtures.
+- `conftest.py` (~4592 tok, huge) — Shared test fixtures.
 ### `tests/fixtures/`
 
 - `ci_jobs_advisory_red.json` (~2657 tok, huge) — Keys: _provenance, workflow_runs, 90000000001
@@ -1361,6 +1367,7 @@
 - `test_chunk_text.py` (~231 tok, medium) — Tests for text chunking."""
 - `test_ci_green_per_job_gate.py` (~4342 tok, huge) — The CI-green gate must read JOBS, not just the workflow run's conclusion.
 - `test_cli_detector_refusal.py` (~1619 tok, huge) — # Copyright 2026 STARGA, Inc.
+- `test_client_integrations.py` (~5548 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_cli_help_is_harmless.py` (~1922 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_cli_hint_correctness.py` (~1371 tok, large) — # Copyright 2026 STARGA, Inc.
 - `test_codepoint_sanitize.py` (~3333 tok, huge) — Tests for invisible-Unicode ingest sanitization (security).
@@ -1525,6 +1532,8 @@
 - `test_guardrail_surface_never_grows.py` (~1279 tok, large) — Guardrail surfacing must never return more hits than it was given.
 - `test_hash_chain_v2.py` (~5528 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_health_embedding_coverage.py` (~3068 tok, huge) — # Copyright 2026 STARGA, Inc.
+- `test_hook_installer_client_roundtrip.py` (~2152 tok, huge) — # Copyright 2026 STARGA, Inc.
+- `test_hook_installer_client_sources.py` (~1085 tok, large) — # Copyright 2026 STARGA, Inc.
 - `test_hook_installer_force_preserves_siblings.py` (~703 tok, large) — Regression test for the --force clobber bug in hook_installer."""
 - `test_hook_installer_mcp_force_preserves_siblings.py` (~1490 tok, large) — Regression test: install_mcp_config(force=True) must merge, not clobber.
 - `test_hook_installer_registry.py` (~5297 tok, huge) — # Copyright 2026 STARGA, Inc.
@@ -1558,7 +1567,7 @@
 - `test_init_workspace.py` (~4105 tok, huge) — Tests for init_workspace — config validation and workspace scaffolding."""
 - `test_injection_framing_e2e.py` (~4893 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_install_script.py` (~750 tok, large) — # pip --user honours PYTHONUSERBASE on every platform; without it a
-- `test_install_unparseable_configs.py` (~2479 tok, huge) — # Copyright 2026 STARGA, Inc.
+- `test_install_unparseable_configs.py` (~2518 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_integration.py` (~1386 tok, large) — Integration test: full mind-mem lifecycle init → capture → scan → recall."""
 - `test_integrity_manifest_refusals.py` (~1688 tok, huge) — An absent, incomplete or substituted manifest cannot satisfy strict mode."""
 - `test_intel_scan.py` (~5959 tok, huge) — Tests for intel_scan.py — contradiction detection, drift analysis, impact graph."""
@@ -1742,7 +1751,7 @@
 - `test_ra1v2_all_doors_snapshot.py` (~3382 tok, huge) — Every serving door binds ONE snapshot, or says it could not.
 - `test_ra1v2_live_serve_binding.py` (~4335 tok, huge) — The live serve binding: a real serve records a v2 row, and a failed bind is visible.
 - `test_ra4_proposal_rationale.py` (~932 tok, large) — Every accepted proposal type needs the caller's written rationale."""
-- `test_readme_client_tables.py` (~2499 tok, huge) — # Copyright 2026 STARGA, Inc.
+- `test_readme_client_tables.py` (~3191 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_read_surface_acl.py` (~5475 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_read_surface_acl_tools.py` (~9848 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_read_surface_admission.py` (~6897 tok, huge) — Every read surface, swept with a three-status canary.

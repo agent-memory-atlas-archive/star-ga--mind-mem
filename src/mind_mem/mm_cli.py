@@ -1132,6 +1132,28 @@ def _cmd_install_all(args: argparse.Namespace) -> int:
     return 0 if errored == 0 else 1
 
 
+def _cmd_uninstall_all(args: argparse.Namespace) -> int:
+    """Remove only the mind-mem MCP entry from each named or detected client."""
+    from mind_mem.hook_installer import detect_installed_agents, uninstall_all
+
+    ws = _workspace()
+    agents = args.agent or None  # None → auto-detect
+    results = uninstall_all(ws, dry_run=args.dry_run, agents=agents)
+    errored = sum(1 for r in results if "error" in r)
+    summary: dict[str, Any] = {
+        "workspace": ws,
+        "agents": agents if agents is not None else detect_installed_agents(ws),
+        "results": results,
+        "summary": {
+            "removed": sum(1 for r in results if r.get("removed")),
+            "errored": errored,
+            "total": len(results),
+        },
+    }
+    print(json.dumps(summary, indent=2))
+    return 0 if errored == 0 else 1
+
+
 def _cmd_migrate(args: argparse.Namespace) -> int:
     """``mm migrate --maintenance`` — run the v3.2.0 §2.2 layout split now.
 
@@ -1267,6 +1289,8 @@ def _cmd_detect(args: argparse.Namespace) -> int:
             name: {
                 "description": AGENT_REGISTRY[name].description,
                 "config_path": AGENT_REGISTRY[name].expand_path(ws),
+                "mcp_config_path": AGENT_REGISTRY[name].expand_mcp_path(ws) if AGENT_REGISTRY[name].mcp_fmt else None,
+                "mcp": "auto" if AGENT_REGISTRY[name].mcp_fmt else ("manual" if AGENT_REGISTRY[name].manual else "none"),
             }
             for name in detected
         },
@@ -4875,11 +4899,25 @@ def build_parser() -> argparse.ArgumentParser:
         help=(
             "Skip native MCP server registration. Default: write both "
             "the text hook AND the MCP registration for every agent "
-            "that supports MCP (Codex, OpenCode, Gemini, Cursor, "
-            "Windsurf, Continue, Cline, Roo, Zed)."
+            "with an MCP config file (see `mm detect` and "
+            "docs/client-integrations.md); clients without one get "
+            "printed manual steps."
         ),
     )
     p_install_all.set_defaults(func=_cmd_install_all)
+
+    # uninstall-all — remove only the mind-mem MCP entry
+    p_uninstall_all = sub.add_parser(
+        "uninstall-all",
+        help="Remove the mind-mem MCP entry from every detected (or named) AI client; other entries are kept.",
+    )
+    p_uninstall_all.add_argument(
+        "--agent",
+        action="append",
+        help="Restrict to these named agents. Repeat flag for multiple. Default = auto-detect.",
+    )
+    p_uninstall_all.add_argument("--dry-run", action="store_true")
+    p_uninstall_all.set_defaults(func=_cmd_uninstall_all)
 
     # install-model — pull mind-mem-4b GGUF from HF + import to Ollama
     p_install_model = sub.add_parser(

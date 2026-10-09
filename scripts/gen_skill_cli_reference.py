@@ -45,6 +45,7 @@ EXAMPLES: dict[str, str] = {
     "detect": "mm detect",
     "install": "mm install claude-code --dry-run",
     "install-all": "mm install-all --dry-run",
+    "uninstall-all": "mm uninstall-all --dry-run --agent cursor",
     "install-model": "mm install-model --dry-run",
     "doctor": "mm doctor",
     "token rotate": "mm token rotate",

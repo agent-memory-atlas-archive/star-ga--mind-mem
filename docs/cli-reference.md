@@ -34,6 +34,7 @@ The sections below this index cover the frequently-used verbs in depth.
 | `mm detect` | Auto-detect installed AI coding clients for this workspace. |
 | `mm install` | Configure mind-mem for one named AI coding client. |
 | `mm install-all` | Auto-detect + configure every installed AI coding client. |
+| `mm uninstall-all` | Remove the mind-mem MCP entry from every detected (or named) AI client; other entries are kept. |
 | `mm install-model` | Download `mind-mem-4b` GGUF (~2.5GB) from HuggingFace and import into Ollama as `mind-mem:4b`. Idempotent. |
 | `mm doctor` | Diagnose workspace state (block-store parity, recall-log schema drift). Add --rebuild-cache or --migrate-recall-log to actually repair. |
 | `mm token` | Federation/HTTP transport token management (rotation primitive). |
