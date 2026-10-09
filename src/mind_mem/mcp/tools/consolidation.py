@@ -396,7 +396,10 @@ def _bounded_int(raw: Any, default: int, low: int, high: int) -> int:
 
 
 def _granularity_block(block_id: str, status: str, tags: str, raw: dict[str, Any]) -> dict[str, Any]:
-    text = " ".join(str(raw[field]) for field in _GRANULARITY_TEXT_FIELDS if isinstance(raw.get(field), str) and raw[field])
+    from mind_mem.granularity_align import _as_text
+
+    # List-valued text fields (``Statement:\n- ...``) are text too, one item per line.
+    text = " ".join(_as_text(raw[field]) for field in _GRANULARITY_TEXT_FIELDS if raw.get(field))
     entry: dict[str, Any] = {
         "_id": block_id,
         "content": text,
@@ -411,6 +414,8 @@ def _granularity_block(block_id: str, status: str, tags: str, raw: dict[str, Any
     # ConstraintSignatures) count too: a who/when held in a list still
     # separates two blocks.
     entry["fields"] = {k: v for k, v in raw.items() if not str(k).startswith("_") and v is not None}
+    if raw.get("_unparsed"):
+        entry["_unparsed"] = raw["_unparsed"]
     return entry
 
 

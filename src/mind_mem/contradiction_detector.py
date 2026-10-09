@@ -192,6 +192,32 @@ def _statement(block: dict, fallback: str) -> str:
     return fallback
 
 
+def _same_subject(proposal_text: str, existing_text: str, reversal: tuple[str, ...] = ()) -> bool:
+    """False when the statements differ only in who or what they are about.
+
+    Set aside the reversal words ("enable"/"disable"); if every remaining word
+    that appears in only one statement is a capitalised name on both sides
+    ("Ilona" vs "Bob"), the two are separate facts about different subjects,
+    not a reversal. Any other difference keeps the older keyword rules.
+    """
+    from .fact_slots import _raw_tokens
+
+    def words(text: str) -> dict[str, bool]:
+        out: dict[str, bool] = {}
+        for tok in _raw_tokens(text):
+            if tok.isalpha():
+                key = tok.casefold()
+                out[key] = out.get(key, False) or tok[:1].isupper()
+        return out
+
+    skip = {w.casefold() for w in reversal}
+    wa, wb = words(proposal_text), words(existing_text)
+    only_a = [w for w in wa if w not in wb and not any(w.startswith(r) for r in skip)]
+    only_b = [w for w in wb if w not in wa and not any(w.startswith(r) for r in skip)]
+    names_only = bool(only_a) and bool(only_b) and all(wa[w] for w in only_a) and all(wb[w] for w in only_b)
+    return not names_only
+
+
 def _classify_conflict(proposal_text: str, existing_text: str, similarity: float, *, changed: bool | None = None) -> str:
     """Classify the type of relationship between a proposal and an existing block.
 
@@ -244,7 +270,7 @@ def _classify_conflict(proposal_text: str, existing_text: str, similarity: float
     # If one has significantly more negation language than the other,
     # and they're discussing the same topic (high similarity), likely a contradiction
     negation_diff = abs(proposal_negations - existing_negations)
-    if negation_diff >= 3 and similarity > 0.5:
+    if negation_diff >= 3 and similarity > 0.5 and _same_subject(proposal_text, existing_text):
         return "contradiction"
 
     # Check for status change patterns (e.g., "active" → "deprecated")
@@ -265,7 +291,9 @@ def _classify_conflict(proposal_text: str, existing_text: str, similarity: float
         b_in_proposal = bool(re.search(r"\b" + re.escape(word_b) + r"\b", proposal_lower))
         a_in_existing = bool(re.search(r"\b" + re.escape(word_a) + r"\b", existing_lower))
         if (a_in_proposal and b_in_existing) or (b_in_proposal and a_in_existing):
-            if similarity > 0.4:
+            # Only a reversal about the same subject: "Enable the report for Ilona"
+            # vs "Disable the report for Bob" is two facts, not a contradiction.
+            if similarity > 0.4 and _same_subject(proposal_text, existing_text, (word_a, word_b)):
                 return "contradiction"
 
     # High similarity but no contradiction signals = refinement
@@ -357,6 +385,10 @@ def detect_contradictions(
             if block_id in seen_ids:
                 continue
             seen_ids.add(block_id)
+            # Superseded, archived or retracted memory is history: a proposal cannot contradict it.
+            result_status = str(result.get("status") or result.get("Status") or "active").strip().lower()
+            if result_status not in COMMITTED_STATUSES:
+                continue
 
             existing_text = result.get("excerpt", result.get("text", ""))
             if not existing_text:

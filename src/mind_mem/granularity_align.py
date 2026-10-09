@@ -307,6 +307,15 @@ _PROVENANCE = ("Sources", "sources", "Evidence", "evidence", "History", "history
 _MERGEABLE_STATUSES = frozenset({"", "active"})
 
 
+def _as_text(value: Any) -> str:
+    """A field value as text: list items one per line, anything else via str()."""
+    if value is None:
+        return ""
+    if isinstance(value, (list, tuple)):
+        return "\n".join(_as_text(v) for v in value)
+    return str(value)
+
+
 def _key_order(key: Any) -> tuple[str, str]:
     """Sort key for mapping keys of any type (str, int, tuple, ...): never compares across types."""
     return (type(key).__name__, repr(key))
@@ -356,12 +365,19 @@ def _identity(block: dict[str, Any]) -> tuple:
     who/when/zone value held in a list field still separates two blocks.
     Computed once per block per call, so the pairwise scan compares cheap tuples.
     """
-    text = " ".join(str(block.get(k, "")) for k in ("excerpt", "content", "Statement") if block.get(k))
+    text = " ".join(_as_text(block.get(k)) for k in ("excerpt", "content") if block.get(k))
     fields = _content_fields(block)
-    for key in ("excerpt", "content", "Statement"):
+    for key in ("excerpt", "content"):
         fields.pop(key, None)
+    # Lines the block parser did not map to a field still make the block what it is.
+    nested = block.get("fields") if isinstance(block.get("fields"), dict) else {}
+    unparsed = block.get("_unparsed") or nested.get("_unparsed") or []
     ordered = sorted(fields.items(), key=lambda kv: _key_order(kv[0]))
-    return (canonical_tokens(text), tuple((_key_order(k), _canon_value(v)) for k, v in ordered))
+    return (
+        canonical_tokens(text),
+        tuple((_key_order(k), _canon_value(v)) for k, v in ordered),
+        _canon_value(list(unparsed)),
+    )
 
 
 def _facts_conflict(a: dict[str, Any], b: dict[str, Any]) -> bool:

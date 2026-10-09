@@ -427,6 +427,14 @@ def parse_blocks(text: str) -> list[dict]:
                 in_patch = False
             continue
 
+        # Anything else inside a block (a lowercase key, a nested mapping line,
+        # free text) is kept verbatim so no consumer can treat two blocks as
+        # identical while ignoring text the fields above never captured.
+        if current is not None and not line.lstrip().startswith("#"):
+            unparsed = current.setdefault("_unparsed", [])
+            if isinstance(unparsed, list):
+                unparsed.append(line.rstrip())
+
     # Last block
     if current is not None:
         _finalize_ops(current, in_ops, current_op)

@@ -40,6 +40,18 @@ NOT_CORRECTIONS = [
     ("The standup is at 10 Downing Street", "The standup is at 11 Downing Street"),
     ("The price is 1.50", "The price is 2.50"),
     ("Q3 review on Friday", "Q2 review on Friday"),
+    ("Ilona owns INC-2026-10-09.", "Ilona owns INC-2026-10-08."),
+    ("Ilona's employee id is 2026-10-09", "Ilona's employee id is 2026-10-08"),
+    ("See doc 10/9 for details.", "See doc 10/8 for details."),
+    ("Run job 10/8", "Run job 10/9"),
+    ("The Thursday Murder Club is on the list.", "The Tuesday Murder Club is on the list."),
+    ("The Monday Club meets", "The Friday Club meets"),
+    ("Ilona joins Project Tuesday", "Ilona joins Project Thursday"),
+    ("Ilona works at April Networks.", "Ilona works at March Networks."),
+    ("Meeting in room 10:30 annex", "Meeting in room 11:30 annex"),
+    ("Ilona is at 1700 Pennsylvania Ave.", "Ilona is at 1600 Pennsylvania Ave."),
+    ("Ilona lives at 1300 Main St.", "Ilona lives at 1200 Main St."),
+    ("Deliver to 1700 Amphitheatre Pkwy.", "Deliver to 1600 Amphitheatre Pkwy."),
     (
         "The weekly call with the contractor is on Tuesday at 10am Pacific time.",
         "The weekly call with Ilona is on Tuesday at 10am Arizona time.",
@@ -96,6 +108,15 @@ CORRECTIONS = [
     ("Standup: Tue→Thu", "Standup: Tue"),
     ("Standup: Tue -> Thu", "Standup: Tue"),
     ("TUESDAY standup", "THURSDAY standup"),
+    ("Weekly call with Ilona at 10am (Pacific).", "Weekly call with Ilona at 10am (Arizona)."),
+    ("Weekly call with Ilona at 10am - Pacific.", "Weekly call with Ilona at 10am - Arizona."),
+    ("Weekly call with Ilona at 10am/Pacific.", "Weekly call with Ilona at 10am/Arizona."),
+    ("Weekly call with Ilona at Pacific 10am.", "Weekly call with Ilona at Arizona 10am."),
+    ("Weekly call with Ilona at 10am, Pacific.", "Weekly call with Ilona at 10am, Arizona."),
+    ("Weekly call with Ilona at 10am [Pacific].", "Weekly call with Ilona at 10am [Arizona]."),
+    ("Meet at 1600 tomorrow.", "Meet at 1700 tomorrow."),
+    ("Deadline is 2026-10-09T17:00.", "Deadline is 2026-10-08T17:00."),
+    ("Ilona does not attend the Tuesday sync.", "Ilona attends the Tuesday sync."),
 ]
 
 
@@ -289,3 +310,74 @@ def test_contradiction_detector_end_to_end(tmp_path: Path) -> None:
     assert "contradiction" in kinds("The weekly call with Ilona is on Thursday at 10am Arizona time.")
     assert "contradiction" not in kinds("Alice flies to Arizona at 10am on Tuesday with Ilona weekly.")
     assert "contradiction" not in kinds("The weekly call with the contractor is on Tuesday at 10am Pacific time.")
+
+
+# ----------------------------------------------------------------------------- round 3
+
+
+def test_plan_consolidation_list_statements_not_merged(tmp_path: Path) -> None:
+    body = (
+        "[D-20261001-001]\nDate: 2026-10-01\nStatus: active\nScope: global\n"
+        "Statement:\n- Weekly call with Ilona Tue 10am Arizona time\nTags: test\n\n"
+        "[D-20261001-002]\nDate: 2026-10-01\nStatus: active\nScope: global\n"
+        "Statement:\n- Weekly call with the contractor Thu 3pm Pacific time\nTags: test\n\n"
+    )
+    g = _plan(_workspace(tmp_path, body))
+    assert g["scanned_blocks"] == 2
+    assert g["candidates"] == []
+
+
+@pytest.mark.parametrize(
+    "extra_a,extra_b",
+    [
+        ("speaker: Ilona\n", "speaker: Bob\n"),
+        ("Meta:\n  tz: Arizona\n", "Meta:\n  tz: Pacific\n"),
+    ],
+)
+def test_plan_consolidation_unparsed_lines_block_merge(tmp_path: Path, extra_a: str, extra_b: str) -> None:
+    g = _plan(_workspace(tmp_path, _decision("D-20261001-001", extra_a) + _decision("D-20261001-002", extra_b)))
+    assert g["scanned_blocks"] == 2
+    assert g["candidates"] == []
+    # Positive control: the same unparsed line on both sides still merges.
+    same = tmp_path / "same"
+    same.mkdir()
+    g2 = _plan(_workspace(same, _decision("D-20261001-001", extra_a) + _decision("D-20261001-002", extra_a)))
+    assert len(g2["candidates"]) == 1
+
+
+def test_parser_keeps_unrecognised_lines() -> None:
+    from mind_mem.block_parser import parse_blocks
+
+    (block,) = parse_blocks("[D-20261001-001]\nStatement: x\nspeaker: Bob\nMeta:\n  tz: Pacific\n## Heading\n")
+    assert block["_unparsed"] == ["speaker: Bob", "  tz: Pacific"]
+
+
+@pytest.mark.parametrize(
+    "new,old",
+    [
+        ("Enable the weekly report for Ilona on Tuesday.", "Disable the weekly report for Bob on Tuesday."),
+        ("Ilona will start the weekly call on Tuesday at 10am.", "Bob will stop the weekly call on Tuesday at 10am."),
+    ],
+)
+def test_reversal_words_need_the_same_subject(tmp_path: Path, new: str, old: str) -> None:
+    from mind_mem.contradiction_detector import _classify_conflict
+
+    assert _classify_conflict(new, old, 0.8) != "contradiction"
+    # Positive control: the same subject with the reversal IS a contradiction.
+    reversed_same = new.replace("Enable", "Disable").replace("start", "stop")
+    assert _classify_conflict(new, reversed_same, 0.8) == "contradiction"
+
+
+def test_superseded_block_is_not_a_contradiction_candidate(tmp_path: Path) -> None:
+    from mind_mem.contradiction_detector import check_proposal_contradictions
+
+    (tmp_path / "decisions").mkdir()
+    (tmp_path / "decisions" / "DECISIONS.md").write_text(
+        "# DECISIONS\n\n[D-20261001-001]\nDate: 2026-10-01\nStatus: superseded\nScope: global\n"
+        "Statement: The weekly call with Ilona is on Tuesday at 10am.\nTags: test\n\n"
+        "[D-20261001-002]\nDate: 2026-10-01\nStatus: active\nScope: global\n"
+        "Statement: The weekly call with Ilona is on Wednesday at 10am.\nTags: test\n"
+    )
+    report = check_proposal_contradictions(str(tmp_path), {"Statement": "The weekly call with Ilona is on Thursday at 10am."})
+    ids = {c["block_id"] for c in report["conflicts"] if c["conflict_type"] == "contradiction"}
+    assert ids == {"D-20261001-002"}  # positive control: the active block is still flagged

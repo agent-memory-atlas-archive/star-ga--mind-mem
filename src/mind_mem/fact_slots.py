@@ -153,8 +153,13 @@ _DATE_PREV = frozenset(
 #: Nouns whose following date-shaped token is an identifier ("Invoice 2026-10-08", "Ticket 10/8").
 _ID_NOUNS = frozenset(
     "invoice ticket order build release version ref id case po issue pr bug incident "
-    "receipt account room flight item sku batch run job commit tag # no".split()
+    "receipt account room flight item sku batch run job commit tag # no doc document page section chapter "
+    "employee badge serial code file row line inc ticket req".split()
 )
+#: Words that make a following weekday a name ("Project Tuesday", "Operation Monday").
+_LABEL_PREV = frozenset({"project", "operation", "codename", "club", "team"})
+_ID_GLUE = frozenset({"-", "_", "#", ".", "/"})
+_ID_SKIP = frozenset({"is", "was", ":", "=", "no", "number", "#"})
 _YEAR_PREV = frozenset("in since by until till of from to before after during for".split())
 # Correction/function words dropped from both cores anywhere.
 _CORRECTION = frozenset(
@@ -200,7 +205,7 @@ _NUMBER_WORDS = {w: i for i, w in enumerate("zero one two three four five six se
 _CLOCK_FOLLOWERS = frozenset("on in at for every each daily sharp and or tomorrow today tonight then until till before after".split())
 _BARE_HOUR_PREV = frozenset({"at", "until", "till"})
 _HHMM_PREV = frozenset({"at", "to", "until", "till", "by", "from"})
-_ISO_DATE = re.compile(r"^\d{4}-\d{1,2}-\d{1,2}$")
+_ISO_DATE = re.compile(r"^\d{4}-\d{1,2}-\d{1,2}(t\d{1,2}:\d{2}(:\d{2})?z?)?$")
 _SLASH_DATE = re.compile(r"^\d{1,4}/\d{1,2}(/\d{1,4})?$")
 _CLOCK = re.compile(r"^(\d{1,2})(?:[:.](\d{2}))?(am|pm)?$")
 _H_CLOCK = re.compile(r"^(\d{1,2})h(\d{2})$")
@@ -242,56 +247,74 @@ def _plural_noun(tok: str) -> bool:
 
 
 def _compare_tokens(text: str) -> list[str]:
+    return _compare_tokens_cased(text)[0]
+
+
+def _compare_tokens_cased(text: str) -> tuple[list[str], list[bool]]:
     """Normal form for changed_fact: case-folded; contractions, clocks, arrows and offsets resolved.
 
     Abbreviated month and weekday names are kept as written here: whether one
     is a date or a name is decided in context by :func:`_value_at`.
     """
-    raw = [t.casefold() for t in _raw_tokens(text)]
+    orig = _raw_tokens(text)
+    raw = [t.casefold() for t in orig]
     out: list[str] = []
+    titled: list[bool] = []  # was the source token Title-case ("Networks", "Club")?
     i, n = 0, len(raw)
     while i < n:
+        mark = len(out)
         tok = raw[i]
         prev = out[-1] if out else ""
         if tok in _CONTRACTION_BASE and i + 2 < n and raw[i + 1] in _APOSTROPHES and raw[i + 2] == "t":
             out.extend((_CONTRACTION_BASE[tok], "not"))
             i += 3
+            titled.extend([False] * (len(out) - mark))
             continue
         if tok == "cannot":
             out.extend(("can", "not"))
             i += 1
+            titled.extend([False] * (len(out) - mark))
             continue
         if tok in _APOSTROPHES and i + 1 < n and raw[i + 1] == "s":
             i += 2  # "call's" == "call is"; a possessive "Ilona's" drops the same way on both sides
+            titled.extend([False] * (len(out) - mark))
             continue
         if tok in _APOSTROPHES and i + 1 < n and raw[i + 1] in _CLITICS and out and out[-1].isalpha():
             out.append(_CLITICS[raw[i + 1]])  # "We'll" == "We will"
             i += 2
+            titled.extend([False] * (len(out) - mark))
             continue
         if tok in ("-", "=") and i + 1 < n and raw[i + 1] == ">":
             out.append("→")
             i += 2
+            titled.extend([False] * (len(out) - mark))
             continue
         if tok in _ARROWS:
             out.append("→")
             i += 1
+            titled.extend([False] * (len(out) - mark))
             continue
         if tok in ("utc", "gmt") and i + 2 < n and raw[i + 1] in ("+", "-", "−") and raw[i + 2].isdigit():
             out.append(f"{tok}{'+' if raw[i + 1] == '+' else '-'}{int(raw[i + 2])}")
             i += 3
+            titled.extend([False] * (len(out) - mark))
             continue
         if tok in _MONTH_ABBR and i + 1 < n and raw[i + 1] == ".":
             out.append(tok)  # "Oct. 9" == "Oct 9"
             i += 2
+            titled.extend([False] * (len(out) - mark))
             continue
         clock, used = _clock_at(raw, i, prev)
         if clock is not None:
             out.append(clock)
             i += used
+            titled.extend([False] * (len(out) - mark))
             continue
         out.append(tok)
         i += 1
-    return out
+        titled.extend([orig[i - 1].istitle() and not orig[i - 1].isupper()] * (len(out) - mark))
+        continue
+    return out, titled
 
 
 def _clock_at(raw: list[str], i: int, prev: str) -> tuple[str | None, int]:
@@ -318,10 +341,14 @@ def _clock_at(raw: list[str], i: int, prev: str) -> tuple[str | None, int]:
         if prev in _BARE_HOUR_PREV and _follower_ok(raw, i + 1):
             return _canon_clock(hour_word, None, None), 1
         return None, 0
+    if prev in _ID_NOUNS:
+        return None, 0  # "room 10:30", "ticket 1400": identifiers, not times
     if _is_digits(tok) and len(tok) == 4 and prev in _HHMM_PREV:
         value = int(tok)
         is_year = 1900 <= value <= 2099 and prev != "at"
-        if not is_year and value // 100 < 24 and value % 100 < 60:
+        hours = i + 1 < n and raw[i + 1] in ("hours", "hrs")
+        # "at 1600 Pennsylvania Ave" is an address: a word after the number rules out a time.
+        if not is_year and value // 100 < 24 and value % 100 < 60 and (hours or _follower_ok(raw, i + 1)):
             used = 2 if i + 1 < n and raw[i + 1] in ("hours", "hrs") else 1
             return _canon_clock(value // 100, value % 100, None, twenty_four=True), used
     m = _CLOCK.match(tok)
@@ -381,8 +408,44 @@ def _date_context(toks: list[str], i: int) -> bool:
     return prev in _DATE_PREV or dayish(prev) or dayish(nxt) or nxt == "→"
 
 
-def _value_at(toks: list[str], i: int) -> str | None:
+def _id_context(toks: list[str], i: int) -> bool:
+    """Is the date-shaped token at *i* part of an identifier ("INC-2026-10-09", "employee id is 2026-10-08")?"""
+    prev = toks[i - 1] if i > 0 else ""
+    if prev in _ID_GLUE and i >= 2 and toks[i - 2].isalnum() and not _is_digits(toks[i - 2]):
+        return True
+    k = i - 1
+    while k >= 0 and toks[k] in _ID_SKIP and i - k <= 3:
+        k -= 1
+    return k >= 0 and (toks[k] in _ID_NOUNS or prev in _ID_NOUNS)
+
+
+def _named(toks: list[str], titled: list[bool], i: int) -> bool:
+    """Is the day/month word at *i* part of a proper name ("March Networks", "The Thursday Murder Club", "Project Tuesday")?"""
+    prev = toks[i - 1] if i > 0 else ""
+    if prev in _LABEL_PREV:
+        return True
+    j = i + 1
+    if j < len(toks) and titled[j] and toks[j].isalpha():
+        nxt = toks[j]
+        date_word = nxt in _WEEKDAYS or nxt in _MONTHS or nxt in _ZONE_NAMES or nxt in _ZONE_ABBR or nxt in _RELATIVE or nxt in _EQUIV
+        return not date_word and nxt not in _ZONE_CONTEXT
+    return False
+
+
+def _zone_name_by_clock(toks: list[str], i: int) -> bool:
+    """A zone name whose nearest word on either side, skipping punctuation, is a clock ("10am (Pacific)", "Pacific 10am")."""
+    for step in (-1, 1):
+        k = i + step
+        while 0 <= k < len(toks) and len(toks[k]) == 1 and not toks[k].isalnum():
+            k += step
+        if 0 <= k < len(toks) and _is_clock(toks[k]):
+            return True
+    return False
+
+
+def _value_at(toks: list[str], i: int, titled: list[bool] | None = None) -> str | None:
     """The when/zone value at position *i*, judged in context, or None."""
+    titled = titled if titled is not None else [False] * len(toks)
     t = toks[i]
     if len(t) == 1 and not t.isalnum():
         return None  # punctuation and symbols are never values (fast path)
@@ -393,6 +456,8 @@ def _value_at(toks: list[str], i: int) -> str | None:
         return t
     if _QUARTER.match(t):
         return t if prev in _DATE_PREV else None  # "slipped to Q4" yes, "the Q3 review" no
+    if (t in _WEEKDAYS or t in _MONTHS or t in _EQUIV) and _named(toks, titled, i):
+        return None
     if t in _WEEKDAYS or (t in _EQUIV and _EQUIV[t] in _WEEKDAYS and t not in _WEEKDAY_ABBR):
         day = _EQUIV.get(t, t)
         return f"{prev}-{day}" if prev in ("next", "this", "last", "following") else day
@@ -401,12 +466,11 @@ def _value_at(toks: list[str], i: int) -> str | None:
     if t in _MONTHS or t in _MONTH_ABBR:
         return _EQUIV.get(t, t) if _date_context(toks, i) else None
     if _ISO_DATE.match(t) or _SLASH_DATE.match(t):
-        return None if prev in _ID_NOUNS else "d" + t
+        return None if _id_context(toks, i) else "d" + t
     if t in _ZONE_ABBR:
         return t if (_near_clock(toks, i) or nxt in _ZONE_CONTEXT or _zone_phrase_before(toks, i)) else None
     if t in _ZONE_NAMES:
-        after_clock = i > 0 and _is_clock(prev)
-        return t if (after_clock or nxt in _ZONE_CONTEXT or _zone_phrase_before(toks, i)) else None
+        return t if (_zone_name_by_clock(toks, i) or nxt in _ZONE_CONTEXT or _zone_phrase_before(toks, i)) else None
     if t in _PERIODS and prev in _PERIOD_AFTER:
         return prev + "-" + t
     if _is_digits(t) and len(t) == 4 and 1900 <= int(t) <= 2099 and (prev in _YEAR_PREV or prev in _MONTHS or prev in _MONTH_ABBR):
@@ -426,9 +490,9 @@ def _stem(tok: str) -> str:
 
 
 def fact_slots(text: str) -> FactSlots:
-    toks = _compare_tokens(text)
+    toks, titled = _compare_tokens_cased(text)
     n = len(toks)
-    found = [_value_at(toks, i) for i in range(n)]
+    found = [_value_at(toks, i, titled) for i in range(n)]
     is_value = [v is not None for v in found]
     for i, v in enumerate(found):
         if v is not None and i > 0 and (toks[i] in _PERIODS or v.startswith(toks[i - 1] + "-")):
