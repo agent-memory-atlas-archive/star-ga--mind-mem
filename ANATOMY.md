@@ -5,8 +5,8 @@
 > Re-generate with: `anatomy .`
 
 **Project:** `mind-mem`
-**Files:** 1707 | **Est. tokens:** ~5,017,624
-**Generated:** 2026-10-09 09:58 UTC
+**Files:** 1710 | **Est. tokens:** ~5,020,509
+**Generated:** 2026-10-09 09:59 UTC
 
 ## Token Budget Guide
 
@@ -78,7 +78,7 @@
 | `skills/mind-mem/` | 1 | ~1,671 |
 | `skills/mind-mem/references/` | 6 | ~18,811 |
 | `src/` | 1 | ~280 |
-| `src/mind_mem/` | 242 | ~1,084,364 |
+| `src/mind_mem/` | 243 | ~1,085,417 |
 | `src/mind_mem/api/` | 5 | ~27,259 |
 | `src/mind_mem/bench/` | 17 | ~48,632 |
 | `src/mind_mem/compliance/` | 7 | ~15,436 |
@@ -93,7 +93,7 @@
 | `src/mind_mem/tool_output/` | 3 | ~5,895 |
 | `src/mind_mem/v4/` | 24 | ~96,311 |
 | `src/mind_mem/viewer_static/` | 3 | ~865 |
-| `tests/` | 768 | ~2,253,254 |
+| `tests/` | 770 | ~2,255,086 |
 | `tests/fixtures/` | 7 | ~11,912 |
 | `tests/fixtures/importers/` | 5 | ~1,218 |
 | `tests/fixtures/importers/agent_memory/` | 4 | ~383 |
@@ -797,7 +797,7 @@
 - `block_store.py` (~18362 tok, huge) — BlockStore abstraction — decouples block access from storage format.
 - `bootstrap_corpus.py` (~4094 tok, huge) — mind-mem Bootstrap Corpus — one-time backfill from existing knowledge sources.
 - `boundary_witness.py` (~3878 tok, huge) — # Copyright 2026 STARGA, Inc.
-- `calibration.py` (~7500 tok, huge) — Calibration feedback loop — track retrieval quality and adjust block ranking.
+- `calibration.py` (~7954 tok, huge) — Calibration feedback loop — track retrieval quality and adjust block ranking.
 - `capture.py` (~5607 tok, huge) — mind-mem Auto-Capture Engine with Structured Extraction. Zero external deps.
 - `category_distiller.py` (~6359 tok, huge) — mind-mem Category Distiller — auto-generates thematic summary files from memory blocks.
 - `causal_graph.py` (~4689 tok, huge) — mind-mem Temporal Causal Graph — directed dependency tracking with staleness.
@@ -830,6 +830,7 @@
 - `compressors.py` (~2253 tok, huge) — Real `Compressor` implementations for mind_mem.recompaction. Zero new deps.
 - `conflict_resolver.py` (~5810 tok, huge) — mind-mem Automated Conflict Resolution Pipeline. Zero external deps.
 - `connection_manager.py` (~3185 tok, huge) — SQLite connection manager with read/write separation and WAL mode.
+- `_conn_lease.py` (~599 tok, large) — In-flight protection for cached ConnectionManagers.
 - `consensus_vote.py` (~2067 tok, huge) — Quorum-based consensus voting on contradictions (v3.3.0).
 - `consolidation_maturity_gate.py` (~2589 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `content_lifecycle.py` (~3292 tok, huge) — # Copyright 2026 STARGA, Inc.
@@ -1332,6 +1333,7 @@
 - `test_boundary_witness_cli_e2e.py` (~3954 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_boundary_witness.py` (~2442 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_built_integrity.py` (~1862 tok, huge) — Source-bound controls for the wheel/sdist integrity release gate."""
+- `test_calibration_fd_bound.py` (~896 tok, large) — The calibration connection cache must stay bounded under workspace churn.
 - `test_calibration.py` (~3269 tok, huge) — Tests for calibration feedback loop.
 - `test_calibration_window_determinism.py` (~1159 tok, large) — The calibration window boundary is UTC-anchored and pinnable.
 - `test_capture_governed_signals.py` (~3277 tok, huge) — # Copyright 2026 STARGA, Inc.
@@ -1901,6 +1903,7 @@
 - `test_sqlite_handle_close_tool_output_hnsw.py` (~2197 tok, huge) — Every SQLite connection ``tool_output/store.py`` opens must be CLOSED before
 - `test_sqlite_index_backends.py` (~2781 tok, huge) — Backend-parity regression tests for ``sqlite_index`` (audit bugs 4, 9, 13, 14).
 - `test_sqlite_index_edit_detection.py` (~1736 tok, huge) — # Copyright 2026 STARGA, Inc.
+- `test_sqlite_index_evict_race.py` (~936 tok, large) — Evicting a cached ConnectionManager must not close it under a running query.
 - `test_sqlite_index.py` (~5547 tok, huge) — Tests for sqlite_index.py — SQLite FTS5 index for mind-mem recall."""
 - `test_stopwords.py` (~247 tok, medium) — Tests for stopword handling."""
 - `test_storage_factory.py` (~3280 tok, huge) — Tests for mind_mem.storage.get_block_store factory (v3.2.0)."""
