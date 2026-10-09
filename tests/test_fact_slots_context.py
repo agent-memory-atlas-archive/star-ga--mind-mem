@@ -750,9 +750,15 @@ def test_round9_not_changes(new: str, old: str) -> None:
 def test_context_checks_stay_linear(text: str) -> None:
     import time
 
-    start = time.perf_counter()
-    changed_fact(text, text + " x")
-    assert time.perf_counter() - start < 3.0
+    def seconds(t: str) -> float:
+        start = time.perf_counter()
+        changed_fact(t, t + " x")
+        return time.perf_counter() - start
+
+    half = seconds(text[: len(text) // 2])
+    full = seconds(text)
+    assert full < 30.0
+    assert full <= 3.0 * half + 0.25, f"doubling the input took {full:.2f}s vs {half:.2f}s: super-linear"
 
 
 @pytest.mark.parametrize("superseder", [{"_id": "D-9", "Supersedes": "C"}, {"_id": "D-9", "Supersedes": "C", "content": "x"}])
