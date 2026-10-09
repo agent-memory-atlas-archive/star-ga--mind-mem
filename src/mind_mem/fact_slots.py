@@ -147,9 +147,18 @@ _PERIODS = frozenset({"week", "month", "year", "weekend"})
 #: Words before a month or abbreviated weekday that make it a date ("in May",
 #: "by Oct 9", "Standup: Tue") rather than a name ("Ask May", "the May report").
 _DATE_PREV = frozenset(
-    "to from for on at in by until till through since before after during of "
-    "early mid late each every next this last following : → ,".split()
+    "from on at in by until till through since before after during early mid late each every next this last following : → ,".split()
 )
+#: "to" makes a month a date only in a scheduling sentence ("moved the review
+#: to March"); otherwise it is usually a recipient ("Send the report to June").
+#: "of" counts only after a span word ("end of May"), never in a label
+#: ("Review of April numbers").
+_SCHEDULING = frozenset(
+    "moved move moves moving rescheduled reschedule postponed delayed pushed slipped shifted bumped "
+    "due deadline scheduled starts start begins ends launch launches".split()
+)
+_SPAN_OF = frozenset({"end", "start", "beginning", "middle", "mid", "rest", "first", "last"})
+_QUARTER_PREV = frozenset("in by to until till before after during through from since".split())
 #: Nouns whose following date-shaped token is an identifier ("Invoice 2026-10-08", "Ticket 10/8").
 _ID_NOUNS = frozenset(
     "invoice ticket order build release version ref id case po issue pr bug incident "
@@ -160,16 +169,26 @@ _ID_NOUNS = frozenset(
 _LABEL_PREV = frozenset({"project", "operation", "codename", "club", "team"})
 _ID_GLUE = frozenset({"-", "_", "#", ".", "/"})
 _ID_SKIP = frozenset({"is", "was", ":", "=", "no", "number", "#"})
-_YEAR_PREV = frozenset("in since by until till of from to before after during for".split())
+_YEAR_PREV = frozenset("in since by until till from to before after during".split())
 # Correction/function words dropped from both cores anywhere.
 _CORRECTION = frozenset(
     "moved move moving now instead rescheduled reschedule scheduled changed change switched postponed delayed pushed "
     "slipped slip slips shifted bumped up back got get it is was are were am has have had been be will would do does did "
-    "of and but correction actually update updated again starting as the a an with rather than".split()
+    "of and but correction actually update updated again starting as the a an with rather than anymore".split()
 )
 # Prepositions dropped only when a when-value follows ("to Thursday" yes, "to Denver" no).
 _VALUE_PREPOSITIONS = frozenset({"to", "from", "for", "on", "at", "in", "by", "until", "till", "through"})
-_NEGATION = frozenset({"not", "never"})
+_NEGATION = frozenset({"not", "never", "cancelled", "canceled", "cancel"})
+#: State words whose opposite is a negation: "disabled" == "not enabled".
+_ANTONYM = {
+    "disabled": "enabled",
+    "disable": "enable",
+    "disallowed": "allowed",
+    "inactive": "active",
+    "unlocked": "locked",
+    "unavailable": "available",
+    "unsupported": "supported",
+}
 _CONTRACTION_BASE = {
     "isn": "is",
     "aren": "are",
@@ -204,6 +223,13 @@ _NUMBER_WORDS = {w: i for i, w in enumerate("zero one two three four five six se
 #: other word means the number is not a time ("at 10 Downing Street").
 _CLOCK_FOLLOWERS = frozenset("on in at for every each daily sharp and or tomorrow today tonight then until till before after".split())
 _BARE_HOUR_PREV = frozenset({"at", "until", "till"})
+#: "The locker is at 10", "desk at 12": a number after "at" that locates a thing is not an hour.
+_PLACE_NOUNS = frozenset(
+    "locker desk room seat gate table platform booth slot stand berth bay dock pier lane row aisle "
+    "cabin bed office suite unit apartment apt floor level stall pump terminal".split()
+)
+#: Ratios, scores and references written with a colon are not clock times.
+_NOT_TIME_NOUNS = frozenset("ratio score odds verse chapter version aspect result tally".split())
 _HHMM_PREV = frozenset({"at", "to", "until", "till", "by", "from"})
 _ISO_DATE = re.compile(r"^\d{4}-\d{1,2}-\d{1,2}(t\d{1,2}:\d{2}(:\d{2})?z?)?$")
 _SLASH_DATE = re.compile(r"^\d{1,4}/\d{1,2}(/\d{1,4})?$")
@@ -214,6 +240,7 @@ _ORDINAL_DAY = re.compile(r"^(\d{1,2})(st|nd|rd|th)$")
 _OFFSET_ZONE = re.compile(r"^(utc|gmt)[+-]\d{1,2}(:\d{2})?$")
 _QUARTER = re.compile(r"^q[1-4]$")
 _APOSTROPHES = ("'", "’")
+_SPECIAL_PUNCT = frozenset({"'", "’", "-", "=", "+", "−", "→", "⇒", "⟶"})
 _ARROWS = ("→", "⇒", "⟶")
 
 
@@ -231,14 +258,34 @@ def _canon_clock(hour: int, minute: int | None, meridiem: str | None, *, twenty_
     return f"t{hour:02d}:{m:02d}" if (twenty_four or hour > 12) else f"t{hour:02d}:{m:02d}a"
 
 
+def _time_word(tok: str) -> bool:
+    return tok in _ZONE_ABBR or tok in _ZONE_NAMES or tok in _RELATIVE or _EQUIV.get(tok, tok) in _WEEKDAYS
+
+
 def _follower_ok(raw: list[str], j: int) -> bool:
-    """True when what follows a bare number lets it be an hour (end, punctuation, a time word)."""
-    if j >= len(raw):
+    """True when what follows a bare number lets it be an hour (end, punctuation, a time word).
+
+    "at 14, Elm Street" and "at 12 in building B" are addresses: a comma or
+    "in" counts only when a time word follows ("at 10, tomorrow", "at 10 in
+    the morning").
+    """
+    n = len(raw)
+    if j >= n:
         return True
     nxt = raw[j]
+    if nxt in (",", "in"):
+        k = j + 1
+        while k < n and raw[k] in ("the", "a"):
+            k += 1
+        if k >= n:
+            return True
+        after = raw[k]
+        if not after.isalpha():
+            return nxt == ","
+        return _time_word(after) or after in _CLOCK_FOLLOWERS
     if not nxt.isalpha():
         return True
-    return nxt in _CLOCK_FOLLOWERS or nxt in _ZONE_ABBR or nxt in _ZONE_NAMES or nxt in _RELATIVE or _EQUIV.get(nxt, nxt) in _WEEKDAYS
+    return nxt in _CLOCK_FOLLOWERS or _time_word(nxt)
 
 
 def _plural_noun(tok: str) -> bool:
@@ -264,6 +311,11 @@ def _compare_tokens_cased(text: str) -> tuple[list[str], list[bool]]:
     while i < n:
         mark = len(out)
         tok = raw[i]
+        if len(tok) == 1 and not tok.isalnum() and tok not in _SPECIAL_PUNCT:
+            out.append(tok)  # plain punctuation: nothing below can apply (fast path)
+            titled.append(False)
+            i += 1
+            continue
         prev = out[-1] if out else ""
         if tok in _CONTRACTION_BASE and i + 2 < n and raw[i + 1] in _APOSTROPHES and raw[i + 2] == "t":
             out.extend((_CONTRACTION_BASE[tok], "not"))
@@ -343,6 +395,13 @@ def _clock_at(raw: list[str], i: int, prev: str) -> tuple[str | None, int]:
         return None, 0
     if prev in _ID_NOUNS:
         return None, 0  # "room 10:30", "ticket 1400": identifiers, not times
+    if not any(c in _ASCII_DIGITS for c in tok) and tok not in _NUMBER_WORDS and tok not in ("half", "quarter"):
+        return None, 0
+    back = [raw[k] for k in range(max(0, i - 5), i)]
+    if any(t in _NOT_TIME_NOUNS for t in back[-3:]):
+        return None, 0  # "the ratio is 16:10", "score was 21:15"
+    if prev in _BARE_HOUR_PREV and _is_digits(tok) and any(t in _PLACE_NOUNS for t in back):
+        return None, 0  # "Ilona's locker is at 10": a bare number locating a thing, not an hour
     if _is_digits(tok) and len(tok) == 4 and prev in _HHMM_PREV:
         value = int(tok)
         is_year = 1900 <= value <= 2099 and prev != "at"
@@ -403,9 +462,18 @@ def _date_context(toks: list[str], i: int) -> bool:
     nxt = toks[i + 1] if i + 1 < len(toks) else ""
 
     def dayish(t: str) -> bool:
-        return _is_digits(t) or bool(_ORDINAL_DAY.match(t)) or _is_clock(t)
+        return _is_digits(t) or bool(_ORDINAL_DAY.match(t)) or _is_clock(t) or bool(_SLASH_DATE.match(t) or _ISO_DATE.match(t))
 
-    return prev in _DATE_PREV or dayish(prev) or dayish(nxt) or nxt == "→"
+    if prev in _DATE_PREV or dayish(prev) or dayish(nxt) or nxt == "→":
+        return True
+    if prev == "to":
+        return any(t in _SCHEDULING for t in toks)
+    if prev == "of":
+        return i >= 2 and toks[i - 2] in _SPAN_OF
+    if prev in ("and", "or", "&", "/") and i >= 2:
+        before = toks[i - 2]  # "Tue and Thu": a list continues the date it follows
+        return before in _WEEKDAYS or before in _WEEKDAY_ABBR or before in _MONTHS or before in _MONTH_ABBR
+    return False
 
 
 def _id_context(toks: list[str], i: int) -> bool:
@@ -452,10 +520,12 @@ def _value_at(toks: list[str], i: int, titled: list[bool] | None = None) -> str 
     n = len(toks)
     prev = toks[i - 1] if i > 0 else ""
     nxt = toks[i + 1] if i + 1 < n else ""
+    if _is_clock(t) and t.endswith("a") and i >= 2 and titled[i - 1] and prev.isalpha() and not _time_word(prev):
+        return None  # "John 3:16", "Genesis 1:10": a reference after a name, not a time
     if _is_clock(t) or t in _RELATIVE or _OFFSET_ZONE.match(t):
         return t
     if _QUARTER.match(t):
-        return t if prev in _DATE_PREV else None  # "slipped to Q4" yes, "the Q3 review" no
+        return t if prev in _QUARTER_PREV else None  # "slipped to Q4" yes, "the review for Q3" no
     if (t in _WEEKDAYS or t in _MONTHS or t in _EQUIV) and _named(toks, titled, i):
         return None
     if t in _WEEKDAYS or (t in _EQUIV and _EQUIV[t] in _WEEKDAYS and t not in _WEEKDAY_ABBR):
@@ -470,6 +540,8 @@ def _value_at(toks: list[str], i: int, titled: list[bool] | None = None) -> str 
     if t in _ZONE_ABBR:
         return t if (_near_clock(toks, i) or nxt in _ZONE_CONTEXT or _zone_phrase_before(toks, i)) else None
     if t in _ZONE_NAMES:
+        if i + 1 < n and titled[i + 1] and nxt.isalpha() and not _time_word(nxt) and nxt not in _ZONE_CONTEXT:
+            return None  # "6am Pacific Surfliner": part of a proper name
         return t if (_zone_name_by_clock(toks, i) or nxt in _ZONE_CONTEXT or _zone_phrase_before(toks, i)) else None
     if t in _PERIODS and prev in _PERIOD_AFTER:
         return prev + "-" + t
@@ -541,6 +613,10 @@ def fact_slots(text: str) -> FactSlots:
         if (t == "from" and i + 1 < n and toks[i + 1] == "now") or (t == "on" and i > 0 and toks[i - 1] == "now"):
             continue  # "from now on"
         if t in _CORRECTION:
+            continue
+        if t in _ANTONYM:
+            negations += 1
+            core.append(_stem(_ANTONYM[t]))
             continue
         if t in _ZONE_CONTEXT and i > 0 and is_value[i - 1] and (toks[i - 1] in _ZONE_ABBR or toks[i - 1] in _ZONE_NAMES):
             continue  # "Arizona time"

@@ -736,7 +736,7 @@ def _extract_fts_fields(block: dict) -> dict:
         "title": field("Title", "Name"),
         "name": field("Name"),
         "description": field("Description", "Summary"),
-        "tags": normalise_tags(field("Tags", "Keywords")),
+        "tags": normalise_tags(block.get("Tags", "") or block.get("Keywords", "")),
         "context": field("Context", "Rationale"),
         "all_text": " ".join(_as_text(block.get(f)) for f in SEARCH_FIELDS if block.get(f)),
     }

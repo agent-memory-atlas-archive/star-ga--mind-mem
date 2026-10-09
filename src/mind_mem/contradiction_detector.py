@@ -308,6 +308,20 @@ def _classify_conflict(proposal_text: str, existing_text: str, similarity: float
 # ---------------------------------------------------------------------------
 
 
+_BLOCK_ID_RE = re.compile(r"\b[A-Z]+-[A-Za-z0-9_.-]+\b")
+
+
+def _superseded_ids(blocks: list[dict]) -> set[str]:
+    """IDs named in any block's Supersedes field (string or list form)."""
+    out: set[str] = set()
+    for block in blocks:
+        raw = block.get("Supersedes")
+        for value in raw if isinstance(raw, list) else [raw]:
+            if isinstance(value, str) and value.strip().lower() not in ("", "none", "n/a"):
+                out.update(_BLOCK_ID_RE.findall(value))
+    return out
+
+
 def _load_committed_blocks(workspace: str) -> list[dict]:
     """Load all committed (non-proposed) blocks from the workspace."""
     ws = os.path.abspath(workspace)
@@ -325,7 +339,12 @@ def _load_committed_blocks(workspace: str) -> list[dict]:
         except Exception as e:
             _log.warning("parse_error", file=rel_path, error=str(e))
 
-    return blocks
+    # Admission-filtered: the conflict report echoes existing block text
+    # (existing_excerpt) back to the proposer, so a quarantined or pending
+    # block must be unresolvable here exactly as it is in recall.
+    from .admissibility import admit_corpus
+
+    return admit_corpus(blocks, workspace=ws)
 
 
 def detect_contradictions(
@@ -373,6 +392,9 @@ def detect_contradictions(
 
     # Load committed blocks for direct comparison
     committed_blocks = _load_committed_blocks(ws)
+    # A block named in another block's Supersedes field is history even when
+    # its own Status was never updated: it is not a live fact to contradict.
+    replaced_ids = _superseded_ids(committed_blocks)
 
     # Build results: compare proposal against each candidate
     conflicts = []
@@ -385,6 +407,8 @@ def detect_contradictions(
             if block_id in seen_ids:
                 continue
             seen_ids.add(block_id)
+            if block_id in replaced_ids:
+                continue
             # Superseded, archived or retracted memory is history: a proposal cannot contradict it.
             result_status = str(result.get("status") or result.get("Status") or "active").strip().lower()
             if result_status not in COMMITTED_STATUSES:
@@ -423,6 +447,8 @@ def detect_contradictions(
             continue
 
         seen_ids.add(block_id)
+        if block_id in replaced_ids:
+            continue
         existing_text = _extract_block_text(block)
         if not existing_text.strip():
             continue

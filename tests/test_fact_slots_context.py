@@ -40,6 +40,19 @@ NOT_CORRECTIONS = [
     ("The standup is at 10 Downing Street", "The standup is at 11 Downing Street"),
     ("The price is 1.50", "The price is 2.50"),
     ("Q3 review on Friday", "Q2 review on Friday"),
+    ("Send the report to June.", "Send the report to April."),
+    ("Send the weekly digest to May.", "Send the weekly digest to August."),
+    ("Assign the ticket to Jan", "Assign the ticket to Mar"),
+    ("The review for Q4 is on Thursday.", "The review for Q3 is on Tuesday."),
+    ("Review of April numbers is on Thursday.", "Review of March numbers is on Tuesday."),
+    ("See John 3:17 for the quote.", "See John 3:16 for the quote."),
+    ("Ilona lives at 14, Elm Street.", "Ilona lives at 12, Elm Street."),
+    ("Ilona's desk is at 12 in building B.", "Ilona's desk is at 10 in building B."),
+    ("Offsite of 2026 is in Denver.", "Offsite of 2025 is in Denver."),
+    ("The ratio is 16:10.", "The ratio is 16:12."),
+    ("Ilona's score was 21:15.", "Ilona's score was 21:17."),
+    ("Ilona's locker is at 10 and Bob's at 12.", "Ilona's locker is at 11 and Bob's at 12."),
+    ("Take the 6am Pacific Surfliner", "Take the 6am Central Surfliner"),
     ("Ilona owns INC-2026-10-09.", "Ilona owns INC-2026-10-08."),
     ("Ilona's employee id is 2026-10-09", "Ilona's employee id is 2026-10-08"),
     ("See doc 10/9 for details.", "See doc 10/8 for details."),
@@ -117,6 +130,15 @@ CORRECTIONS = [
     ("Meet at 1600 tomorrow.", "Meet at 1700 tomorrow."),
     ("Deadline is 2026-10-09T17:00.", "Deadline is 2026-10-08T17:00."),
     ("Ilona does not attend the Tuesday sync.", "Ilona attends the Tuesday sync."),
+    ("The standup is on Tue and Thu.", "The standup is on Mon and Wed."),
+    ("The backup job is disabled.", "The backup job is enabled."),
+    ("Ilona's call is Thu 10/9", "Ilona's call is Tue 10/7"),
+    ("Ilona is not on the call anymore.", "Ilona is on the call."),
+    ("The call with Ilona is cancelled.", "The call with Ilona is on Tuesday."),
+    ("The review moved to March", "The review is in February"),
+    ("The meeting is at the end of May", "The meeting is at the end of June"),
+    ("Ilona prefers the 9:00 train.", "Ilona prefers the 8:00 train."),
+    ("Ilona joined in 2020.", "Ilona joined in 2019."),
 ]
 
 
@@ -235,9 +257,9 @@ def test_one_pass_returns_both_lists() -> None:
 def _workspace(tmp_path: Path, body: str) -> Path:
     (tmp_path / "decisions").mkdir()
     (tmp_path / "mind-mem.json").write_text(
-        json.dumps({"version": "5.0.1", "v4": {"granularity_align": {"enabled": True, "min_similarity": 0.5}}})
+        json.dumps({"version": "5.0.1", "v4": {"granularity_align": {"enabled": True, "min_similarity": 0.5}}}), encoding="utf-8"
     )
-    (tmp_path / "decisions" / "DECISIONS.md").write_text("# DECISIONS\n\n" + body)
+    (tmp_path / "decisions" / "DECISIONS.md").write_text("# DECISIONS\n\n" + body, encoding="utf-8")
     return tmp_path
 
 
@@ -288,7 +310,8 @@ def test_build_index_accepts_list_statement(tmp_path: Path) -> None:
     (tmp_path / "decisions").mkdir()
     (tmp_path / "decisions" / "DECISIONS.md").write_text(
         "# DECISIONS\n\n[D-20261001-001]\nDate: 2026-10-01\nStatus: active\n"
-        "Statement:\n- first item of a list statement\n- second item\nContext:\n- a\nTags: t\n"
+        "Statement:\n- first item of a list statement\n- second item\nContext:\n- a\nTags: t\n",
+        encoding="utf-8",
     )
     result = build_index(str(tmp_path))
     assert result["blocks_indexed"] == 1
@@ -301,7 +324,8 @@ def test_contradiction_detector_end_to_end(tmp_path: Path) -> None:
     (tmp_path / "decisions").mkdir()
     (tmp_path / "decisions" / "DECISIONS.md").write_text(
         f"# DECISIONS\n\n[D-20261001-001]\nDate: 2026-10-01\nStatus: active\nScope: global\n"
-        f"Statement: {old}\nRationale: seed.\nSupersedes: none\nTags: test\nSources: test\n"
+        f"Statement: {old}\nRationale: seed.\nSupersedes: none\nTags: test\nSources: test\n",
+        encoding="utf-8",
     )
 
     def kinds(statement: str) -> list[str]:
@@ -376,8 +400,90 @@ def test_superseded_block_is_not_a_contradiction_candidate(tmp_path: Path) -> No
         "# DECISIONS\n\n[D-20261001-001]\nDate: 2026-10-01\nStatus: superseded\nScope: global\n"
         "Statement: The weekly call with Ilona is on Tuesday at 10am.\nTags: test\n\n"
         "[D-20261001-002]\nDate: 2026-10-01\nStatus: active\nScope: global\n"
-        "Statement: The weekly call with Ilona is on Wednesday at 10am.\nTags: test\n"
+        "Statement: The weekly call with Ilona is on Wednesday at 10am.\nTags: test\n",
+        encoding="utf-8",
     )
     report = check_proposal_contradictions(str(tmp_path), {"Statement": "The weekly call with Ilona is on Thursday at 10am."})
     ids = {c["block_id"] for c in report["conflicts"] if c["conflict_type"] == "contradiction"}
     assert ids == {"D-20261001-002"}  # positive control: the active block is still flagged
+
+
+# ----------------------------------------------------------------------------- round 4
+
+
+@pytest.mark.parametrize(
+    "extra_a,extra_b",
+    [
+        ("Statement: Tue 10am Arizona time\n", "Statement: Tue 10am Arizona time\n"),
+    ],
+)
+def test_repeated_statement_key_keeps_the_overwritten_value(tmp_path: Path, extra_a: str, extra_b: str) -> None:
+    body = (
+        "[D-20261001-001]\nDate: 2026-10-01\nStatus: active\nScope: global\nStatement: Weekly call with Ilona\n"
+        + extra_a
+        + "Tags: test\n\n[D-20261001-002]\nDate: 2026-10-01\nStatus: active\nScope: global\n"
+        "Statement: Weekly call with the contractor\n" + extra_b + "Tags: test\n\n"
+    )
+    g = _plan(_workspace(tmp_path, body))
+    assert g["scanned_blocks"] == 2
+    assert g["candidates"] == []
+
+
+@pytest.mark.parametrize(
+    "extra_a,extra_b",
+    [
+        ("#ilona\n", "#contractor\n"),
+        ("## Attendee: Ilona\n", "## Attendee: Bob\n"),
+        ("Statement2: x\n  - with Ilona\n", "Statement2: x\n  - with Bob\n"),
+    ],
+)
+def test_lines_the_parser_used_to_drop_block_merge(tmp_path: Path, extra_a: str, extra_b: str) -> None:
+    g = _plan(_workspace(tmp_path, _decision("D-20261001-001", extra_a) + _decision("D-20261001-002", extra_b)))
+    assert g["scanned_blocks"] == 2
+    assert g["candidates"] == []
+
+
+def test_parser_capture_rules() -> None:
+    from mind_mem.block_parser import parse_blocks
+
+    (block,) = parse_blocks("[D-1]\nStatement: first\nStatement: second\nTags: t\n")
+    assert block["Statement"] == "second" and block["_unparsed"] == ["Statement: first"]
+    a, b = parse_blocks("[D-1]\nStatement: S\n#tag\nRationale: r\n\n## Next section\n\n[D-2]\nStatement: x\n## trailing\n")
+    assert a["_unparsed"] == ["#tag"]  # a heading after the block's content is the next section's
+    assert "_unparsed" not in b
+    (sig,) = parse_blocks("[D-1]\nStatement: x\nConstraintSignatures:\n- id: CS-1\n  scope:\n    time:\n      start: 2026-01-01\n")
+    assert "_unparsed" not in sig  # a well-formed key-only nested line is structure
+    assert sig["ConstraintSignatures"][0]["scope"]["time"] == {"start": "2026-01-01"}
+
+
+def test_supersedes_link_removes_a_block_from_contradiction_candidates(tmp_path: Path) -> None:
+    from mind_mem.contradiction_detector import check_proposal_contradictions
+
+    (tmp_path / "decisions").mkdir()
+    (tmp_path / "decisions" / "DECISIONS.md").write_text(
+        "# DECISIONS\n\n[D-20261001-001]\nDate: 2026-10-01\nStatus: active\nScope: global\n"
+        "Statement: The weekly call with Ilona is on Tuesday at 10am.\nTags: test\n\n"
+        "[D-20261001-002]\nDate: 2026-10-02\nStatus: active\nScope: global\nSupersedes: D-20261001-001\n"
+        "Statement: The weekly call with Ilona is on Wednesday at 10am.\nTags: test\n",
+        encoding="utf-8",
+    )
+    report = check_proposal_contradictions(str(tmp_path), {"Statement": "The weekly call with Ilona is on Thursday at 10am."})
+    ids = {c["block_id"] for c in report["conflicts"] if c["conflict_type"] == "contradiction"}
+    assert ids == {"D-20261001-002"}
+
+
+def test_contradiction_report_never_echoes_withheld_text(tmp_path: Path) -> None:
+    from mind_mem.contradiction_detector import check_proposal_contradictions
+
+    (tmp_path / "decisions").mkdir()
+    (tmp_path / "decisions" / "DECISIONS.md").write_text(
+        "# DECISIONS\n\n[D-20261001-001]\nDate: 2026-10-01\nStatus: quarantined\nScope: global\n"
+        "Statement: The weekly call with Ilona is on Tuesday at 10am SECRET-QUARANTINED.\nTags: test\n\n"
+        "[D-20261001-002]\nDate: 2026-10-01\nStatus: active\nScope: global\n"
+        "Statement: The weekly call with Ilona is on Wednesday at 10am.\nTags: test\n",
+        encoding="utf-8",
+    )
+    report = check_proposal_contradictions(str(tmp_path), {"Statement": "The weekly call with Ilona is on Thursday at 10am."})
+    text = json.dumps(report)
+    assert "D-20261001-002" in text  # positive control: the active block is compared
+    assert "SECRET-QUARANTINED" not in text and "D-20261001-001" not in text
