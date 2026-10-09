@@ -348,6 +348,11 @@ ADMIN_TOOLS = frozenset(
         "compiled_truth_add_evidence",
         "ontology_load",
         "vault_sync",
+        # calibration_feedback writes the calibration_feedback table, which
+        # recall reads on EVERY query (CalibrationManager in _recall_core)
+        # to reweight served scores -- there is no admin step between the
+        # row and every client's ranking, so it is not a staging write.
+        "calibration_feedback",
         "sign_model_tool",
         "build_core",
         "export_core",
@@ -399,7 +404,6 @@ USER_TOOLS = frozenset(
         "prefetch",
         "list_mind_kernels",
         "get_mind_kernel",
-        "calibration_feedback",
         "calibration_stats",
         "report_outcome",
         "outcome_stats",
@@ -471,8 +475,11 @@ USER_TOOLS = frozenset(
 
 #: User-scope tools that WRITE, pinned. Each one appends to its own HITL
 #: staging or feedback store and nothing else: a proposal waits for an admin
-#: approve_* call before it reaches the source of truth, and a feedback row is
-#: an input the operator-side calibration reads. This is the only write a
+#: approve_* call before it reaches the source of truth, a signal row is an
+#: input the operator-side tuning reads, and a recall_outcome row moves no
+#: served score unless the operator opts the workspace into
+#: ``recall.validity_gate.outcome_attribution``. A store that recall reads by
+#: default (calibration_feedback) is NOT staging: its writers are admin. This is the only write a
 #: user-scope tool may make; tests/test_acl_user_scope_read_only.py measures
 #: every user tool against it and holds the set as an exact ratchet, so a new
 #: entry is a reviewed decision and not a side effect. Values are the logical
@@ -481,7 +488,6 @@ USER_STAGING_WRITES: dict[str, tuple[str, ...]] = {
     "observe_signal": ("memory/interaction_signals.jsonl",),
     "propose_edge": ("memory/knowledge_graph.db::edge_proposals",),
     "propose_entity_merge": ("memory/knowledge_graph.db::entity_merge_proposals",),
-    "calibration_feedback": (".mind-mem-index/recall.db::calibration_feedback",),
     "report_outcome": (".mind-mem-index/recall.db::recall_outcome",),
 }
 
@@ -528,6 +534,18 @@ def _gate_dream_cycle(args: dict[str, Any]) -> WriteMode | None:
     return None
 
 
+def _gate_report_outcome(args: dict[str, Any]) -> WriteMode | None:
+    # The default mode appends to recall_outcome only (pinned staging). The
+    # projection writes calibration_feedback, which recall reads on every
+    # query and which therefore reweights every client's served scores.
+    if args.get("project_to_calibration", False):
+        return WriteMode(
+            "report_outcome(project_to_calibration=True)",
+            "projects outcomes into the calibration weights every client's recall reads",
+        )
+    return None
+
+
 _CORE_WRITE_ACTIONS = {"build": "build_core", "load": "load_core", "unload": "unload_core"}
 
 
@@ -563,6 +581,7 @@ WRITE_MODE_GATES: dict[str, Callable[[dict[str, Any]], WriteMode | None]] = {
     "memory_evolution": _gate_memory_evolution,
     "reindex_dirty": _gate_reindex_dirty,
     "dream_cycle": _gate_dream_cycle,
+    "report_outcome": _gate_report_outcome,
     "core": _gate_core,
     "compiled_truth": _gate_compiled_truth,
     "graph": _gate_graph,

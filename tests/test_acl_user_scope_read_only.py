@@ -87,6 +87,9 @@ def _probe_args(ext: str) -> dict[str, dict[str, Any]]:
         # --- moved to ADMIN_TOOLS (write in every mode) -----------------
         "add_block_edge": dict(src=D1, dst=D2, kind="cites"),
         "build_core": dict(namespace="aclprobe", version="2.0"),
+        # Recall reads calibration_feedback on every query (CalibrationManager
+        # in _recall_core) and reweights served scores: a cross-client write.
+        "calibration_feedback": dict(query_id="q1", block_ids_useful=[D1]),
         "compiled_truth_add_evidence": dict(entity_id="ent1", observation="observed"),
         "export_core": dict(name="aclprobe-1.0.mmcore"),
         "governance_health_bench": {},
@@ -102,9 +105,9 @@ def _probe_args(ext: str) -> dict[str, dict[str, Any]]:
         "graph": dict(action="add_edge", subject="a", predicate="related_to", object="b", source_block_id=D1),
         "memory_evolution": dict(block_id=D1, action="update"),
         "reindex_dirty": dict(dry_run=False),
+        "report_outcome": dict(block_ids=[D1], outcome="failure", task_id="t1", project_to_calibration=True),
         "stale_blocks": dict(clear_block_id=D1),
         # --- HITL staging (pinned USER_STAGING_WRITES) -------------------
-        "calibration_feedback": dict(query_id="q1", block_ids_useful=[D1]),
         "observe_signal": dict(
             session_id="s",
             previous_query="frost telemetry alpha",
@@ -112,7 +115,6 @@ def _probe_args(ext: str) -> dict[str, dict[str, Any]]:
         ),
         "propose_edge": dict(subject="a", predicate="related_to", object="b", source_block_id=D1),
         "propose_entity_merge": dict(winner_id="alpha", loser_id="beta", rationale="duplicate surface forms"),
-        "report_outcome": dict(block_ids=[D1], outcome="success", task_id="t1"),
         # --- read tools --------------------------------------------------
         "agent_inject": dict(query="frost"),
         "anchor_history": {},
@@ -178,6 +180,7 @@ def _probe_args(ext: str) -> dict[str, dict[str, Any]]:
 WRITE_CONTROLS = (
     "add_block_edge",
     "build_core",
+    "calibration_feedback",
     "compiled_truth",
     "compiled_truth_add_evidence",
     "core",
@@ -189,11 +192,19 @@ WRITE_CONTROLS = (
     "memory_evolution",
     "ontology_load",
     "reindex_dirty",
+    "report_outcome",
     "sign_model_tool",
     "stale_blocks",
     "unload_core",
     "vault_sync",
 )
+
+
+#: Staging tools whose write-shaped probe is a GATED mode: the positive
+#: control for the staging allowance runs the default (staging-only) mode.
+STAGING_ARGS: dict[str, dict[str, Any]] = {
+    "report_outcome": dict(block_ids=[D1], outcome="success", task_id="t1"),
+}
 
 
 # ---------------------------------------------------------------------------
@@ -403,7 +414,6 @@ def test_user_scope_tool_writes_nothing(name: str, run_tool) -> None:
 def test_staging_exceptions_are_exactly_pinned() -> None:
     """The HITL staging set is a ratchet: adding to it is a reviewed decision."""
     assert set(USER_STAGING_WRITES) == {
-        "calibration_feedback",
         "observe_signal",
         "propose_edge",
         "propose_entity_merge",
@@ -415,7 +425,7 @@ def test_staging_exceptions_are_exactly_pinned() -> None:
 @pytest.mark.parametrize("name", sorted(USER_STAGING_WRITES))
 def test_staging_tools_really_write_their_declared_store(name: str, run_tool) -> None:
     """Positive control for the staging allowance: it is not a blind spot."""
-    result, changed, _globals = run_tool(name, "user")
+    result, changed, _globals = run_tool(name, "user", STAGING_ARGS.get(name))
     assert changed & set(USER_STAGING_WRITES[name]), f"{name} wrote nothing visible: {result[:300]}"
 
 
@@ -460,12 +470,14 @@ def test_dream_cycle_default_mode_is_a_read_at_user_scope(run_tool) -> None:
         ("core", {"action": "list"}),
         ("compiled_truth", {"action": "load", "entity_id": "ent1"}),
         ("graph", {"action": "stats"}),
+        ("report_outcome", {"block_ids": [D1], "outcome": "failure", "task_id": "t2"}),
     ],
 )
 def test_read_modes_of_gated_tools_still_work_at_user_scope(name: str, args: dict[str, Any], run_tool) -> None:
     result, changed, global_changes = run_tool(name, "user", args)
     assert "requires admin scope" not in result, result[:300]
-    assert not (changed - READ_ACCOUNTING) and not global_changes
+    allowed = READ_ACCOUNTING | set(USER_STAGING_WRITES.get(name, ()))
+    assert not (changed - allowed) and not global_changes
 
 
 def test_write_mode_gates_name_only_user_tools() -> None:

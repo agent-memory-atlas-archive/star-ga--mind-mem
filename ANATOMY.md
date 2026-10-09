@@ -5,8 +5,8 @@
 > Re-generate with: `anatomy .`
 
 **Project:** `mind-mem`
-**Files:** 1697 | **Est. tokens:** ~4,968,600
-**Generated:** 2026-10-09 02:33 UTC
+**Files:** 1697 | **Est. tokens:** ~4,969,022
+**Generated:** 2026-10-09 02:41 UTC
 
 ## Token Budget Guide
 
@@ -84,7 +84,7 @@
 | `src/mind_mem/compliance/` | 7 | ~15,436 |
 | `src/mind_mem/importers/` | 10 | ~34,469 |
 | `src/mind_mem/mcp/` | 3 | ~7,307 |
-| `src/mind_mem/mcp/infra/` | 8 | ~18,593 |
+| `src/mind_mem/mcp/infra/` | 8 | ~18,852 |
 | `src/mind_mem/mcp/tools/` | 29 | ~125,750 |
 | `src/mind_mem/skill_opt/` | 11 | ~20,899 |
 | `src/mind_mem/spec/` | 4 | ~6,845 |
@@ -93,7 +93,7 @@
 | `src/mind_mem/tool_output/` | 3 | ~5,895 |
 | `src/mind_mem/v4/` | 24 | ~96,311 |
 | `src/mind_mem/viewer_static/` | 3 | ~865 |
-| `tests/` | 758 | ~2,221,363 |
+| `tests/` | 758 | ~2,221,526 |
 | `tests/fixtures/` | 7 | ~11,912 |
 | `tests/fixtures/importers/` | 5 | ~1,218 |
 | `tests/fixtures/importers/agent_memory/` | 4 | ~383 |
@@ -913,7 +913,7 @@
 - `mcp_entry.py` (~495 tok, medium) — Thin entry point for the ``mind-mem-mcp`` console script.
 ### `src/mind_mem/mcp/infra/`
 
-- `acl.py` (~8036 tok, huge) — Per-tool ACL — scope enforcement for the MCP surface.
+- `acl.py` (~8295 tok, huge) — Per-tool ACL — scope enforcement for the MCP surface.
 - `config.py` (~1315 tok, large) — ``mind-mem.json`` config loading + configurable limits.
 - `constants.py` (~98 tok, small) — MCP-surface-wide constants shared by the infra submodules.
 - `http_auth.py` (~2032 tok, huge) — HTTP bearer-token authentication helpers for the MCP surface.
@@ -1255,7 +1255,7 @@
 - `test_accountability_dashboard.py` (~6883 tok, huge) — RA.5 — the lifecycle-tier dashboard, and the four refusals it inherits.
 - `test_accountability_views.py` (~6320 tok, huge) — RA.2 — precision and waste as derived views, and the four refusals that shape them.
 - `test_acl_tool_coverage.py` (~2384 tok, huge) — ACL coverage invariant for the MCP tool surface.
-- `test_acl_user_scope_read_only.py` (~5329 tok, huge) — No USER-scope MCP tool may write, in any argument combination.
+- `test_acl_user_scope_read_only.py` (~5492 tok, huge) — No USER-scope MCP tool may write, in any argument combination.
 - `test_active_only_filter.py` (~312 tok, medium) — Tests for active_only recall filter."""
 - `test_adjacent_public_acl.py` (~3611 tok, huge) — ACL controls for public retrieval doors beside the ranked recall tool."""
 - `test_admissibility_unreadable_status.py` (~1104 tok, large) — An unreadable ``Status`` must be withheld on the stale-index path too.
