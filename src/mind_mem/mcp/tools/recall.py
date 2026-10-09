@@ -22,7 +22,6 @@ is the shared choke point they all ultimately lean on.
 from __future__ import annotations
 
 import json
-import os
 import re as _re_mod
 import sqlite3
 import time
@@ -36,7 +35,7 @@ from mind_mem.recall_cache import corpus_stamp as _corpus_stamp
 from mind_mem.recall_cache import retrieval_config_fingerprint
 from mind_mem.retrieval_graph import retrieval_diagnostics as _retrieval_diag
 from mind_mem.scoring_instant import format_scoring_instant, resolve_scoring_instant
-from mind_mem.sqlite_index import _db_path as fts_db_path
+from mind_mem.sqlite_index import _index_present as fts_index_present
 from mind_mem.sqlite_index import query_index as fts_query
 
 from ..infra.config import QUERY_TIMEOUT_SECONDS, _get_limits, _load_config
@@ -1095,7 +1094,10 @@ def _recall_impl_uncached(
 
     if used_backend != "hybrid":
         try:
-            if os.path.isfile(fts_db_path(ws)):
+            # The FTS schema is the question, not the file: recall.db is created by
+            # side tables on the first recall and would otherwise divert every later
+            # recall off the scan leg while holding no index.
+            if fts_index_present(ws):
                 config = _load_config(ws)
                 loaded_recall_cfg = config.get("recall", {})
                 recall_cfg = loaded_recall_cfg if isinstance(loaded_recall_cfg, dict) else {}
@@ -1119,6 +1121,7 @@ def _recall_impl_uncached(
                     scoring_instant=scoring_instant,
                     since=since,
                     until=until,
+                    agent_id=agent_id,
                 )
                 if agent_id:
                     from mind_mem._recall_core import _filter_indexed_hits_for_agent

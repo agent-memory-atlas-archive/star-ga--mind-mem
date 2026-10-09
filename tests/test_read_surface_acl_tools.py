@@ -87,6 +87,7 @@ def ws(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
         _w(root, ns + "tasks/TASKS.md", _blk(f"T-{tag}-ACT", f"zq{tag}TASKcanary", "Task"))
     _w(root, "intelligence/CONTRADICTIONS.md", _blk("C-ROOT-ACT", "zqROOTCONTRADICTIONcanary", "Contradiction"))
     _w(root, "intelligence/SIGNALS.md", _signal())
+    _w(root, "shared/intelligence/LEDGER.md", _blk("FACT-SH-ACT", "zqSHAREDLEDGERcanary", "Fact"))
     _w(root, "intelligence/DRIFT.md", _blk("DRIFT-ROOT-ACT", "zqROOTDRIFTcanary", "Drift"))
     _w(root, "guardrails/GUARDRAILS.md", _guardrail("GR-20260827-001", "zqROOTGUARDrail"))
     _w(root, "frames/FRAMES.md", _frame())
@@ -168,6 +169,8 @@ def _seed_side_stores(root: Path) -> None:
     add_block_edge(ws, "D-SHARED-ACT", "D-ROOT-ACT", "cites")
     add_block_edge(ws, "D-SHARED-ACT", "T-SHARED-ACT", "cites")
     add_block_edge(ws, "D-ROOT-ACT", "D-BOB-ACT", "cites")
+    # visible-only-via-hidden: D-SHARED-ACT -> D-BOB-ACT (hidden from eve) -> T-SHARED-ACT
+    add_block_edge(ws, "D-BOB-ACT", "T-SHARED-ACT", "cites")
     mgr = BlockMetadataManager(block_meta_db_path(ws))
     mgr.record_access(["D-SHARED-ACT", "D-ROOT-ACT", "T-SHARED-ACT"], query="frost")
     cal = CalibrationManager(ws)
@@ -191,6 +194,7 @@ def _seed_side_stores(root: Path) -> None:
         kg.add_edge("rootent", "related_to", "secretcomp", source_block_id="D-ROOT-ACT")
         kg.add_edge("sharedent", "related_to", "sharedcomp", source_block_id="D-SHARED-ACT")
     kg.propose_edge("rootent", "related_to", "secretcomp2", source_block_id="D-ROOT-ACT")
+    kg.propose_edge("sharedent", "related_to", "sharedcomp2", source_block_id="D-SHARED-ACT")
     kg.close()
     page = CompiledTruthPage(
         entity_id="rootent",
@@ -306,11 +310,81 @@ def test_validate_block_near_duplicate_rule_is_no_oracle_over_unreadable_signals
     assert "near_duplicate" not in json.dumps(eve["reasons"] + eve["advisory"]), eve
 
 
+def test_kind_summaries_reach_only_a_caller_whose_view_is_the_workspace(ws: Path, call) -> None:  # type: ignore[no-untyped-def]
+    from mind_mem.v4 import kind_summaries
+
+    cfg_path = ws / "mind-mem.json"
+    cfg = json.loads(cfg_path.read_text(encoding="utf-8"))
+    cfg["v4"]["kind_summaries"] = {"enabled": True}
+    cfg_path.write_text(json.dumps(cfg), encoding="utf-8")
+    db = sqlite3.connect(ws / "index.db")
+    db.execute("CREATE TABLE blocks (id TEXT PRIMARY KEY, content TEXT, kind TEXT)")
+    db.executemany(
+        "INSERT INTO blocks VALUES (?, ?, 'decision')",
+        [("D-ROOT-ACT", "zqROOTACTIVEcanary frost"), ("T-ROOT-ACT", "zqROOTTASKcanary frost")],
+    )
+    db.commit()
+    db.close()
+    try:
+        assert kind_summaries.refresh_summary(ws, "decision") is not None
+    finally:
+        kind_summaries.set_summariser(kind_summaries.default_summariser)
+    for who in (None, "ops"):  # positive control: the summary is served to a whole-view caller
+        payload = json.loads(call("category_summary", who, topic="architecture"))
+        assert payload["kind_summaries"] and "D-ROOT-ACT" in json.dumps(payload["kind_summaries"]), payload
+    for who in ("eve", "alice"):
+        body = call("category_summary", who, topic="architecture")
+        assert "kind_summaries" not in json.loads(body), body[:300]
+        assert "D-ROOT-ACT" not in body or who == "alice"  # alice may read the root block itself
+
+
 def test_alice_gets_root_rows_but_never_bobs(call) -> None:  # type: ignore[no-untyped-def]
     for tool, kwargs in (("stale_blocks", {}), ("list_evidence", {}), ("block_lineage", {"block_id": "D-ROOT-ACT"})):
         alice = call(tool, "alice", **kwargs)
         assert "D-ROOT-ACT" in alice, f"{tool}: alice was granted the root corpus: {alice[:300]}"
         assert _leaks(alice, DENIED_FOR_ALICE) == [], f"{tool} leaked bob to alice: {alice[:400]}"
+
+
+def _proposal_ids(body: str) -> str:
+    return json.dumps([p.get("object", p.get("loser_id")) for p in json.loads(body)["proposals"]])
+
+
+def test_staged_proposals_are_visible_to_their_proposer_and_to_readers_of_the_cited_blocks(call) -> None:  # type: ignore[no-untyped-def]
+    args = {"subject": "mine", "predicate": "related_to", "object": "eveobj", "source_block_id": "D-ROOT-ACT"}
+    assert "eveobj" in call("propose_edge", "eve", **args)  # eve cites a block she cannot read, as proposer
+    assert "evemerge" in call("propose_entity_merge", "eve", winner_id="sharedent", loser_id="sharedcomp", rationale="evemerge")
+    eve = _proposal_ids(call("list_edge_proposals", "eve"))
+    assert "eveobj" in eve, "a caller must see its OWN staged proposal"
+    assert "sharedcomp2" in eve, "a proposal citing only readable blocks is visible"
+    assert "secretcomp" not in eve, "someone else's proposal citing an unreadable block is not"
+    assert "sharedcomp" in _proposal_ids(call("list_entity_merge_proposals", "eve")), "own merge proposal visible"
+    alice = _proposal_ids(call("list_edge_proposals", "alice"))
+    assert "secretcomp2" in alice and "eveobj" in alice, "alice may read the root block these cite"
+    assert "secretcomp2" not in _proposal_ids(call("list_edge_proposals", "eve"))
+    assert "sharedcomp" not in _proposal_ids(call("list_entity_merge_proposals", "alice")), "another caller's merge is not alice's"
+    ops = _proposal_ids(call("list_edge_proposals", "ops")) + _proposal_ids(call("list_entity_merge_proposals", "ops"))
+    assert "eveobj" in ops and "secretcomp2" in ops and "sharedcomp" in ops  # positive control: the whole view sees everything
+
+
+def test_block_lineage_is_computed_on_the_visible_subgraph_only(call) -> None:  # type: ignore[no-untyped-def]
+    """T-SHARED-ACT is 1 hop from D-SHARED-ACT directly, and 3 hops via hidden blocks: only the direct path exists for eve."""
+    ops = json.loads(call("block_lineage", "ops", block_id="D-SHARED-ACT"))
+    assert {e["block_id"] for e in ops["edges"]} >= {"D-ROOT-ACT", "D-BOB-ACT", "T-SHARED-ACT"}  # positive control
+    eve = json.loads(call("block_lineage", "eve", block_id="D-SHARED-ACT"))
+    assert [(e["block_id"], e["distance"]) for e in eve["edges"]] == [("T-SHARED-ACT", 1)]
+
+
+def test_block_lineage_omits_a_block_reachable_only_through_a_hidden_one(call) -> None:  # type: ignore[no-untyped-def]
+    """Start at a readable block whose only route onward runs through a hidden block."""
+    from mind_mem.block_lineage import add_block_edge
+
+    ws = os.environ["MIND_MEM_WORKSPACE"]
+    add_block_edge(ws, "T-SHARED-ACT", "D-ALICE-ACT", "cites")  # hidden hop (alice's namespace)
+    add_block_edge(ws, "D-ALICE-ACT", "FACT-SH-ACT", "cites")  # shared block behind it
+    eve = json.loads(call("block_lineage", "eve", block_id="T-SHARED-ACT"))
+    assert "FACT-SH-ACT" not in json.dumps(eve) and "D-ALICE-ACT" not in json.dumps(eve), eve
+    ops = json.loads(call("block_lineage", "ops", block_id="T-SHARED-ACT"))
+    assert {"D-ALICE-ACT", "FACT-SH-ACT"} <= {e["block_id"] for e in ops["edges"]}  # positive control
 
 
 def test_traverse_graph_omits_the_workspace_wide_graph_summary_for_a_restricted_caller(call) -> None:  # type: ignore[no-untyped-def]
@@ -363,8 +437,6 @@ AGGREGATES = (
     ("lint", {}, "findings"),
     ("graph_query", {"entity": "rootent"}, "neighbors"),
     ("entity_observations", {"entity": "rootent"}, "observations"),
-    ("list_edge_proposals", {}, "proposals"),
-    ("list_entity_merge_proposals", {}, "proposals"),
 )
 
 
@@ -670,6 +742,67 @@ def test_the_anticipation_cache_is_neither_filled_nor_read_for_a_bound_caller(
         call("recall", who, query="frost telemetry rollout")
         call("prefetch", who, signals="frost,telemetry")
     assert looked_up == [] and recorded == [], f"a bound caller reached the shared anticipation cache: {looked_up} {recorded}"
+
+
+@pytest.fixture
+def no_fts(ws: Path) -> Path:
+    """The workspace as a default install has it: corpus on disk, no FTS index yet."""
+    for name in ("recall.db", "recall.db-wal", "recall.db-shm"):
+        (ws / ".mind-mem-index" / name).unlink(missing_ok=True)
+    return ws
+
+
+def _recall_ids(body: str) -> list[str]:
+    return [r.get("_id") for r in json.loads(body).get("results", [])]
+
+
+def test_a_bound_shared_only_caller_gets_shared_content_on_the_first_and_the_second_recall(call, no_fts: Path) -> None:  # type: ignore[no-untyped-def]
+    """The first recall leaves a recall.db with no FTS schema; the second must not be diverted by it."""
+    q = "frost telemetry rollout"
+    first = _recall_ids(call("recall", "eve", query=q, limit=20))
+    assert "D-SHARED-ACT" in first and "T-SHARED-ACT" in first, first
+    from mind_mem import sqlite_index
+
+    assert (no_fts / ".mind-mem-index" / "recall.db").exists() and not sqlite_index._index_present(str(no_fts)), (
+        "seed: recall.db without an FTS schema"
+    )
+    second = _recall_ids(call("recall", "eve", query=q, limit=20))
+    assert second == first, f"second recall diverged: {second} vs {first}"
+    third = _recall_ids(call("recall", "eve", query=q, limit=20, backend="bm25"))
+    assert "D-SHARED-ACT" in third
+
+
+def test_the_fallback_scan_runs_as_the_caller_and_never_serves_root_content_to_a_restricted_one(call, no_fts: Path) -> None:  # type: ignore[no-untyped-def]
+    q = "frost telemetry rollout"
+    for _ in range(3):
+        for backend in ("auto", "bm25", "hybrid"):
+            body = call("recall", "eve", query=q, limit=20, backend=backend)
+            assert _leaks(body, DENIED_FOR_EVE) == [], (backend, body[:300])
+    assert "D-SHARED-ACT" in call("recall", "eve", query=q, limit=20, backend="hybrid")
+    for _ in range(2):  # alice: root (granted) and shared, never bob
+        body = call("recall", "alice", query=q, limit=20)
+        assert "D-ROOT-ACT" in body and _leaks(body, DENIED_FOR_ALICE) == []
+
+
+def test_an_unbound_callers_recall_is_unchanged_by_the_index_probe(call, no_fts: Path) -> None:  # type: ignore[no-untyped-def]
+    q = "frost telemetry rollout"
+    runs = [sorted(_recall_ids(call("recall", None, query=q, limit=20))) for _ in range(3)]
+    assert runs[0] and runs[0] == runs[1] == runs[2]
+    assert "D-ROOT-ACT" in runs[0]
+
+
+def test_query_index_fallback_carries_the_principal(no_fts: Path) -> None:
+    ws = no_fts
+    """A database with no FTS schema must fall back to a scan run AS the caller."""
+    from mind_mem import sqlite_index
+
+    con = sqlite3.connect(str(ws / ".mind-mem-index" / "recall.db"))  # side-table-only database
+    con.execute("CREATE TABLE IF NOT EXISTS calibration_feedback (x TEXT)")
+    con.commit()
+    con.close()
+    hits = sqlite_index.query_index(str(ws), "frost telemetry rollout", limit=20, agent_id="eve")
+    assert {h.get("_id") for h in hits} >= {"D-SHARED-ACT"}, hits
+    assert not any(str(h.get("_id", "")).startswith(("D-ROOT", "T-ROOT", "D-BOB")) for h in hits)
 
 
 def test_env_is_isolated(ws: Path) -> None:

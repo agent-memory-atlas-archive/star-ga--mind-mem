@@ -178,6 +178,7 @@ def propose_edge(
             object,
             source_block_id=source_block_id,
             confidence=float(confidence),
+            metadata=_proposer_metadata(),
         )
     except ValueError as exc:
         return json.dumps({"error": str(exc)})
@@ -287,6 +288,37 @@ def reject_edge(proposal_id: str) -> str:
     return json.dumps({**proposal.as_dict(), "_schema_version": "1.0"}, indent=2)
 
 
+def _proposer_metadata() -> dict[str, str]:
+    """``{"proposer": <authenticated principal>}`` for a bound caller, else empty.
+
+    Recorded so the list tools can show a caller its own staged proposals.
+    """
+    from mind_mem.read_authz import CallerUnresolved, caller_principal
+
+    try:
+        principal = caller_principal()
+    except CallerUnresolved:
+        return {}
+    return {"proposer": principal} if principal else {}
+
+
+def _proposal_visible(scope: Any, proposal: Any, *, blocks: tuple[str, ...]) -> bool:
+    """May the caller see this staged proposal?
+
+    A caller always sees the proposals it staged itself (``metadata.proposer``).
+    Others' proposals are visible when the caller's view is the whole workspace
+    or every block the proposal cites is one it may read. A proposal that cites
+    no block (an entity merge) and was staged by someone else is not visible to
+    a restricted caller.
+    """
+    if scope.whole:
+        return True
+    meta = proposal.metadata if isinstance(proposal.metadata, dict) else {}
+    if scope.principal and meta.get("proposer") == scope.principal:
+        return True
+    return bool(blocks) and all(scope.allows(b) for b in blocks)
+
+
 @mcp_tool_observe
 def list_edge_proposals(status: str = "staged", limit: int = 64) -> str:
     """List typed-edge proposals, optionally filtered by status (user-scope).
@@ -307,9 +339,7 @@ def list_edge_proposals(status: str = "staged", limit: int = 64) -> str:
     ws_err = _check_workspace(ws)
     if ws_err:
         return ws_err
-    # The entity graph is built from every namespace and its rows are not
-    # namespace-attributed: only a caller whose view is the workspace may read it.
-    denied = _workspace_view_denied(ws)
+    scope, denied = _read_scope_or_denied(ws)
     if denied is not None:
         return denied
 
@@ -330,7 +360,7 @@ def list_edge_proposals(status: str = "staged", limit: int = 64) -> str:
         proposals = kg.list_edge_proposals(status=None if status == "all" else status)
     finally:
         kg.close()
-    proposals = proposals[:limit]
+    proposals = [p for p in proposals if _proposal_visible(scope, p, blocks=(p.source_block_id,))][:limit]
     return json.dumps(
         {
             "status": status,
@@ -357,7 +387,7 @@ def propose_entity_merge(winner_id: str, loser_id: str, rationale: str) -> str:
         return json.dumps({"error": "rationale must be a string"})
     kg = KnowledgeGraph(_kg_path(ws))
     try:
-        proposal = kg.propose_entity_merge(winner_id, loser_id, rationale=rationale)
+        proposal = kg.propose_entity_merge(winner_id, loser_id, rationale=rationale, metadata=_proposer_metadata())
     except (EntityMergeError, ValueError) as exc:
         return json.dumps({"error": str(exc)})
     finally:
@@ -380,9 +410,7 @@ def list_entity_merge_proposals(status: str = "staged", limit: int = 64) -> str:
     ws_err = _check_workspace(ws)
     if ws_err:
         return ws_err
-    # The entity graph is built from every namespace and its rows are not
-    # namespace-attributed: only a caller whose view is the workspace may read it.
-    denied = _workspace_view_denied(ws)
+    scope, denied = _read_scope_or_denied(ws)
     if denied is not None:
         return denied
     valid = {PROPOSAL_STAGED, PROPOSAL_APPLIED, PROPOSAL_REJECTED, MERGE_REVERSED, "all"}
@@ -394,9 +422,10 @@ def list_entity_merge_proposals(status: str = "staged", limit: int = 64) -> str:
         return json.dumps({"status": status, "count": 0, "proposals": [], "_schema_version": "1.0"}, indent=2)
     kg = KnowledgeGraph(_kg_path(ws))
     try:
-        proposals = kg.list_entity_merge_proposals(status=None if status == "all" else status)[:limit]
+        proposals = kg.list_entity_merge_proposals(status=None if status == "all" else status)
     finally:
         kg.close()
+    proposals = [p for p in proposals if _proposal_visible(scope, p, blocks=())][:limit]
     return json.dumps(
         {"status": status, "count": len(proposals), "proposals": [p.as_dict() for p in proposals], "_schema_version": "1.0"},
         indent=2,

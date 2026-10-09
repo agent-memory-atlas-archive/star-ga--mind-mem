@@ -60,6 +60,12 @@ def block_lineage(
     scope, denied = _read_scope_or_denied(ws)
     if denied is not None:
         return denied
+    # A restricted caller gets the lineage of the VISIBLE subgraph: the walk
+    # never enters or steps through a block the caller may not read, so a
+    # visible block reachable only via a hidden one is absent and every
+    # distance is one the caller could derive from blocks they may read. A root
+    # the caller cannot read answers exactly like a root with no edges.
+    walkable = (not scope.restricted) or scope.allows(block_id)
     try:
         result = _read(
             ws,
@@ -67,19 +73,12 @@ def block_lineage(
             max_depth=int(max_depth),
             kind_filter=kind_filter,
             node_cap=int(node_cap),
+            visible=scope.allows if scope.restricted else None,
         )
     except ValueError as exc:
         return json.dumps({"error": str(exc)})
-
-    if scope.restricted:
-        # A root the caller cannot read answers exactly like a root with no
-        # edges; a readable root drops the edges that reach unreadable blocks.
-        # ``truncated`` described the unfiltered walk, so it is not forwarded.
-        if scope.allows(block_id):
-            visible = scope.keep(result.edges, key=lambda edge: edge.block_id)
-            result = dataclasses.replace(result, edges=visible)
-        else:
-            result = dataclasses.replace(result, edges=[], truncated=False)
+    if not walkable:
+        result = dataclasses.replace(result, edges=[], truncated=False)
 
     return json.dumps(result.to_dict(), indent=2)
 

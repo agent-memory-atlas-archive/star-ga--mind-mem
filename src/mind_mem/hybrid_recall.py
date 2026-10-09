@@ -2139,17 +2139,20 @@ class HybridBackend:
         """
         agent_id = kwargs.pop("agent_id", None)
         try:
-            from .sqlite_index import _db_path, ensure_index, query_index
+            from .sqlite_index import _index_present, ensure_index, query_index
 
-            db = _db_path(workspace)
             # Flag first, deliberately: with ``auto_build_index`` off this is
             # one attribute test and NOTHING else — no stat, no config read,
             # no import cost beyond the one already taken above. ``stat`` is
             # only reached by the ``os.path.isfile`` that was always here.
             if self._auto_build_index:
                 ensure_index(workspace, enabled=True)
-            if os.path.isfile(db):
-                return query_index(workspace, query, limit=limit, scoring_instant=scoring_instant, **kwargs)
+            # The FTS SCHEMA is the question, not the file: recall.db is created by
+            # side tables (calibration, retrieval_log) on the first recall, and a
+            # file with no ``blocks_fts`` would divert every later recall into
+            # query_index's fallback instead of the scan below.
+            if _index_present(workspace):
+                return query_index(workspace, query, limit=limit, scoring_instant=scoring_instant, agent_id=agent_id, **kwargs)
         except ImportError:
             _log.debug("sqlite_index_not_available")
         except Exception as exc:
