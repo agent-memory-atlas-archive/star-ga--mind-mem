@@ -313,6 +313,13 @@ def test_alice_gets_root_rows_but_never_bobs(call) -> None:  # type: ignore[no-u
         assert _leaks(alice, DENIED_FOR_ALICE) == [], f"{tool} leaked bob to alice: {alice[:400]}"
 
 
+def test_traverse_graph_omits_the_workspace_wide_graph_summary_for_a_restricted_caller(call) -> None:  # type: ignore[no-untyped-def]
+    ops = json.loads(call("traverse_graph", "ops", block_id="D-SHARED-ACT"))
+    assert ops["graph_summary"]["total_edges"] >= 3  # positive control: the summary exists and counts every edge
+    for who in ("eve", "alice"):
+        assert "graph_summary" not in json.loads(call("traverse_graph", who, block_id="D-SHARED-ACT"))
+
+
 def test_stale_count_is_the_filtered_count(call) -> None:  # type: ignore[no-untyped-def]
     assert json.loads(call("stale_blocks", None))["stale_count"] == 3
     assert json.loads(call("stale_blocks", "eve"))["stale_count"] == 1

@@ -967,7 +967,7 @@ def traverse_graph(block_id: str, depth: int = 2, direction: str = "both") -> st
                 "reachable_nodes": downstream_nodes,
             }
 
-        if not scope.restricted:
+        if scope.whole:
             # edge / node / stale totals span every namespace
             result["graph_summary"] = cg.summary()
 
