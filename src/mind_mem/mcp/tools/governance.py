@@ -36,7 +36,7 @@ from mind_mem.v4.feature_flags import is_enabled_quiet as _v4_enabled_quiet
 from ..infra.constants import MCP_SCHEMA_VERSION
 from ..infra.observability import _is_db_locked, _sqlite_busy_error, mcp_tool_observe
 from ..infra.workspace import _check_workspace, _workspace
-from ._helpers import get_logger, metrics
+from ._helpers import _read_scope_or_denied, get_logger, metrics
 from ._helpers import traced as _traced
 
 _log = get_logger("mcp_server")
@@ -1571,6 +1571,9 @@ def memory_evolution(block_id: str, action: str = "get") -> str:
     if not _re_mod.match(r"^[A-Z]+-[a-zA-Z0-9_.-]+$", block_id):
         return json.dumps({"error": f"Invalid block_id format: {block_id}"})
     ws = _workspace()
+    scope, denied = _read_scope_or_denied(ws)
+    if denied is not None:
+        return denied
 
     try:
         from mind_mem.block_metadata import BlockMetadataManager, block_meta_db_path
@@ -1594,9 +1597,21 @@ def memory_evolution(block_id: str, action: str = "get") -> str:
                 },
                 indent=2,
             )
+        elif not scope.allows(block_id):
+            # Importance, co-retrieval partners and provenance of a block the
+            # caller cannot read: answer as for a block with no telemetry.
+            return json.dumps(
+                {
+                    "_schema_version": MCP_SCHEMA_VERSION,
+                    "block_id": block_id,
+                    "importance": 1.0,
+                    "co_occurring_blocks": [],
+                },
+                indent=2,
+            )
         else:
             importance = mgr.get_importance_boost(block_id)
-            co_blocks = mgr.get_co_occurring_blocks(block_id)
+            co_blocks = scope.keep(mgr.get_co_occurring_blocks(block_id))
             metrics.inc("mcp_evolution_reads")
             payload: dict[str, Any] = {
                 "_schema_version": MCP_SCHEMA_VERSION,

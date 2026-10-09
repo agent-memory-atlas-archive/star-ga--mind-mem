@@ -18,7 +18,7 @@ import json
 from ..infra.constants import MCP_SCHEMA_VERSION
 from ..infra.observability import mcp_tool_observe
 from ..infra.workspace import _workspace
-from ._helpers import _retrieval_metrics_enabled, get_logger, metrics
+from ._helpers import _read_scope_or_denied, _retrieval_metrics_enabled, _workspace_view_denied, get_logger, metrics
 
 _log = get_logger("mcp_server")
 
@@ -138,6 +138,10 @@ def calibration_stats() -> str:
         JSON report with calibration health metrics.
     """
     ws = _workspace()
+    # Per-block scores for every block that ever got feedback.
+    denied = _workspace_view_denied(ws)
+    if denied is not None:
+        return denied
 
     try:
         from mind_mem.calibration import CalibrationManager
@@ -290,13 +294,25 @@ def outcome_stats(block_id: str = "", task_id: str = "", top_n: int = 20) -> str
         JSON health report, or JSON outcome listing when filtered.
     """
     ws = _workspace()
+    scope, denied = _read_scope_or_denied(ws)
+    if denied is not None:
+        return denied
+    hidden = False
+    if task_id or not block_id:
+        # The health report and a per-task listing span every block.
+        denied = _workspace_view_denied(ws, scope)
+        if denied is not None:
+            return denied
+    else:
+        # One block's records: an unreadable block answers like one with none.
+        hidden = not scope.allows(block_id)
 
     try:
         from mind_mem.calibration import CalibrationManager
 
         cal = CalibrationManager(ws)
         if block_id or task_id:
-            outcomes = cal.list_outcomes(block_id=block_id, task_id=task_id, limit=top_n)
+            outcomes = [] if hidden else cal.list_outcomes(block_id=block_id, task_id=task_id, limit=top_n)
             payload = {
                 "block_id": block_id,
                 "task_id": task_id,

@@ -5,8 +5,8 @@
 > Re-generate with: `anatomy .`
 
 **Project:** `mind-mem`
-**Files:** 1708 | **Est. tokens:** ~5,022,080
-**Generated:** 2026-10-09 07:25 UTC
+**Files:** 1709 | **Est. tokens:** ~5,034,232
+**Generated:** 2026-10-09 07:55 UTC
 
 ## Token Budget Guide
 
@@ -78,14 +78,14 @@
 | `skills/mind-mem/` | 1 | ~1,671 |
 | `skills/mind-mem/references/` | 6 | ~18,811 |
 | `src/` | 1 | ~280 |
-| `src/mind_mem/` | 243 | ~1,085,747 |
+| `src/mind_mem/` | 243 | ~1,086,671 |
 | `src/mind_mem/api/` | 5 | ~28,329 |
 | `src/mind_mem/bench/` | 17 | ~48,632 |
 | `src/mind_mem/compliance/` | 7 | ~15,436 |
 | `src/mind_mem/importers/` | 10 | ~34,469 |
 | `src/mind_mem/mcp/` | 3 | ~7,718 |
 | `src/mind_mem/mcp/infra/` | 8 | ~20,532 |
-| `src/mind_mem/mcp/tools/` | 29 | ~128,355 |
+| `src/mind_mem/mcp/tools/` | 29 | ~131,810 |
 | `src/mind_mem/skill_opt/` | 11 | ~20,899 |
 | `src/mind_mem/spec/` | 4 | ~6,845 |
 | `src/mind_mem/storage/` | 2 | ~11,712 |
@@ -93,7 +93,7 @@
 | `src/mind_mem/tool_output/` | 3 | ~5,895 |
 | `src/mind_mem/v4/` | 24 | ~96,311 |
 | `src/mind_mem/viewer_static/` | 3 | ~865 |
-| `tests/` | 768 | ~2,256,355 |
+| `tests/` | 769 | ~2,264,128 |
 | `tests/fixtures/` | 7 | ~11,912 |
 | `tests/fixtures/importers/` | 5 | ~1,218 |
 | `tests/fixtures/importers/agent_memory/` | 4 | ~383 |
@@ -935,32 +935,32 @@
 
 - `agent.py` (~3001 tok, huge) — Agent-bridge + vault MCP tools.
 - `arch_mind.py` (~3475 tok, huge) — arch-mind MCP tools — wraps the ``arch-mind`` binary as 7 MCP tools.
-- `audit.py` (~4247 tok, huge) — Audit MCP tools — Merkle proofs, hash chain + evidence chain verification.
-- `benchmark.py` (~2387 tok, huge) — Benchmark + category-summary MCP tools.
-- `calibration.py` (~2915 tok, huge) — Calibration MCP tools — feedback (quality) + outcome attribution (utility).
+- `audit.py` (~4467 tok, huge) — Audit MCP tools — Merkle proofs, hash chain + evidence chain verification.
+- `benchmark.py` (~2578 tok, huge) — Benchmark + category-summary MCP tools.
+- `calibration.py` (~3083 tok, huge) — Calibration MCP tools — feedback (quality) + outcome attribution (utility).
 - `chat.py` (~1130 tok, large) — Chat surface — grounded question answering over the workspace.
-- `consolidation.py` (~7767 tok, huge) — Memory-consolidation MCP tools.
+- `consolidation.py` (~7822 tok, huge) — Memory-consolidation MCP tools.
 - `core.py` (~2896 tok, huge) — Context-core MCP tools — ``.mmcore`` bundle lifecycle.
 - `encryption.py` (~2670 tok, huge) — At-rest encryption MCP tools — ``encrypt_file`` / ``decrypt_file``.
-- `frames.py` (~2034 tok, huge) — # Copyright 2026 STARGA, Inc.
-- `governance.py` (~17498 tok, huge) — Governance MCP tools — propose / apply / rollback / scan / contradictions / memory_evolution.
-- `graph.py` (~9175 tok, huge) — Knowledge-graph + causal-graph MCP tools.
-- `guardrails.py` (~1835 tok, huge) — # Copyright 2026 STARGA, Inc.
-- `_helpers.py` (~1412 tok, large) — Shared tool-internal helpers — workspace paths + lazy-init singletons.
+- `frames.py` (~2195 tok, huge) — # Copyright 2026 STARGA, Inc.
+- `governance.py` (~17653 tok, huge) — Governance MCP tools — propose / apply / rollback / scan / contradictions / memory_evolution.
+- `graph.py` (~9811 tok, huge) — Knowledge-graph + causal-graph MCP tools.
+- `guardrails.py` (~1988 tok, huge) — # Copyright 2026 STARGA, Inc.
+- `_helpers.py` (~1919 tok, huge) — Shared tool-internal helpers — workspace paths + lazy-init singletons.
 - `__init__.py` (~146 tok, small) — Per-domain ``@mcp.tool`` modules (v3.2.0 §1.2 PR-3+).
-- `kernels.py` (~1902 tok, huge) — MIND kernel + compiled-truth MCP tools.
-- `lineage.py` (~725 tok, large) — MCP wrapping for the v3.11.0 typed block-lineage graph (Pattern 3).
-- `lint.py` (~1511 tok, huge) — # Copyright 2026 STARGA, Inc.
-- `memory_ops.py` (~19173 tok, huge) — Memory operations MCP tools — index / lifecycle / health / export.
+- `kernels.py` (~2153 tok, huge) — MIND kernel + compiled-truth MCP tools.
+- `lineage.py` (~891 tok, large) — MCP wrapping for the v3.11.0 typed block-lineage graph (Pattern 3).
+- `lint.py` (~1554 tok, huge) — # Copyright 2026 STARGA, Inc.
+- `memory_ops.py` (~19446 tok, huge) — Memory operations MCP tools — index / lifecycle / health / export.
 - `mic_map.py` (~2436 tok, huge) — MIC/MAP serialization MCP tools — wraps ``mind_mem.mic_map``.
 - `model.py` (~3185 tok, huge) — Model audit / signing MCP tools — wraps ``mind_mem.model_audit``,
 - `ontology.py` (~969 tok, large) — Ontology MCP tools — ``ontology_load`` + ``ontology_validate``.
-- `pipeline.py` (~916 tok, large) — MCP wrapping for pipeline-hash inspection + dirty-block re-extraction.
+- `pipeline.py` (~1128 tok, large) — MCP wrapping for pipeline-hash inspection + dirty-block re-extraction.
 - `public.py` (~5590 tok, huge) — # mypy: disable-error-code="no-any-return"
-- `quality.py` (~1009 tok, large) — MCP wrapping for the v3.11.0 deterministic quality gate.
-- `recall.py` (~24108 tok, huge) — Recall surface — the retrieval core of the MCP API.
+- `quality.py` (~1102 tok, large) — MCP wrapping for the v3.11.0 deterministic quality gate.
+- `recall.py` (~24177 tok, huge) — Recall surface — the retrieval core of the MCP API.
 - `signal.py` (~926 tok, large) — Interaction-signal MCP tools — ``observe_signal`` + ``signal_stats``.
-- `trajectory.py` (~1474 tok, large) — Trajectory-memory MCP tool — case-based recall over past task outcomes.
+- `trajectory.py` (~1576 tok, huge) — Trajectory-memory MCP tool — case-based recall over past task outcomes.
 - `walkthrough_persona.py` (~1843 tok, huge) — MCP wrapping for v3.9 walkthrough + persona projection.
 ### `src/mind_mem/`
 
@@ -1006,7 +1006,7 @@
 - `quality_gate.py` (~2691 tok, huge) — Deterministic block quality gate (v3.11.0, Pattern 2).
 - `query_expansion.py` (~5349 tok, huge) — Multi-query expansion for improved recall.
 - `query_planner.py` (~2865 tok, huge) — Query decomposition for multi-hop questions (v3.3.0 Tier 1 #1).
-- `read_authz.py` (~1407 tok, large) — # Copyright 2026 STARGA, Inc.
+- `read_authz.py` (~2331 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `recall_attestation.py` (~13053 tok, huge) — Per-run recall attestation — runtime evidence of *how* an answer was produced.
 - `recall_cache.py` (~6867 tok, huge) — v3.2.0 — distributed recall result cache (Redis + in-process LRU fallback).
 - `_recall_constants.py` (~3418 tok, huge) — Recall engine constants — search fields, BM25 params, regex patterns, limits."""
@@ -1728,6 +1728,7 @@
 - `test_ra1v2_live_serve_binding.py` (~4335 tok, huge) — The live serve binding: a real serve records a v2 row, and a failed bind is visible.
 - `test_ra4_proposal_rationale.py` (~932 tok, large) — Every accepted proposal type needs the caller's written rationale."""
 - `test_read_surface_acl.py` (~5475 tok, huge) — # Copyright 2026 STARGA, Inc.
+- `test_read_surface_acl_tools.py` (~7773 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_read_surface_admission.py` (~6897 tok, huge) — Every read surface, swept with a three-status canary.
 - `test_read_surface_classification.py` (~9253 tok, huge) — The registry-wide read-surface classification — the committed table.
 - `test_read_surface_paths.py` (~4260 tok, huge) — # Copyright 2026 STARGA, Inc.

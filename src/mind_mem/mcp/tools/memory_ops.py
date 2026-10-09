@@ -43,7 +43,14 @@ from ..infra.config import _load_config, _load_extra_categories
 from ..infra.constants import MCP_SCHEMA_VERSION
 from ..infra.observability import _is_db_locked, _sqlite_busy_error, mcp_tool_observe
 from ..infra.workspace import _check_workspace, _workspace
-from ._helpers import _retrieval_metrics_enabled, _signal_store_path, get_logger, metrics
+from ._helpers import (
+    _read_scope_or_denied,
+    _retrieval_metrics_enabled,
+    _signal_store_path,
+    _workspace_view_denied,
+    get_logger,
+    metrics,
+)
 
 
 def _kernel_backend_reporting_enabled() -> bool:
@@ -324,6 +331,10 @@ def _mrs_health_section(ws: str) -> dict[str, Any] | None:
 def index_stats() -> str:
     """Block counts, index staleness, vector coverage, and MIND kernel status."""
     ws = _workspace()
+    # Counts over every namespace: only a caller whose view is the workspace may have them.
+    denied = _workspace_view_denied(ws)
+    if denied is not None:
+        return denied
     stats: dict[str, Any] = {"_schema_version": MCP_SCHEMA_VERSION}
 
     db = fts_db_path(ws)
@@ -1332,6 +1343,11 @@ def memory_health() -> str:
     ws_err = _check_workspace(ws)
     if ws_err:
         return ws_err
+    # Totals, drift, contradiction, FTS and compaction figures span every
+    # namespace; they cannot be scoped to a caller after the fact.
+    denied = _workspace_view_denied(ws)
+    if denied is not None:
+        return denied
 
     health: dict[str, Any] = {"_schema_version": MCP_SCHEMA_VERSION}
     recommendations: list[str] = []
@@ -1643,6 +1659,9 @@ def compact(dry_run: bool = True, archive_days: int = 90, signal_days: int = 60,
 def stale_blocks(limit: int = 20, clear_block_id: str = "") -> str:
     """List blocks flagged as stale, or clear a staleness flag."""
     ws = _workspace()
+    scope, denied = _read_scope_or_denied(ws)
+    if denied is not None:
+        return denied
 
     try:
         from mind_mem.causal_graph import CausalGraph
@@ -1669,7 +1688,13 @@ def stale_blocks(limit: int = 20, clear_block_id: str = "") -> str:
                 indent=2,
             )
 
-        stale = cg.get_stale_blocks()
+        # A flag names a block id and the reason it went stale: only the
+        # caller's own servable blocks, filtered BEFORE the limit so a hidden
+        # flag cannot shorten or reorder what is shown.
+        stale = scope.keep(cg.get_stale_blocks(), key=lambda row: row.get("block_id"))
+        if scope.restricted:
+            # the block that CAUSED the staleness may live in a namespace the caller cannot read
+            stale = [{**row, "source_id": row.get("source_id") if scope.allows(row.get("source_id")) else None} for row in stale]
         stale = stale[: max(1, min(limit, 100))]
 
         metrics.inc("mcp_stale_blocks")

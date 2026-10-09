@@ -29,6 +29,7 @@ from __future__ import annotations
 
 import os
 from collections.abc import Iterable
+from dataclasses import dataclass
 from typing import Any
 
 from .audit_context import UNATTRIBUTED
@@ -108,6 +109,94 @@ def readable_blocks(
         if source_readable(workspace, source, principal):
             kept.append(block)
     return kept
+
+
+@dataclass(frozen=True)
+class ReadScope:
+    """What one caller may read, resolved once per tool call.
+
+    ``servable`` is the set of block ids the caller's namespace ACL grants AND
+    the admission filter admits (the same funnel ranked recall uses), or
+    ``None`` for an unbound caller, which keeps workspace-level access.
+    ``whole`` is true when the caller's view IS the workspace's view: an
+    unbound caller, or a bound one that can read every admissible block. A
+    tool that returns a count, a ranking or a health figure over the whole
+    corpus is only honest for such a caller; for any other it must filter by
+    id or refuse.
+    """
+
+    workspace: str
+    principal: str | None
+    servable: frozenset[str] | None
+    whole: bool
+
+    @property
+    def restricted(self) -> bool:
+        return self.servable is not None
+
+    def allows(self, block_id: object) -> bool:
+        """May the caller see this block id? Non-string ids are never allowed."""
+        if self.servable is None:
+            return True
+        return isinstance(block_id, str) and block_id in self.servable
+
+    def keep(self, rows: Iterable[Any], key: Any = None) -> list[Any]:
+        """The rows whose id (``key(row)``, or the row itself) the caller may see."""
+        pick = key if key is not None else (lambda row: row)
+        return [row for row in rows if self.allows(pick(row))]
+
+
+def servable_block_ids(workspace: str, principal: str | None) -> frozenset[str] | None:
+    """Ids *principal* may read, ``None`` for an unbound (unrestricted) caller."""
+    if not is_bound(principal):
+        return None
+    from .namespace_retrieval import admitted_namespace_blocks
+
+    return frozenset(admitted_namespace_blocks(workspace, principal) or ())
+
+
+def read_scope(workspace: str) -> ReadScope:
+    """Resolve the current caller's :class:`ReadScope`.
+
+    Raises:
+        CallerUnresolved: the caller's identity cannot be established; the
+            read must be refused, never promoted to unbound.
+    """
+    principal = caller_principal()
+    servable = servable_block_ids(workspace, principal)
+    if servable is None:
+        return ReadScope(workspace, principal, None, True)
+    from .admissibility import admissible
+    from .storage import iter_blocks
+
+    everything = admissible(iter_blocks(workspace, active_only=False))
+    whole = everything <= servable and all(
+        source_readable(workspace, f"{ns}/decisions/DECISIONS.md", principal) for ns in _other_namespace_roots(workspace)
+    )
+    return ReadScope(workspace, principal, servable, whole)
+
+
+def _other_namespace_roots(workspace: str) -> list[str]:
+    """Namespace roots besides the workspace root: shared, declared custom, every agent dir."""
+    from .namespace_retrieval import declared_custom_namespaces
+    from .namespaces import InvalidAgentIdError, _validate_agent_id
+    from .storage import _load_workspace_config
+
+    roots = ["shared", *declared_custom_namespaces(_load_workspace_config(workspace, quiet=True))]
+    agents = os.path.join(os.path.realpath(workspace), "agents")
+    if not os.path.islink(agents) and os.path.isdir(agents):
+        for name in sorted(os.listdir(agents)):
+            try:
+                _validate_agent_id(name)
+            except InvalidAgentIdError:
+                continue
+            roots.append("agents/" + name)
+    return list(dict.fromkeys(roots))
+
+
+def readable_sources(workspace: str, sources: Iterable[str], principal: str | None) -> tuple[str, ...]:
+    """The workspace-relative *sources* that *principal* may read, order preserved."""
+    return tuple(src for src in sources if source_readable(workspace, src, principal))
 
 
 #: Refusal text for a workspace-level transport. Deliberately content-free.

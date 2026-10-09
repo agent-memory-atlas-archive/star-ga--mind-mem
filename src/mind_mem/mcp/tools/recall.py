@@ -46,6 +46,7 @@ from ..infra.workspace import _check_workspace, _workspace
 from ._helpers import (
     _context_budget_enabled,
     _retrieval_metrics_enabled,
+    _workspace_view_denied,
     error_envelope,
     get_logger,
     metrics,
@@ -1894,6 +1895,11 @@ def intent_classify(query: str) -> str:
 def retrieval_diagnostics(last_n: int = 50, max_age_days: int = 7) -> str:
     """Pipeline diagnostics: per-stage rejection rates, intent distribution, and hard negative summary."""
     ws = _workspace()
+    # The retrieval log holds every caller's query text and per-stage counts
+    # over every namespace: not something a namespace-restricted caller may read.
+    denied = _workspace_view_denied(ws)
+    if denied is not None:
+        return denied
     try:
         result = _retrieval_diag(ws, last_n=last_n, max_age_days=max_age_days)
     except sqlite3.OperationalError as exc:

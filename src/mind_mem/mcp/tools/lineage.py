@@ -14,12 +14,13 @@ Two tools:
 
 from __future__ import annotations
 
+import dataclasses
 import json
 from typing import Any
 
 from ..infra.observability import mcp_tool_observe
 from ..infra.workspace import _check_workspace, _workspace
-from ._helpers import get_logger
+from ._helpers import _read_scope_or_denied, get_logger
 
 _log = get_logger("mcp_server")
 
@@ -56,6 +57,9 @@ def block_lineage(
 
     from mind_mem.block_lineage import block_lineage as _read
 
+    scope, denied = _read_scope_or_denied(ws)
+    if denied is not None:
+        return denied
     try:
         result = _read(
             ws,
@@ -66,6 +70,16 @@ def block_lineage(
         )
     except ValueError as exc:
         return json.dumps({"error": str(exc)})
+
+    if scope.restricted:
+        # A root the caller cannot read answers exactly like a root with no
+        # edges; a readable root drops the edges that reach unreadable blocks.
+        # ``truncated`` described the unfiltered walk, so it is not forwarded.
+        if scope.allows(block_id):
+            visible = scope.keep(result.edges, key=lambda edge: edge.block_id)
+            result = dataclasses.replace(result, edges=visible)
+        else:
+            result = dataclasses.replace(result, edges=[], truncated=False)
 
     return json.dumps(result.to_dict(), indent=2)
 
