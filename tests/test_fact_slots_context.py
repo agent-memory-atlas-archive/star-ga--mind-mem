@@ -40,6 +40,11 @@ NOT_CORRECTIONS = [
     ("The standup is at 10 Downing Street", "The standup is at 11 Downing Street"),
     ("The price is 1.50", "The price is 2.50"),
     ("Q3 review on Friday", "Q2 review on Friday"),
+    ("The Tuesday team ships on Friday.", "The Thursday team ships on Friday."),
+    ("The Monday group meets at noon", "The Friday group meets at noon"),
+    ("Ilona's Tuesday class is at 6pm.", "Ilona's Thursday class is at 6pm."),
+    ("Alice pays Bob on Tuesday.", "Bob pays Alice on Thursday."),
+    ("Ilona's in-laws arrive from Arizona time to time.", "Ilona's in-laws arrive from Alaska time to time."),
     ("Send the report to June.", "Send the report to April."),
     ("Send the weekly digest to May.", "Send the weekly digest to August."),
     ("Assign the ticket to Jan", "Assign the ticket to Mar"),
@@ -139,6 +144,37 @@ CORRECTIONS = [
     ("The meeting is at the end of May", "The meeting is at the end of June"),
     ("Ilona prefers the 9:00 train.", "Ilona prefers the 8:00 train."),
     ("Ilona joined in 2020.", "Ilona joined in 2019."),
+    ("Office hours are 10-11am", "Office hours are 9-10am"),
+    ("Office hours are 10 - 11am", "Office hours are 9 - 10am"),
+    ("Office hours are 10–11am", "Office hours are 9–10am"),
+    ("Office hours are 10:00-11:00", "Office hours are 9:00-10:00"),
+    ("Office hours are 14-16h.", "Office hours are 13-15h."),
+    ("Standup at １０am", "Standup at ９am"),
+    ("Standup at ٩am", "Standup at ٨am"),
+    ("Standup at 10.30.", "Standup at 9.30."),
+    ("Ilona is in CET.", "Ilona is in PST."),
+    ("Ilona is in Europe/Berlin.", "Ilona is in America/Phoenix."),
+    ("Ilona has no availability on Friday.", "Ilona has availability on Friday."),
+    ("The call is Thursday (was Tuesday).", "The call is on Tuesday."),
+    ("Retro is every other Friday.", "Retro is every Friday."),
+    ("Retro is every Friday.", "Retro is every Monday."),
+    ("Payroll runs on the first Monday.", "Payroll runs on the second Monday."),
+    ("The sync is biweekly.", "The sync is weekly."),
+    ("The deadline is 9.10.2026.", "The deadline is 8.10.2026."),
+    ("The deadline is 2026.12.31.", "The deadline is 2026.12.30."),
+    ("The deadline is end of Q3.", "The deadline is end of Q4."),
+    ("Ilona is off 9-10 Oct.", "Ilona is off 8-9 Oct."),
+    ("Ilona is off from 9 to 10 Oct.", "Ilona is off from 8 to 9 Oct."),
+    ("Ilona is off on 9 octobre.", "Ilona is off on 8 octobre."),
+    ("会议在星期四。", "会议在星期二。"),
+    ("会议在10:00。", "会议在9:00。"),
+    ("The review takes 2 hours.", "The review takes 1 hour."),
+    ("The release is in 3 days.", "The release is in 5 days."),
+    ("The release is in two weeks.", "The release is in one week."),
+    ("Lunch costs $12.", "Lunch costs $10."),
+    ("The budget is 12%.", "The budget is 10%."),
+    ("Prod runs v1.3.", "Prod runs v1.2."),
+    ("Ilona's rate is €90/h.", "Ilona's rate is €80/h."),
 ]
 
 
@@ -373,7 +409,8 @@ def test_parser_keeps_unrecognised_lines() -> None:
     from mind_mem.block_parser import parse_blocks
 
     (block,) = parse_blocks("[D-20261001-001]\nStatement: x\nspeaker: Bob\nMeta:\n  tz: Pacific\n## Heading\n")
-    assert block["_unparsed"] == ["speaker: Bob", "  tz: Pacific"]
+    # A '#' line at end of file has no next section to belong to: it stays with the block.
+    assert block["_unparsed"] == ["speaker: Bob", "  tz: Pacific", "## Heading"]
 
 
 @pytest.mark.parametrize(
@@ -450,7 +487,7 @@ def test_parser_capture_rules() -> None:
     assert block["Statement"] == "second" and block["_unparsed"] == ["Statement: first"]
     a, b = parse_blocks("[D-1]\nStatement: S\n#tag\nRationale: r\n\n## Next section\n\n[D-2]\nStatement: x\n## trailing\n")
     assert a["_unparsed"] == ["#tag"]  # a heading after the block's content is the next section's
-    assert "_unparsed" not in b
+    assert b["_unparsed"] == ["## trailing"]  # end of file: kept with the last block (fail closed)
     (sig,) = parse_blocks("[D-1]\nStatement: x\nConstraintSignatures:\n- id: CS-1\n  scope:\n    time:\n      start: 2026-01-01\n")
     assert "_unparsed" not in sig  # a well-formed key-only nested line is structure
     assert sig["ConstraintSignatures"][0]["scope"]["time"] == {"start": "2026-01-01"}
@@ -487,3 +524,33 @@ def test_contradiction_report_never_echoes_withheld_text(tmp_path: Path) -> None
     text = json.dumps(report)
     assert "D-20261001-002" in text  # positive control: the active block is compared
     assert "SECRET-QUARANTINED" not in text and "D-20261001-001" not in text
+
+
+def test_to_month_text_stays_linear() -> None:
+    import time
+
+    a, b = "to May " * 40000, "to May " * 40000 + "x"
+    start = time.perf_counter()
+    changed_fact(a, b)
+    assert time.perf_counter() - start < 5.0  # was quadratic: ~570 s at this size
+
+
+def test_planner_never_keeps_a_block_another_block_supersedes(tmp_path: Path) -> None:
+    body = (
+        _decision("D-20261001-001") + "[D-20261001-002]\nDate: 2026-10-02\nStatus: active\nScope: global\nSupersedes: D-20261001-001\n"
+        "Statement: Weekly planning call at 11am.\nTags: test\n\n" + _decision("D-20261001-003")
+    )
+    g = _plan(_workspace(tmp_path, body))
+    assert g["scanned_blocks"] == 3
+    for cand in g["candidates"]:
+        assert "D-20261001-001" not in (cand["id_a"], cand["id_b"])
+
+
+def test_parser_round5_shapes() -> None:
+    from mind_mem.block_parser import parse_blocks
+
+    (a,) = parse_blocks("[D-1]\nParticipants:\n- Ilona\nParticipants:\n- the contractor\n")
+    assert a["_unparsed"] == ["Participants: Ilona"]
+    (b,) = parse_blocks("[D-1]\nStatement: s\n--- with Ilona\nTags: t\n")
+    assert b["_unparsed"] == ["--- with Ilona"] and b["Tags"] == "t"
+    assert len(parse_blocks("[D-1]\nStatement: a\n---\n[D-2]\nStatement: b\n")) == 2

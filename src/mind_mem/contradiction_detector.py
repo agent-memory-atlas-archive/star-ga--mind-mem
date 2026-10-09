@@ -122,9 +122,19 @@ def _extract_block_text(block: dict) -> str:
 # ---------------------------------------------------------------------------
 
 
+_WORD_RE = re.compile(r"[^\W_]+(?:'[^\W_]+)?")
+
+
+def _words(text: str) -> list[str]:
+    """Unicode word tokens, case-folded; CJK ideographs one per token (they carry no spaces)."""
+    from .fact_slots import _cjk_spaced
+
+    return _WORD_RE.findall(_cjk_spaced(text).casefold())
+
+
 def _tokenize(text: str) -> set[str]:
     """Simple word tokenization with lowering and dedup."""
-    return set(re.findall(r"\b[a-z0-9]+(?:'[a-z]+)?\b", text.lower()))
+    return set(_words(text))
 
 
 def _jaccard_similarity(text_a: str, text_b: str) -> float:
@@ -150,8 +160,8 @@ def _tfidf_cosine_similarity(text_a: str, text_b: str) -> float:
     import math
     from collections import Counter
 
-    tokens_a = re.findall(r"\b[a-z0-9]+(?:'[a-z]+)?\b", text_a.lower())
-    tokens_b = re.findall(r"\b[a-z0-9]+(?:'[a-z]+)?\b", text_b.lower())
+    tokens_a = _words(text_a)
+    tokens_b = _words(text_b)
 
     if not tokens_a or not tokens_b:
         return 0.0

@@ -357,6 +357,25 @@ def _status(block: dict[str, Any]) -> str:
     return str(raw or "").strip().lower()
 
 
+_ID_RE = re.compile(r"\b[A-Z]+-[A-Za-z0-9_.-]+\b")
+
+
+def _superseded_by_reference(blocks: Any) -> set[str]:
+    """IDs named in any block's Supersedes field (top level or carried frontmatter).
+
+    Such a block is history even if its own Status was never updated, so it is
+    never a merge survivor.
+    """
+    out: set[str] = set()
+    for blk in blocks:
+        nested = blk.get("fields") if isinstance(blk.get("fields"), dict) else {}
+        for raw in (blk.get("Supersedes"), nested.get("Supersedes")):
+            for value in raw if isinstance(raw, list) else [raw]:
+                if isinstance(value, str) and value.strip().lower() not in ("", "none", "n/a"):
+                    out.update(_ID_RE.findall(value))
+    return out
+
+
 def _identity(block: dict[str, Any]) -> tuple:
     """Everything that makes a block the memory it is, normalised (see fact_slots.canonical_tokens).
 
@@ -450,7 +469,8 @@ def scan_pairs(
     # Non-mapping entries carry no fields to compare: skipped, never a crash.
     indexed = [(blk, _term_vec(toks)) for blk in blocks if isinstance(blk, dict) and (toks := _tokenize(_block_text(blk)))]
     identities = [_identity(blk) for blk, _ in indexed]
-    mergeable = [_status(blk) in _MERGEABLE_STATUSES for blk, _ in indexed]
+    replaced = _superseded_by_reference(blk for blk, _ in indexed)
+    mergeable = [_status(blk) in _MERGEABLE_STATUSES and _block_id(blk) not in replaced for blk, _ in indexed]
     candidates: list[GranularityMergeCandidate] = []
     pairs: list[SimilarPair] = []
     for i in range(len(indexed)):

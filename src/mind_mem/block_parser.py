@@ -398,6 +398,12 @@ def parse_blocks(text: str) -> list[dict]:
         field_empty = re.match(r"^([A-Z][A-Za-z]+):\s*$", line)
         if field_empty:
             key = field_empty.group(1)
+            if key in current:
+                # A repeated list key replaces the earlier list, as before; the
+                # replaced items are kept verbatim for the merge identity.
+                old = current[key]
+                for item in old if isinstance(old, list) else [old]:
+                    _keep_unparsed(current, f"{key}: {item}")
             current[key] = []
             current_field = key
             continue
@@ -436,7 +442,7 @@ def parse_blocks(text: str) -> list[dict]:
             continue
 
         # Section separator
-        if line.startswith("---"):
+        if re.match(r"^-{3,}\s*$", line):
             pending_hash.clear()
             if current is not None:
                 _finalize_ops(current, in_ops, current_op)
@@ -463,8 +469,11 @@ def parse_blocks(text: str) -> list[dict]:
                 continue
             _keep_unparsed(current, line)
 
-    # Last block
+    # Last block. A '#' line held back at end of file has no next section to
+    # belong to, so it stays with the block (fail closed for merge identity).
     if current is not None:
+        for held in pending_hash:
+            _keep_unparsed(current, held)
         _finalize_ops(current, in_ops, current_op)
         _finalize_block(current, in_constraint_sigs, current_sig)
         _enrich_fact_keys(current)
