@@ -238,7 +238,7 @@ All 107 registered tools, generated from the live registry. `[param]` is optiona
 
 | Tool | Scope | Module | Parameters | Summary |
 |------|-------|--------|------------|---------|
-| `add_block_edge` | user | `lineage` | `src`, `dst`, `kind`, `[weight]` | Record an explicit typed lineage edge from ``src`` to ``dst``. |
+| `add_block_edge` | admin | `lineage` | `src`, `dst`, `kind`, `[weight]` | Record an explicit typed lineage edge from ``src`` to ``dst``. |
 | `agent_inject` | user | `agent` | `query`, `[agent]`, `[limit]`, `[scoring_instant]` | Render a context snippet in the target agent's expected format. |
 | `anchor_history` | user | `audit` | `[limit]` | List recorded external anchors, newest last, with integrity problems. |
 | `anchor_root` | admin | `audit` | `[chain]`, `[tx_hash]`, `[block_height]` | Record the CURRENT Merkle root in the local external-anchor trail. |
@@ -254,8 +254,8 @@ All 107 registered tools, generated from the live registry. `[param]` is optiona
 | `arch_session_start` | admin | `arch_mind` | `repo`, `fixture`, `agent_id`, `commit_sha` | Open an arch-mind session evidence node. |
 | `audit_model_tool` | user | `model` | `path`, `[allow_publisher]`, `[include_manifest]` | Static security scan of a local model checkpoint. |
 | `block_lineage` | user | `lineage` | `block_id`, `[max_depth]`, `[kind_filter]`, `[node_cap]` | BFS-traverse the block-lineage graph rooted at ``block_id``. |
-| `build_core` | user | `core` | `namespace`, `version`, `[filename]` | Build a .mmcore bundle from the active workspace's blocks. |
-| `calibration_feedback` | user | `calibration` | `query_id`, `[block_ids_useful]`, `[block_ids_not_useful]`, `[feedback_type]` | Record retrieval quality feedback for calibration. |
+| `build_core` | admin | `core` | `namespace`, `version`, `[filename]` | Build a .mmcore bundle from the active workspace's blocks. |
+| `calibration_feedback` | admin | `calibration` | `query_id`, `[block_ids_useful]`, `[block_ids_not_useful]`, `[feedback_type]` | Record retrieval quality feedback for calibration. |
 | `calibration_stats` | user | `calibration` | - | Report calibration health — per-block scores, per-query-type accuracy. |
 | `category_summary` | user | `benchmark` | `topic`, `[limit]` | Returns category summaries for the ADMITTED blocks matching a topic. |
 | `chat_with_memory` | user | `chat` | `question`, `[limit]`, `[generator]`, `[on_invalid]`, `[require_in_evidence]`, `[semantic_required]`, `[graph_seed]` | Answer *question* from workspace memory with verified citations. |
@@ -264,7 +264,7 @@ All 107 registered tools, generated from the live registry. `[param]` is optiona
 | `compact` | admin | `memory_ops` | `[dry_run]`, `[archive_days]`, `[signal_days]`, `[snapshot_days]` | Run workspace compaction — archive old blocks, clean snapshots, remove resolved signals. |
 | `compile_truth_walkthrough` | user | `walkthrough_persona` | `topic`, `[limit]`, `[active_only]` | Return *topic* memories in dependency order (foundations → current). |
 | `compiled_truth` | user | `public` | `action`, `[entity_id]`, `[observation]`, `[source]`, `[confidence]`, `[entity_type]` | Unified compiled-truth page lifecycle. |
-| `compiled_truth_add_evidence` | user | `kernels` | `entity_id`, `observation`, `[source]`, `[confidence]`, `[entity_type]` | Add evidence to a compiled truth page and auto-recompile. |
+| `compiled_truth_add_evidence` | admin | `kernels` | `entity_id`, `observation`, `[source]`, `[confidence]`, `[entity_type]` | Add evidence to a compiled truth page and auto-recompile. |
 | `compiled_truth_contradictions` | user | `kernels` | `entity_id` | Detect contradictions in a compiled truth page. |
 | `compiled_truth_load` | user | `kernels` | `entity_id` | Load a compiled truth page for an entity. |
 | `core` | user | `public` | `action`, `[namespace]`, `[version]`, `[filename]`, `[verify]` | Unified .mmcore bundle lifecycle. |
@@ -274,12 +274,12 @@ All 107 registered tools, generated from the live registry. `[param]` is optiona
 | `encrypt_file` | admin | `encryption` | `file_path` | Encrypt a single workspace file at rest. |
 | `entity_add_observation` | admin | `graph` | `entity`, `fact` | Append an accreted fact to an entity's observation list (ADMIN-scope). |
 | `entity_observations` | user | `graph` | `entity` | Return an entity's accreted observation facts (user-scope, read-only). |
-| `export_core` | user | `core` | `name`, `[format]` | Render a .mmcore bundle into a static interchange format. |
+| `export_core` | admin | `core` | `name`, `[format]` | Render a .mmcore bundle into a static interchange format. |
 | `export_memory` | admin | `memory_ops` | `[format]`, `[include_metadata]`, `[max_blocks]` | Export every ADMITTED workspace block as JSONL. |
 | `find_similar` | user | `recall` | `block_id`, `[limit]`, `[kind]` | Find blocks co-retrieved with a given block (co-occurrence, not embeddings). |
 | `get_block` | user | `memory_ops` | `block_id`, `[namespace]` | Retrieve a single ADMITTED block by its ID, with full content. |
 | `get_mind_kernel` | user | `kernels` | `name` | Read a specific .mind kernel configuration as structured JSON. |
-| `governance_health_bench` | user | `benchmark` | - | Run the governance health benchmark suite. |
+| `governance_health_bench` | admin | `benchmark` | - | Run the governance health benchmark suite. |
 | `graph` | user | `public` | `action`, `[subject]`, `[predicate]`, `[object]`, `[source_block_id]`, `[confidence]`, `[entity]`, `[depth]`, `[direction]`, `[limit]`, `[block_id]` | Unified knowledge/causal graph entry point. |
 | `graph_add_edge` | admin | `graph` | `subject`, `predicate`, `object`, `source_block_id`, `[confidence]` | Record a typed relationship in the knowledge graph — DIRECT admin write. |
 | `graph_query` | user | `graph` | `entity`, `[depth]`, `[predicate]`, `[direction]`, `[limit]`, `[resolve_same_as]` | N-hop traversal from *entity*. |
@@ -296,7 +296,7 @@ All 107 registered tools, generated from the live registry. `[param]` is optiona
 | `list_entity_merge_proposals` | user | `graph` | `[status]`, `[limit]` | List governed entity-equivalence proposals (user-scope). |
 | `list_evidence` | user | `audit` | `[block_id]`, `[action]`, `[limit]` | List governance evidence objects, optionally filtered by block_id or action. |
 | `list_mind_kernels` | user | `kernels` | - | List available .mind kernel configuration files. |
-| `load_core` | user | `core` | `filename`, `[verify]` | Load a .mmcore bundle from the workspace's cores/ directory. |
+| `load_core` | admin | `core` | `filename`, `[verify]` | Load a .mmcore bundle from the workspace's cores/ directory. |
 | `memory_evolution` | user | `governance` | `block_id`, `[action]` | A-MEM metadata for a block — importance, access patterns, keywords. |
 | `memory_health` | user | `memory_ops` | - | Deep health dashboard for the memory workspace. |
 | `memory_verify` | admin | `public` | `[mode]`, `[block_id]`, `[content_hash]`, `[snapshot]` | Unified memory-integrity verification. |
@@ -304,7 +304,7 @@ All 107 registered tools, generated from the live registry. `[param]` is optiona
 | `mic_inspect_tool` | user | `mic_map` | `input`, `[input_format]` | Return a structural summary of a MIC/MAP payload without re-emitting it. |
 | `mind_mem_verify` | user | `audit` | `[snapshot]` | Run the standalone `mind-mem-verify` CLI against the current workspace. |
 | `observe_signal` | user | `signal` | `session_id`, `previous_query`, `new_query`, `[previous_results]` | Capture a re-query / refinement / correction feedback signal. |
-| `ontology_load` | user | `ontology` | `spec`, `[make_active]` | Load an ontology from an inline JSON spec. |
+| `ontology_load` | admin | `ontology` | `spec`, `[make_active]` | Load an ontology from an inline JSON spec. |
 | `ontology_validate` | user | `ontology` | `block`, `type_name`, `[strict]` | Validate *block* (JSON object) against the active ontology. |
 | `outcome_stats` | user | `calibration` | `[block_id]`, `[task_id]`, `[top_n]` | Query recorded outcomes — which memories actually earned their keep. |
 | `pack_recall_budget` | user | `recall` | `query`, `[max_tokens]`, `[limit]`, `[scoring_instant]`, `[model]` | Run a recall, then pack the result list under a token budget. |
@@ -316,7 +316,7 @@ All 107 registered tools, generated from the live registry. `[param]` is optiona
 | `propose_edge` | user | `graph` | `subject`, `predicate`, `object`, `source_block_id`, `[confidence]` | Stage a typed knowledge-graph edge as an HITL proposal (user-scope). |
 | `propose_entity_merge` | user | `graph` | `winner_id`, `loser_id`, `rationale` | Stage an explicit winner/loser ``SAME_AS`` proposal (user-scope). |
 | `propose_slot_update` | admin | `governance` | `namespace`, `slot`, `value`, `rationale`, `[actor_id]`, `[actor_role]`, `[session_id]`, `[tool_id]`, `[purpose]` | Stage a closed-slot update for review by ``approve_apply``. |
-| `propose_update` | admin | `governance` | `block_type`, `statement`, `[rationale]`, `[tags]`, `[confidence]`, `[actor_id]`, `[actor_role]`, `[session_id]`, `[tool_id]`, `[purpose]`, `[content_source]` | Propose a new decision or task. |
+| `propose_update` | admin | `governance` | `block_type`, `statement`, `[rationale]`, `[tags]`, `[confidence]`, `[actor_id]`, `[actor_role]`, `[session_id]`, `[tool_id]`, `[purpose]`, `[content_source]`, `[supersedes]` | Propose a new decision or task. |
 | `recall` | user | `public` | `query`, `[mode]`, `[limit]`, `[active_only]`, `[backend]`, `[block_id]`, `[axes]`, `[weights]`, `[max_tokens]`, `[signals]`, `[scoring_instant]`, `[explain]`, `[since]`, `[until]`, `[lifecycle]`, `[event_id]`, `[min_maturity]` | Unified retrieval entry point. |
 | `recall_with_axis` | user | `recall` | `query`, `[axes]`, `[weights]`, `[limit]`, `[active_only]`, `[adversarial]`, `[allow_rotation]`, `[scoring_instant]` | Axis-aware recall under the Observer-Dependent Cognition model. |
 | `recall_with_guardrails` | user | `guardrails` | `query`, `[tool]`, `[command]`, `[intent]`, `[paths]`, `[limit]`, `[active_only]` | Recall *query*, with the constraints for this context surfaced first. |
@@ -325,23 +325,23 @@ All 107 registered tools, generated from the live registry. `[param]` is optiona
 | `reindex_dirty` | user | `pipeline` | `[limit]`, `[dry_run]` | Re-stamp blocks whose pipeline hash is stale. |
 | `reject_edge` | admin | `graph` | `proposal_id` | Reject a staged typed-edge proposal (ADMIN-scope). |
 | `reject_proposal` | admin | `governance` | `proposal_id`, `reason` | Reject a staged proposal explicitly, preserving the rationale. |
-| `report_outcome` | user | `calibration` | `[block_ids]`, `[outcome]`, `[query_id]`, `[run_id]`, `[task_id]`, `[actor_id]`, `[session_id]`, `[tool_id]`, `[evidence]`, `[project_to_calibration]` | Report whether recalled blocks actually *helped* — utility, not relevance. |
+| `report_outcome` | admin | `calibration` | `[block_ids]`, `[outcome]`, `[query_id]`, `[run_id]`, `[task_id]`, `[actor_id]`, `[session_id]`, `[tool_id]`, `[evidence]`, `[project_to_calibration]` | Report whether recalled blocks actually *helped* — utility, not relevance. |
 | `resume_brief` | user | `frames` | `[frame_id]` | Return the resume brief for the active task frame. |
 | `retrieval_diagnostics` | user | `recall` | `[last_n]`, `[max_age_days]` | Pipeline diagnostics: per-stage rejection rates, intent distribution, and hard negative summary. |
 | `reverse_entity_merge` | admin | `graph` | `proposal_id` | Retract an approved entity-equivalence edge (admin-scope). |
 | `rollback_proposal` | admin | `governance` | `receipt_ts`, `[reason]` | Rollback an applied proposal using its receipt timestamp. |
 | `scan` | user | `governance` | - | Run integrity scan — contradictions, drift, dead decisions, impact graph. |
-| `sign_model_tool` | user | `model` | `path`, `[key_file]`, `[generate_key_prefix]`, `[write_sidecars]` | Sign every file in a local model checkpoint with Ed25519. |
+| `sign_model_tool` | admin | `model` | `path`, `[key_file]`, `[generate_key_prefix]`, `[write_sidecars]` | Sign every file in a local model checkpoint with Ed25519. |
 | `signal_stats` | user | `signal` | - | Return aggregated interaction-signal counts for the workspace. |
 | `similar_trajectories` | user | `trajectory` | `task`, `[tools]`, `[outcome]`, `[limit]`, `[scoring_instant]` | Recall past task executions similar to the one you are about to attempt. |
 | `staged_change` | admin | `public` | `phase`, `[block_type]`, `[statement]`, `[rationale]`, `[tags]`, `[confidence]`, `[proposal_id]`, `[dry_run]`, `[receipt_ts]` | Single entry point for the propose / apply / rollback flow. |
 | `stale_blocks` | user | `memory_ops` | `[limit]`, `[clear_block_id]` | List blocks flagged as stale, or clear a staleness flag. |
 | `stream_status` | user | `agent` | - | Current change-stream publish / delivery / drop counters. |
 | `traverse_graph` | user | `graph` | `block_id`, `[depth]`, `[direction]` | Navigate the causal dependency graph from a block. |
-| `unload_core` | user | `core` | `namespace` | Unload a previously-loaded core by namespace. |
+| `unload_core` | admin | `core` | `namespace` | Unload a previously-loaded core by namespace. |
 | `validate_block` | user | `quality` | `text`, `[strict]`, `[force]` | Run the deterministic quality gate against ``text``. |
 | `vault_scan` | user | `agent` | `vault_root`, `[sync_dirs]` | Walk an Obsidian-style vault and return parsed VaultBlocks (JSON). |
-| `vault_sync` | user | `agent` | `vault_root`, `block_id`, `relative_path`, `body`, `[block_type]`, `[title]`, `[overwrite]`, `[include_links]` | Write a single block back into a vault at a relative path. |
+| `vault_sync` | admin | `agent` | `vault_root`, `block_id`, `relative_path`, `body`, `[block_type]`, `[title]`, `[overwrite]`, `[include_links]` | Write a single block back into a vault at a relative path. |
 | `verify_chain` | admin | `audit` | - | Verify every hash-linked ledger in the workspace, as one verdict. |
 | `verify_merkle` | user | `audit` | `block_id`, `content_hash` | Verify a block's Merkle inclusion against the live tree. |
 | `verify_model_tool` | user | `model` | `path`, `[pubkey_path]` | Verify a previously-signed checkpoint. |
