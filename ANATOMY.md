@@ -5,8 +5,8 @@
 > Re-generate with: `anatomy .`
 
 **Project:** `mind-mem`
-**Files:** 1717 | **Est. tokens:** ~5,089,273
-**Generated:** 2026-10-09 11:18 UTC
+**Files:** 1721 | **Est. tokens:** ~5,101,187
+**Generated:** 2026-10-09 11:59 UTC
 
 ## Token Budget Guide
 
@@ -78,7 +78,7 @@
 | `skills/mind-mem/` | 1 | ~1,671 |
 | `skills/mind-mem/references/` | 6 | ~18,811 |
 | `src/` | 1 | ~280 |
-| `src/mind_mem/` | 244 | ~1,110,908 |
+| `src/mind_mem/` | 245 | ~1,113,697 |
 | `src/mind_mem/api/` | 5 | ~28,329 |
 | `src/mind_mem/bench/` | 17 | ~48,632 |
 | `src/mind_mem/compliance/` | 7 | ~15,436 |
@@ -93,7 +93,7 @@
 | `src/mind_mem/tool_output/` | 3 | ~5,895 |
 | `src/mind_mem/v4/` | 24 | ~96,311 |
 | `src/mind_mem/viewer_static/` | 3 | ~865 |
-| `tests/` | 775 | ~2,287,489 |
+| `tests/` | 778 | ~2,296,614 |
 | `tests/fixtures/` | 8 | ~16,356 |
 | `tests/fixtures/importers/` | 5 | ~1,218 |
 | `tests/fixtures/importers/agent_memory/` | 4 | ~383 |
@@ -1020,6 +1020,7 @@
 - `_recall_reranking.py` (~4277 tok, huge) — Recall engine reranking — deterministic feature-based re-scoring of BM25 hits."""
 - `_recall_scoring.py` (~4992 tok, huge) — Recall engine scoring — BM25F helper, date scores, graph boosting, negation, date proximity, categories.
 - `recall_smart_chunk.py` (~2826 tok, huge) — Config seam wiring :mod:`smart_chunker` into the BM25 chunk-boost path.
+- `recall_supersede.py` (~2789 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `_recall_temporal.py` (~2214 tok, huge) — Recall engine temporal filtering — resolve relative time references and filter blocks."""
 - `_recall_tokenization.py` (~784 tok, large) — Recall engine tokenization — Porter stemmer and tokenizer."""
 - `recall_vector.py` (~24411 tok, huge) — mind-mem Vector Recall Backend (Semantic Search with Embeddings).
@@ -1253,6 +1254,7 @@
 - `_restore_scope.py` (~541 tok, large) — # Copyright 2026 STARGA, Inc.
 - `_review_autoapprove_scan.py` (~1369 tok, large) — # Copyright 2026 STARGA, Inc.
 - `_review_fixtures.py` (~2055 tok, huge) — # Copyright 2026 STARGA, Inc.
+- `_supersede_scenarios.py` (~1708 tok, huge) — Workspaces and recall legs shared by the supersede-chain and index-namespace tests.
 - `test_ab_report_unstated_comparability.py` (~1031 tok, large) — An unstated comparability field is not agreement.
 - `test_abstention_classifier.py` (~3963 tok, huge) — Tests for the adversarial abstention classifier."""
 - `test_accountability_dashboard.py` (~6883 tok, huge) — RA.5 — the lifecycle-tier dashboard, and the four refusals it inherits.
@@ -1795,7 +1797,8 @@
 - `test_recall_speaker.py` (~263 tok, medium) — Tests for speaker-based recall."""
 - `test_recall_status_boost.py` (~399 tok, medium) — Tests for status boost in recall."""
 - `test_recall_sufficiency.py` (~1295 tok, large) — Regression gate for Group I item 2 recall-sufficiency score.
-- `test_recall_superseded_leg_cut.py` (~2502 tok, huge) — A superseded block never displaces its live replacement at ANY limit.
+- `test_recall_supersede_chain.py` (~4526 tok, huge) — A superseded memory never outranks, and is never returned instead of, its superseder.
+- `test_recall_superseded_leg_cut.py` (~2586 tok, huge) — A superseded block never displaces its live replacement at ANY limit.
 - `test_recall_superseded_rank.py` (~403 tok, medium) — A superseded memory never outranks the live memory that replaced it.
 - `test_recall_superseded_scan_cross_encoder.py` (~1345 tok, large) — The scan leg's cross-encoder cut must not let a superseded block take its replacement's slot.
 - `test_recall_superseded_wide_pool.py` (~2921 tok, huge) — A superseded block never displaces its live replacement, whatever the pool size.
@@ -1911,6 +1914,7 @@
 - `test_sqlite_index_backends.py` (~2781 tok, huge) — Backend-parity regression tests for ``sqlite_index`` (audit bugs 4, 9, 13, 14).
 - `test_sqlite_index_edit_detection.py` (~1736 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_sqlite_index_evict_race.py` (~956 tok, large) — Evicting a cached ConnectionManager must not close it under a running query.
+- `test_sqlite_index_namespaces.py` (~2807 tok, huge) — The sqlite index covers every namespace recall can serve, filtered by the caller.
 - `test_sqlite_index.py` (~5547 tok, huge) — Tests for sqlite_index.py — SQLite FTS5 index for mind-mem recall."""
 - `test_stopwords.py` (~247 tok, medium) — Tests for stopword handling."""
 - `test_storage_factory.py` (~3280 tok, huge) — Tests for mind_mem.storage.get_block_store factory (v3.2.0)."""
