@@ -5,8 +5,8 @@
 > Re-generate with: `anatomy .`
 
 **Project:** `mind-mem`
-**Files:** 1696 | **Est. tokens:** ~4,963,098
-**Generated:** 2026-10-09 02:25 UTC
+**Files:** 1697 | **Est. tokens:** ~4,966,799
+**Generated:** 2026-10-09 02:46 UTC
 
 ## Token Budget Guide
 
@@ -85,7 +85,7 @@
 | `src/mind_mem/importers/` | 10 | ~34,469 |
 | `src/mind_mem/mcp/` | 3 | ~6,672 |
 | `src/mind_mem/mcp/infra/` | 8 | ~16,195 |
-| `src/mind_mem/mcp/tools/` | 29 | ~125,699 |
+| `src/mind_mem/mcp/tools/` | 29 | ~126,243 |
 | `src/mind_mem/skill_opt/` | 11 | ~20,899 |
 | `src/mind_mem/spec/` | 4 | ~6,845 |
 | `src/mind_mem/storage/` | 2 | ~11,712 |
@@ -93,7 +93,7 @@
 | `src/mind_mem/tool_output/` | 3 | ~5,895 |
 | `src/mind_mem/v4/` | 24 | ~96,311 |
 | `src/mind_mem/viewer_static/` | 3 | ~865 |
-| `tests/` | 757 | ~2,217,985 |
+| `tests/` | 758 | ~2,221,142 |
 | `tests/fixtures/` | 7 | ~11,912 |
 | `tests/fixtures/importers/` | 5 | ~1,218 |
 | `tests/fixtures/importers/agent_memory/` | 4 | ~383 |
@@ -958,7 +958,7 @@
 - `pipeline.py` (~916 tok, large) — MCP wrapping for pipeline-hash inspection + dirty-block re-extraction.
 - `public.py` (~5590 tok, huge) — # mypy: disable-error-code="no-any-return"
 - `quality.py` (~1009 tok, large) — MCP wrapping for the v3.11.0 deterministic quality gate.
-- `recall.py` (~23544 tok, huge) — Recall surface — the retrieval core of the MCP API.
+- `recall.py` (~24088 tok, huge) — Recall surface — the retrieval core of the MCP API.
 - `signal.py` (~926 tok, large) — Interaction-signal MCP tools — ``observe_signal`` + ``signal_stats``.
 - `trajectory.py` (~1474 tok, large) — Trajectory-memory MCP tool — case-based recall over past task outcomes.
 - `walkthrough_persona.py` (~1843 tok, huge) — MCP wrapping for v3.9 walkthrough + persona projection.
@@ -1271,7 +1271,8 @@
 - `test_allow_decompose.py` (~311 tok, medium) — Tests for _allow_decompose recall parameter."""
 - `test_answer_quality_confidence.py` (~761 tok, large) — ``self_consistency`` confidence must be votes over samples REQUESTED.
 - `test_answer_quality.py` (~1288 tok, large) — Tests for the v3.3.0 answer-quality shims."""
-- `test_anticipation_cache.py` (~9753 tok, huge) — The anticipation cache, proven to retire with the ledger head rather than a clock.
+- `test_anticipation_cache_corpus_stamp.py` (~2077 tok, huge) — The anticipation cache never serves an answer a non-governed write changed.
+- `test_anticipation_cache.py` (~10363 tok, huge) — The anticipation cache, proven to retire with the ledger head rather than a clock.
 - `test_api_keys.py` (~2133 tok, huge) — Tests for APIKeyStore in src/mind_mem/api/api_keys.py."""
 - `test_append_only_audit_log.py` (~3895 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_apply_abort_is_recorded.py` (~4908 tok, huge) — # Copyright 2026 STARGA, Inc.
@@ -1716,7 +1717,7 @@
 - `test_ra1_empty_config_backend_binding.py` (~1677 tok, huge) — The captured empty policy must not fall back to a later backend choice."""
 - `test_ra1_engine_ranks_under_captured_context.py` (~1788 tok, huge) — The engine ranks under the CAPTURED config, not the file as it stands when a leg runs.
 - `test_ra1_kernel_cli_serving.py` (~3008 tok, huge) — Acceptance controls for the primary ``mm recall --kernel`` serving door.
-- `test_ra1_public_boundary_binding.py` (~6285 tok, huge) — Public axis/prefetch RA.1 boundaries must retain one request snapshot.
+- `test_ra1_public_boundary_binding.py` (~6755 tok, huge) — Public axis/prefetch RA.1 boundaries must retain one request snapshot.
 - `test_ra1_serving_receipt_binds_engine_config.py` (~3802 tok, huge) — The recorded receipt must bind the config the ENGINE consumed — and the binding must not
 - `test_ra1v2_all_doors_snapshot.py` (~3382 tok, huge) — Every serving door binds ONE snapshot, or says it could not.
 - `test_ra1v2_live_serve_binding.py` (~4335 tok, huge) — The live serve binding: a real serve records a v2 row, and a failed bind is visible.
