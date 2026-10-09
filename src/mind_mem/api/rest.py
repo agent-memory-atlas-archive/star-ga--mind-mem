@@ -453,6 +453,11 @@ def _require_auth(
     # the ContextVar inside the endpoint's own frame, where the write
     # actually happens.
     request.state.mindmem_authenticated_agent = agent_id
+    # No bearer was presented and the deployment explicitly allowed that
+    # (loopback opt-in). Recorded as a flag, never inferred from the agent
+    # NAME, so an API key whose agent_id happens to be "anonymous" is still a
+    # bound principal.
+    request.state.mindmem_unauthenticated = token is None
     _audit_ctx.record_authenticated_agent(agent_id)
     return token
 
@@ -574,6 +579,40 @@ def _acting_as(request: Request):  # type: ignore[no-untyped-def]
                 yield agent
     finally:
         current_agent_id.reset(reset)
+
+
+@contextmanager
+def _reading_as(request: Request):  # type: ignore[no-untyped-def]
+    """Run a READ endpoint's tool call as the authenticated principal.
+
+    ``_require_auth`` authenticates in a threadpool frame whose ContextVar
+    writes die with it, so a read endpoint that called its MCP tool bare ran
+    the tool as an UNBOUND caller: workspace-wide, past the namespace ACL the
+    same user hits through the MCP transport. This binds the decision the
+    dependency recorded on the request -- principal and scope -- around the
+    tool body, so the tool path's own ACL and admission checks apply
+    unchanged.
+
+    Fail closed: if the request carries no usable authentication decision (a
+    route missing its auth dependency, a principal that is not a valid
+    namespace id) the read is refused with 403; it is never run unbound. The
+    one unbound case is the explicit loopback opt-in with no bearer at all.
+    """
+    if getattr(request.state, "mindmem_unauthenticated", None) is True:
+        yield None
+        return
+    agent = getattr(request.state, "mindmem_authenticated_agent", None)
+    scope = getattr(request.state, "mindmem_authenticated_scope", None)
+    if not agent or agent == _UNIDENTIFIED or scope not in {"admin", "user"}:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="caller identity could not be determined")
+    from mind_mem.namespaces import InvalidAgentIdError, _validate_agent_id
+
+    try:
+        _validate_agent_id(agent)
+    except InvalidAgentIdError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="caller identity is not a valid namespace principal") from exc
+    with _acting_as(request) as bound:
+        yield bound
 
 
 def _request_provenance(request: Request) -> dict[str, str]:
@@ -1088,16 +1127,17 @@ def create_app(
         summary="Search memory with BM25/hybrid backend",
         dependencies=[Depends(_rate_limit)],
     )
-    def recall(body: RecallRequest, _token: Annotated[str | None, Depends(_require_auth)]) -> Any:
+    def recall(request: Request, body: RecallRequest, _token: Annotated[str | None, Depends(_require_auth)]) -> Any:
         from mind_mem.mcp.tools.recall import _recall_impl
 
-        raw = _recall_impl(
-            query=body.query,
-            limit=body.limit,
-            active_only=body.active_only,
-            backend=body.backend,
-            scoring_instant=body.scoring_instant or None,
-        )
+        with _reading_as(request):
+            raw = _recall_impl(
+                query=body.query,
+                limit=body.limit,
+                active_only=body.active_only,
+                backend=body.backend,
+                scoring_instant=body.scoring_instant or None,
+            )
         return _parse_tool_json(raw)
 
     @application.get(
@@ -1106,11 +1146,25 @@ def create_app(
         summary="Retrieve a single block by ID",
         dependencies=[Depends(_rate_limit)],
     )
-    def get_block(block_id: str, _token: Annotated[str | None, Depends(_require_auth)]) -> Any:
+    def get_block(request: Request, block_id: str, _token: Annotated[str | None, Depends(_require_auth)]) -> Any:
         from mind_mem.mcp.tools.memory_ops import get_block as _get_block
 
-        raw = _get_block(block_id)
+        with _reading_as(request):
+            raw = _get_block(block_id)
         parsed = _parse_tool_json(raw)
+        if isinstance(parsed, dict) and parsed.get("error") == "namespace access denied":
+            # Answered exactly like a miss: a distinct 403 would confirm that
+            # the id exists in a namespace this caller may not read.
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={
+                    "_schema_version": MCP_SCHEMA_VERSION,
+                    "block_id": block_id,
+                    "found": False,
+                    "error": f"Block {block_id} not found in any corpus file.",
+                    "hint": "Check the block ID and ensure the workspace is initialized.",
+                },
+            )
         if isinstance(parsed, dict) and parsed.get("found") is False:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=parsed)
         return parsed

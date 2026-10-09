@@ -1095,7 +1095,6 @@ def get_block(block_id: str, namespace: str = "") -> str:
         # A non-Markdown backend may return a namespaced source directly.
         from mind_mem.audit_context import UNATTRIBUTED, current_agent_id
         from mind_mem.namespace_retrieval import namespace_for_path
-        from mind_mem.namespaces import InvalidAgentIdError, NamespaceManager
 
         source = block.get("_source_file") or block.get("_source") or block.get("file")
         rel_source = source.replace("\\", "/") if isinstance(source, str) else ""
@@ -1111,20 +1110,15 @@ def get_block(block_id: str, namespace: str = "") -> str:
         bound_agent = current_agent_id.get()
         is_bound = bound_agent not in {None, "", UNATTRIBUTED}
         if is_bound or (source_namespace is not None and source_namespace != "workspace"):
-            try:
-                manager = NamespaceManager(ws, agent_id=None if bound_agent in {None, "", UNATTRIBUTED} else bound_agent)
-            except InvalidAgentIdError:
-                return json.dumps({"_schema_version": MCP_SCHEMA_VERSION, "error": "namespace access denied"})
-            if not manager.can_read(rel_source):
-                return json.dumps({"_schema_version": MCP_SCHEMA_VERSION, "error": "namespace access denied"})
-            if is_bound:
-                from mind_mem._recall_core import _indexed_hit_is_readable
+            # The one shared source decision (mind_mem.read_authz): lexical ACL
+            # grant, then -- for a bound caller -- the resolved real path.
+            # ``where`` comes from our selected resolver, never a block field.
+            # Database coordinates are logical paths; local paths also require
+            # confinement and the resolved-target ACL.
+            from mind_mem.read_authz import source_readable
 
-                # ``where`` comes from our selected resolver, never a block
-                # field. Database coordinates are logical paths; local paths
-                # also require confinement and the resolved-target ACL.
-                if not _indexed_hit_is_readable(ws, {"file": rel_source}, manager, check_realpath=where != "store"):
-                    return json.dumps({"_schema_version": MCP_SCHEMA_VERSION, "error": "namespace access denied"})
+            if not source_readable(ws, rel_source, bound_agent if is_bound else None, check_realpath=where != "store"):
+                return json.dumps({"_schema_version": MCP_SCHEMA_VERSION, "error": "namespace access denied"})
 
     # EGRESS GATE. Resolution above says whether the bytes EXIST; this says
     # whether this caller may see them. ``get_block`` is a USER-scope tool and
