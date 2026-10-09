@@ -30,7 +30,8 @@ _PRELUDE = textwrap.dedent(
         for d in ["decisions","tasks","entities","intelligence","memory"]:
             os.makedirs(os.path.join(ws, d), exist_ok=True)
         with open(os.path.join(ws,"decisions","DECISIONS.md"),"w") as f:
-            f.write("".join(f"[D-20260101-{i:03d}]\\nStatement: Use PostgreSQL database number {i}\\nStatus: active\\nDate: 2026-01-01\\n\\n" for i in range(1,60)))
+            row = "[D-20260101-{i:03d}]\\nStatement: Use PostgreSQL database number {i}\\nStatus: active\\nDate: 2026-01-01\\n\\n"
+            f.write("".join(row.format(i=i) for i in range(1,60)))
         for fn in ["entities/people.md","entities/tools.md","entities/incidents.md","entities/projects.md",
                    "intelligence/CONTRADICTIONS.md","intelligence/DRIFT.md","intelligence/SIGNALS.md","tasks/TASKS.md"]:
             p = os.path.join(ws, fn); os.makedirs(os.path.dirname(p), exist_ok=True)
@@ -90,7 +91,11 @@ def _run(script: str, tmp_path):
     env = {**os.environ, "PYTHONPATH": SRC}
     return subprocess.run(
         [sys.executable, "-X", "faulthandler", "-c", script, str(tmp_path)],
-        capture_output=True, text=True, env=env, timeout=120,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        env=env,
+        timeout=120,
     )
 
 

@@ -5,8 +5,8 @@
 > Re-generate with: `anatomy .`
 
 **Project:** `mind-mem`
-**Files:** 1717 | **Est. tokens:** ~5,087,191
-**Generated:** 2026-10-09 10:07 UTC
+**Files:** 1717 | **Est. tokens:** ~5,087,284
+**Generated:** 2026-10-09 10:28 UTC
 
 ## Token Budget Guide
 
@@ -93,7 +93,7 @@
 | `src/mind_mem/tool_output/` | 3 | ~5,895 |
 | `src/mind_mem/v4/` | 24 | ~96,311 |
 | `src/mind_mem/viewer_static/` | 3 | ~865 |
-| `tests/` | 775 | ~2,286,748 |
+| `tests/` | 775 | ~2,286,841 |
 | `tests/fixtures/` | 8 | ~16,356 |
 | `tests/fixtures/importers/` | 5 | ~1,218 |
 | `tests/fixtures/importers/agent_memory/` | 4 | ~383 |
@@ -1335,7 +1335,7 @@
 - `test_boundary_witness_cli_e2e.py` (~3954 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_boundary_witness.py` (~2442 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_built_integrity.py` (~1862 tok, huge) — Source-bound controls for the wheel/sdist integrity release gate."""
-- `test_calibration_fd_bound.py` (~896 tok, large) — The calibration connection cache must stay bounded under workspace churn.
+- `test_calibration_fd_bound.py` (~908 tok, large) — The calibration connection cache must stay bounded under workspace churn.
 - `test_calibration.py` (~3269 tok, huge) — Tests for calibration feedback loop.
 - `test_calibration_window_determinism.py` (~1159 tok, large) — The calibration window boundary is UTC-anchored and pinnable.
 - `test_capture_governed_signals.py` (~3277 tok, huge) — # Copyright 2026 STARGA, Inc.
@@ -1910,7 +1910,7 @@
 - `test_sqlite_handle_close_tool_output_hnsw.py` (~2197 tok, huge) — Every SQLite connection ``tool_output/store.py`` opens must be CLOSED before
 - `test_sqlite_index_backends.py` (~2781 tok, huge) — Backend-parity regression tests for ``sqlite_index`` (audit bugs 4, 9, 13, 14).
 - `test_sqlite_index_edit_detection.py` (~1736 tok, huge) — # Copyright 2026 STARGA, Inc.
-- `test_sqlite_index_evict_race.py` (~936 tok, large) — Evicting a cached ConnectionManager must not close it under a running query.
+- `test_sqlite_index_evict_race.py` (~956 tok, large) — Evicting a cached ConnectionManager must not close it under a running query.
 - `test_sqlite_index.py` (~5547 tok, huge) — Tests for sqlite_index.py — SQLite FTS5 index for mind-mem recall."""
 - `test_stopwords.py` (~247 tok, medium) — Tests for stopword handling."""
 - `test_storage_factory.py` (~3280 tok, huge) — Tests for mind_mem.storage.get_block_store factory (v3.2.0)."""
@@ -2009,7 +2009,7 @@
 - `test_walkthrough.py` (~2441 tok, huge) — Tests for the v3.9 dependency-ordered walkthrough."""
 - `test_watcher.py` (~2037 tok, huge) — Tests for watcher.py — file change detection for auto-reindex."""
 - `test_wide_retrieval.py` (~346 tok, medium) — Tests for wide retrieval parameter."""
-- `test_withheld_not_in_stats.py` (~8119 tok, huge) — # Copyright 2026 STARGA, Inc.
+- `test_withheld_not_in_stats.py` (~8180 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_witness_pin_race.py` (~2540 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_witness_writer_receipt_truth.py` (~3052 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_workspace_contextvar.py` (~1047 tok, large) — v3.2.1 — regression test for per-request workspace ContextVar scoping.

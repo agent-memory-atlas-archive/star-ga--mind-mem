@@ -46,7 +46,11 @@ def test_workspace_churn_does_not_exhaust_descriptors(tmp_path):
     env = {**os.environ, "PYTHONPATH": SRC}
     proc = subprocess.run(
         [sys.executable, "-c", _CHURN, str(tmp_path / "w")],
-        capture_output=True, text=True, env=env, timeout=300,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        env=env,
+        timeout=300,
     )
     assert proc.returncode == 0, proc.stderr
     out = json.loads(proc.stdout.strip().splitlines()[-1])
