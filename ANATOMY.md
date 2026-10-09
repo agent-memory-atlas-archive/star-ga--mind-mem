@@ -5,8 +5,8 @@
 > Re-generate with: `anatomy .`
 
 **Project:** `mind-mem`
-**Files:** 1717 | **Est. tokens:** ~5,087,284
-**Generated:** 2026-10-09 10:28 UTC
+**Files:** 1717 | **Est. tokens:** ~5,089,273
+**Generated:** 2026-10-09 11:18 UTC
 
 ## Token Budget Guide
 
@@ -78,7 +78,7 @@
 | `skills/mind-mem/` | 1 | ~1,671 |
 | `skills/mind-mem/references/` | 6 | ~18,811 |
 | `src/` | 1 | ~280 |
-| `src/mind_mem/` | 244 | ~1,109,567 |
+| `src/mind_mem/` | 244 | ~1,110,908 |
 | `src/mind_mem/api/` | 5 | ~28,329 |
 | `src/mind_mem/bench/` | 17 | ~48,632 |
 | `src/mind_mem/compliance/` | 7 | ~15,436 |
@@ -93,7 +93,7 @@
 | `src/mind_mem/tool_output/` | 3 | ~5,895 |
 | `src/mind_mem/v4/` | 24 | ~96,311 |
 | `src/mind_mem/viewer_static/` | 3 | ~865 |
-| `tests/` | 775 | ~2,286,841 |
+| `tests/` | 775 | ~2,287,489 |
 | `tests/fixtures/` | 8 | ~16,356 |
 | `tests/fixtures/importers/` | 5 | ~1,218 |
 | `tests/fixtures/importers/agent_memory/` | 4 | ~383 |
@@ -860,7 +860,7 @@
 - `evidence_recovery.py` (~10620 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `extraction_feedback.py` (~1877 tok, huge) — mind-mem Extraction Quality Feedback Tracker.
 - `extractor.py` (~7670 tok, huge) — mind-mem Entity & Fact Extractor (Regex NER-lite). Zero external deps.
-- `fact_slots.py` (~18423 tok, huge) — # Copyright 2026 STARGA, Inc.
+- `fact_slots.py` (~19764 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `feature_gate.py` (~2240 tok, huge) — Shared config-resolver for retrieval features (architect audit item #6).
 - `federation_connect.py` (~3549 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `field_audit.py` (~3103 tok, huge) — mind-mem Per-Field Mutation Audit — tracks individual field changes.
@@ -1459,7 +1459,7 @@
 - `test_extractor_windowed_scan.py` (~1838 tok, huge) — Regression tests for the windowed extract_facts scan (issue #530).
 - `test_fact_card_context.py` (~1339 tok, large) — A fact card must stay SMALL. It must not become a copy of its parent.
 - `test_fact_indexing.py` (~3305 tok, huge) — Tests for Feature 2 (fact card indexing) and Feature 4 (metadata-augmented embeddings)."""
-- `test_fact_slots_context.py` (~10316 tok, huge) — # Copyright 2026 STARGA, Inc.
+- `test_fact_slots_context.py` (~10964 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_fact_slots_failclosed.py` (~4670 tok, huge) — # ruff: noqa: E501  (tables of natural-language test sentences)
 - `test_feature_gate.py` (~7614 tok, huge) — Tests for FeatureGate — the shared config-resolver for retrieval features."""
 - `test_federation_connect.py` (~3244 tok, huge) — ``mind-mem-connect`` — the join, and the three ways a join can go wrong.
