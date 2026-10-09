@@ -5,8 +5,8 @@
 > Re-generate with: `anatomy .`
 
 **Project:** `mind-mem`
-**Files:** 1720 | **Est. tokens:** ~5,106,441
-**Generated:** 2026-10-09 11:26 UTC
+**Files:** 1720 | **Est. tokens:** ~5,107,328
+**Generated:** 2026-10-09 12:58 UTC
 
 ## Token Budget Guide
 
@@ -35,7 +35,7 @@
 | `deploy/docker/` | 1 | ~824 |
 | `deploy/edge/` | 2 | ~1,149 |
 | `deploy/grafana/` | 1 | ~1,145 |
-| `docs/` | 96 | ~224,682 |
+| `docs/` | 96 | ~224,775 |
 | `docs/adr/` | 2 | ~521 |
 | `docs/advisories/` | 1 | ~834 |
 | `docs/audit/` | 1 | ~4,973 |
@@ -85,7 +85,7 @@
 | `src/mind_mem/importers/` | 10 | ~34,469 |
 | `src/mind_mem/mcp/` | 3 | ~7,718 |
 | `src/mind_mem/mcp/infra/` | 8 | ~20,532 |
-| `src/mind_mem/mcp/tools/` | 29 | ~136,360 |
+| `src/mind_mem/mcp/tools/` | 29 | ~136,464 |
 | `src/mind_mem/skill_opt/` | 11 | ~20,899 |
 | `src/mind_mem/spec/` | 4 | ~6,845 |
 | `src/mind_mem/storage/` | 2 | ~11,712 |
@@ -93,7 +93,7 @@
 | `src/mind_mem/tool_output/` | 3 | ~5,895 |
 | `src/mind_mem/v4/` | 24 | ~96,311 |
 | `src/mind_mem/viewer_static/` | 3 | ~865 |
-| `tests/` | 777 | ~2,297,965 |
+| `tests/` | 777 | ~2,298,655 |
 | `tests/fixtures/` | 8 | ~16,356 |
 | `tests/fixtures/importers/` | 5 | ~1,218 |
 | `tests/fixtures/importers/agent_memory/` | 4 | ~383 |
@@ -283,7 +283,7 @@
 - `Makefile` (~82 tok, small) — .PHONY: up down logs shell status build pull
 ### `docs/`
 
-- `acl-behaviour-changes.md` (~3140 tok, huge) — ACL behaviour changes for namespace-bound callers
+- `acl-behaviour-changes.md` (~3233 tok, huge) — ACL behaviour changes for namespace-bound callers
 ### `docs/adr/`
 
 - `001-zero-dependencies.md` (~316 tok, medium) — ADR-001: Zero External Dependencies in Core
@@ -953,9 +953,9 @@
 - `_helpers.py` (~1919 tok, huge) — Shared tool-internal helpers — workspace paths + lazy-init singletons.
 - `__init__.py` (~146 tok, small) — Per-domain ``@mcp.tool`` modules (v3.2.0 §1.2 PR-3+).
 - `kernels.py` (~2153 tok, huge) — MIND kernel + compiled-truth MCP tools.
-- `lineage.py` (~908 tok, large) — MCP wrapping for the v3.11.0 typed block-lineage graph (Pattern 3).
+- `lineage.py` (~968 tok, large) — MCP wrapping for the v3.11.0 typed block-lineage graph (Pattern 3).
 - `lint.py` (~1554 tok, huge) — # Copyright 2026 STARGA, Inc.
-- `memory_ops.py` (~19760 tok, huge) — Memory operations MCP tools — index / lifecycle / health / export.
+- `memory_ops.py` (~19804 tok, huge) — Memory operations MCP tools — index / lifecycle / health / export.
 - `mic_map.py` (~2436 tok, huge) — MIC/MAP serialization MCP tools — wraps ``mind_mem.mic_map``.
 - `model.py` (~4140 tok, huge) — Model audit / signing MCP tools — wraps ``mind_mem.model_audit``,
 - `ontology.py` (~969 tok, large) — Ontology MCP tools — ``ontology_load`` + ``ontology_validate``.
@@ -1739,7 +1739,7 @@
 - `test_readme_client_tables.py` (~2499 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_read_surface_acl_enumeration.py` (~4399 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_read_surface_acl.py` (~5475 tok, huge) — # Copyright 2026 STARGA, Inc.
-- `test_read_surface_acl_residual.py` (~6375 tok, huge) — # Copyright 2026 STARGA, Inc.
+- `test_read_surface_acl_residual.py` (~7065 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_read_surface_acl_tools.py` (~9919 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_read_surface_admission.py` (~6897 tok, huge) — Every read surface, swept with a three-status canary.
 - `test_read_surface_classification.py` (~9253 tok, huge) — The registry-wide read-surface classification — the committed table.

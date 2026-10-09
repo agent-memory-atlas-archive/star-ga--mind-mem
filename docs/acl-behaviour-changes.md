@@ -68,6 +68,7 @@ Everything below applies to a BOUND caller; an unbound caller (stdio / local ope
 
 ## get_block (and every id-keyed tool)
 - A source the caller's ACL does not grant answers exactly like an absent id: `{"found": false, "error": "Block <id> not found in any corpus file.", ...}` (or "the block store"). `{"error": "namespace access denied"}` is no longer returned by get_block. This covers an explicit `namespace` selector the caller cannot read, `agents/<other>`, and a selector for a custom namespace that is not declared (it no longer answers `invalid namespace selector` for a bound caller who could not read it anyway; an unbound caller keeps the specific selector errors).
+- Timing: a denied id is also indistinguishable from a missing id by latency. get_block now reads every corpus source for every id (found, denied or missing) instead of returning as soon as the id is found, and block_lineage walks an edgeless surrogate for a root the caller cannot read. Cost: a successful get_block scans the whole corpus rather than the prefix file only.
 - Unchanged by design: a block in a namespace the caller CAN read that has not passed admission still answers `{"found": false, "withheld": true}`.
 - The remaining uses of `namespace access denied` are aggregates and whole-corpus tools (refused for a restricted view) and carry no id.
 

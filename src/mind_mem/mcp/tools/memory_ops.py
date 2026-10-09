@@ -1262,34 +1262,36 @@ def _resolve_block_for_read(ws: str, block_id: str, *, namespace: str | None = N
     if not _is_markdown_backend(ws):
         return get_block_store(ws).get_by_id(block_id), "store"
 
-    filepath = _find_block_file(ws, block_id)
-    if filepath and os.path.isfile(filepath):
-        try:
-            for block in _read_direct_source(ws, filepath):
-                if block.get("_id") == block_id:
-                    rel_path = os.path.relpath(filepath, ws)
-                    block["_source_file"] = rel_path.replace(os.sep, "/")
-                    return block, "corpus"
-        except (OSError, ValueError, BlockCorruptedError) as exc:
-            _log.debug("get_block_parse_failed", file=filepath, error=str(exc))
-
+    # Constant work: every corpus file is read whether or not the id is found
+    # (and whichever file holds it), so a caller who is later denied the block
+    # cannot tell it exists from how quickly the lookup returned. The file the
+    # id prefix names keeps precedence over a duplicate elsewhere.
+    preferred = _find_block_file(ws, block_id)
+    found: dict | None = None
+    found_preferred = False
     for subdir in CORPUS_DIRS:
         dir_path = os.path.join(ws, subdir)
         if not os.path.isdir(dir_path):
             continue
-        for fn in os.listdir(dir_path):
+        for fn in sorted(os.listdir(dir_path)):
             if not fn.endswith(".md"):
                 continue
             fpath = os.path.join(dir_path, fn)
-            if fpath == filepath:
-                continue
             try:
-                for block in _read_direct_source(ws, fpath):
-                    if block.get("_id") == block_id:
-                        block["_source_file"] = f"{subdir}/{fn}"
-                        return block, "corpus"
-            except (OSError, ValueError, BlockCorruptedError):
+                blocks = _read_direct_source(ws, fpath)
+            except (OSError, ValueError, BlockCorruptedError) as exc:
+                _log.debug("get_block_parse_failed", file=fpath, error=str(exc))
                 continue
+            is_preferred = fpath == preferred
+            if found is not None and not (is_preferred and not found_preferred):
+                continue
+            for block in blocks:
+                if block.get("_id") == block_id:
+                    block["_source_file"] = f"{subdir}/{fn}"
+                    found, found_preferred = block, is_preferred
+                    break
+    if found is not None:
+        return found, "corpus"
 
     return None, "corpus"
 
