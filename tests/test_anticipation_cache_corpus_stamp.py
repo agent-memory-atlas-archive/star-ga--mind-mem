@@ -147,7 +147,7 @@ def test_unnameable_corpus_state_bypasses_a_warm_bundle(tmp_path, monkeypatch):
     # ``_warm_bundle`` just proved it). A stamp of ``None`` -- a file inside the
     # racy-timestamp window, or an unstattable input -- means the state cannot
     # be named, and the bundle cache must be bypassed both ways.
-    monkeypatch.setattr("mind_mem.mcp.tools.recall._corpus_stamp", lambda _ws: None)
+    monkeypatch.setattr("mind_mem.mcp.tools.recall._corpus_stamp", lambda _ws, _config=None: None)
 
     backend, ids = _recall(ws)
     assert backend != "anticipation_cache", backend

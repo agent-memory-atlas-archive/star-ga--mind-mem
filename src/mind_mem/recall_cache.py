@@ -117,10 +117,39 @@ _STAMP_EXCLUDED_INDEX_NAMES = frozenset({"usage.json"})
 _STAMP_EXTRA_FILES = (
     "memory/knowledge_graph.db",
     "memory/knowledge_graph.db-wal",
+    # v4 PQ side store (``mind_mem.v4.pq``), written by a vector rebuild.
+    "index.db",
+    "index.db-wal",
 )
 
+#: Default local vector-index directory (``recall.index_path``). Hybrid and
+#: vector recall read ``<dir>/index.json`` on every call, and a vector-only
+#: rebuild (``recall_vector.rebuild_index``) writes nothing else, so the whole
+#: directory listing is part of the stamp.
+_DEFAULT_VECTOR_INDEX_DIR = ".mind-mem-vectors"
 
-def corpus_stamp(workspace: str) -> str | None:
+
+def _vector_stamp_inputs(config: dict | None) -> tuple[list[str], list[str]]:
+    """Directories and files the vector leg reads, per the ``recall`` config.
+
+    Pure: no I/O, no logging. Malformed values are ignored (the default
+    directory is always included), matching ``VectorBackend``'s own
+    tolerance of a malformed ``recall`` section.
+    """
+    dirs = [_DEFAULT_VECTOR_INDEX_DIR]
+    files: list[str] = []
+    recall_cfg = config.get("recall") if isinstance(config, dict) else None
+    if isinstance(recall_cfg, dict):
+        index_path = recall_cfg.get("index_path")
+        if isinstance(index_path, str) and index_path.strip() and index_path not in dirs:
+            dirs.append(index_path)
+        vec_db = recall_cfg.get("sqlite_vec_db")
+        if isinstance(vec_db, str) and vec_db.strip():
+            files.extend((vec_db, f"{vec_db}-wal"))
+    return dirs, files
+
+
+def corpus_stamp(workspace: str, config: dict | None = None) -> str | None:
     """Stat-only identity of everything recall reads, or ``None`` if unnameable.
 
     The governed-ledger head in the key moves only on governed writes. Several
@@ -131,8 +160,14 @@ def corpus_stamp(workspace: str) -> str | None:
     every file in ``.mind-mem-index`` (bar the exclusions above), the
     knowledge-graph database and every corpus file
     (:func:`~mind_mem.corpus_registry.discover_corpus_files`), each as
-    ``(name, size, mtime_ns, ctime_ns, inode)`` or ``absent``. No file is read:
-    the cost is one ``listdir`` per directory plus one ``stat`` per file.
+    ``(name, size, mtime_ns, ctime_ns, inode)`` or ``absent``. The vector leg's
+    inputs are covered too: every file in the local vector-index directory
+    (``.mind-mem-vectors`` and, when *config* names one, ``recall.index_path``),
+    a configured ``recall.sqlite_vec_db`` and the v4 PQ side store — a
+    vector-only rebuild or an out-of-band vector-index edit writes nothing
+    else. No file is read: the cost is one ``listdir`` per directory plus one
+    ``stat`` per file. *config* is the already-loaded ``mind-mem.json`` dict;
+    the stamp never opens it.
 
     Returns ``None`` — the caller must bypass the cache — when a stat fails for
     a reason other than absence, or when any file was modified inside
@@ -159,18 +194,29 @@ def corpus_stamp(workspace: str) -> str | None:
         parts.append(f"{rel}\x00{st.st_size}\x00{st.st_mtime_ns}\x00{st.st_ctime_ns}\x00{st.st_ino}")
         return True
 
-    try:
-        index_names = sorted(os.listdir(os.path.join(root, ".mind-mem-index")))
-    except FileNotFoundError:
-        index_names = []
-    except OSError:
-        return None
-    rels = [
-        f".mind-mem-index/{name}"
-        for name in index_names
-        if name not in _STAMP_EXCLUDED_INDEX_NAMES and not name.endswith(_STAMP_EXCLUDED_INDEX_SUFFIXES)
-    ]
+    def _listing(rel_dir: str) -> list[str] | None:
+        try:
+            names = sorted(os.listdir(os.path.join(root, *rel_dir.split("/"))))
+        except (FileNotFoundError, NotADirectoryError):
+            parts.append(f"{rel_dir}/\x00absent")
+            return []
+        except OSError:
+            return None
+        return [
+            f"{rel_dir}/{name}"
+            for name in names
+            if name not in _STAMP_EXCLUDED_INDEX_NAMES and not name.endswith(_STAMP_EXCLUDED_INDEX_SUFFIXES)
+        ]
+
+    vector_dirs, vector_files = _vector_stamp_inputs(config)
+    rels: list[str] = []
+    for rel_dir in (".mind-mem-index", *vector_dirs):
+        listed = _listing(rel_dir)
+        if listed is None:
+            return None
+        rels.extend(listed)
     rels.extend(_STAMP_EXTRA_FILES)
+    rels.extend(vector_files)
     try:
         rels.extend(rel for _label, rel in discover_corpus_files(root))
     except OSError:

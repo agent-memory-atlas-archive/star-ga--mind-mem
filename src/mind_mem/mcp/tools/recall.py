@@ -100,7 +100,7 @@ def _resolve_chain_head_resolution(ws: str) -> "IndexAnchorResolution":
         return IndexAnchorResolution.unresolved(f"{type(exc).__name__}: governed head unresolved")
 
 
-def _anticipation_generation_key(ws: str, index_anchor: str) -> str | None:
+def _anticipation_generation_key(ws: str, index_anchor: str, config: dict | None = None) -> str | None:
     """The anticipation bundle generation key for *ws*, or ``None`` to bypass.
 
     The governed-ledger head alone does not move on reindex, delete, compact,
@@ -115,7 +115,7 @@ def _anticipation_generation_key(ws: str, index_anchor: str) -> str | None:
     its lookup and its record: a write that lands mid-request files the answer
     under the pre-write generation, which no later lookup can reach.
     """
-    stamp = _corpus_stamp(ws)
+    stamp = _corpus_stamp(ws, config)
     if stamp is None:
         return None
     return f"{index_anchor}|corpus:{stamp}"
@@ -553,7 +553,7 @@ def _recall_impl_ranked(
     # once BEFORE retrieval (see ``_anticipation_generation_key``).
     _anticipation_key: str | None = None
     if _anticipation_identity is not None:
-        _anticipation_key = _anticipation_generation_key(ws, _index_anchor)
+        _anticipation_key = _anticipation_generation_key(ws, _index_anchor, _raw_config)
         if _anticipation_key is None:
             _anticipation_identity = None
     # ``format="bundle"`` never takes the local answer. The early return below
@@ -609,7 +609,7 @@ def _recall_impl_ranked(
         # input) means the state cannot be named, so the request bypasses the
         # cache rather than risk keying a stale answer. Computed only when the
         # cache is on, so the off path pays nothing.
-        _stamp = _corpus_stamp(ws) if _cache_on else None
+        _stamp = _corpus_stamp(ws, _raw_config) if _cache_on else None
         if _cache_on and _stamp is not None:
             raw = cached_recall(
                 _inner,
@@ -1994,7 +1994,7 @@ def prefetch(signals: str, limit: int = 5) -> str:
 
         _prefetch_bundle_key: str | None = None
         if bound_agent is None and _prefetch_resolution.resolved and _pf_anticipation_enabled(_prefetch_config):
-            _prefetch_bundle_key = _anticipation_generation_key(ws, _prefetch_anchor)
+            _prefetch_bundle_key = _anticipation_generation_key(ws, _prefetch_anchor, _prefetch_config)
         with bind_request_context(_prefetch_request_context):
             results = prefetch_context(
                 ws,
