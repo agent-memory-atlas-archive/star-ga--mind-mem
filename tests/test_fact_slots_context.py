@@ -674,7 +674,6 @@ def test_supersedes_with_trailing_punctuation(tmp_path: Path) -> None:
         ("The range is 10–20 units.", "The range is 10-20 units."),
         ("I am April's manager.", "I am April's manager."),
         ("Budget is 10–20 USD.", "Budget is 10-20 USD."),
-        ("The range is 10 units.", "The range is 12 units."),
     ],
 )
 def test_round8_not_changes(new: str, old: str) -> None:
@@ -689,7 +688,92 @@ def test_round8_not_changes(new: str, old: str) -> None:
         ("Mötet är i mars", "Mötet är i maj"),
         ("Budget is 10–20 USD.", "Budget is 10-25 USD."),
         ("Budget is $10-20.", "Budget is $10-25."),
+        ("The range is 10 units.", "The range is 12 units."),  # a count with its noun is a stated value
     ],
 )
 def test_round8_changes(new: str, old: str) -> None:
     assert changed_fact(new, old) is True
+
+
+@pytest.mark.parametrize(
+    "new,old",
+    [
+        ("La réunion est le mardi à 14h.", "La réunion est le mardi à 15h."),
+        ("Das Meeting ist um 14h.", "Das Meeting ist um 16h."),
+        ("The grant is 40 000 EUR.", "The grant is 45 000 EUR."),
+        ("The disk is 500 GB.", "The disk is 1 TB."),
+        ("Box weighs 2.5 kg.", "Box weighs 3.5 kg."),
+        ("Timeout is 200 ms.", "Timeout is 250 ms."),
+        ("The team has 7 engineers.", "The team has 9 engineers."),
+        ("The team is 7 people.", "The team is 9 people."),
+        ("The demo is Thu at 4pm ET.", "The demo is Fri at 4pm ET."),
+        ("Backup at 02:00 UTC", "Backup at 2pm UTC"),
+        ("La riunione è martedì.", "La riunione è giovedì."),
+        ("A reunião é na terça-feira.", "A reunião é na quinta-feira."),
+        ("La cita es el 15 de marzo.", "La cita es el 18 de marzo."),
+        ("Аренда 500 000 рублей.", "Аренда 600 000 рублей."),
+        ("Kira 15.000 TL.", "Kira 17.500 TL."),
+        ("家賃は50万円です。", "家賃は60万円です。"),
+        ("월세는 500만원입니다.", "월세는 600만원입니다."),
+        ("The timezone for reports is UTC.", "The timezone for reports is Pacific."),
+    ],
+)
+def test_round9_changes(new: str, old: str) -> None:
+    assert changed_fact(new, old) is True
+
+
+@pytest.mark.parametrize(
+    "new,old",
+    [
+        ("The grant is 40 000 EUR.", "The grant is 40,000 EUR."),
+        ("Le loyer est de 1 200 €.", "Le loyer est de 1200 €."),
+        ("Backup at 2am UTC", "Backup at 02:00 UTC"),
+        ("Sync at 10:00", "Sync at 10am"),
+        ("Sync at 10:00", "Sync at 10pm"),
+        ("Alice has 3 cats.", "Alice has 2 dogs."),
+        ("Route 66 runs east", "Route 101 runs east"),
+        ("The fee is €5.000.", "The fee is €5."),
+    ],
+)
+def test_round9_not_changes(new: str, old: str) -> None:
+    assert changed_fact(new, old) is False
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "1.5 " * 16_000,
+        "node 1.2 and python 3.11 and go 1.22 and rust 1.80 and java 21.0 " * 500,
+        "The window is 14h and 30min long " * 2_000,
+    ],
+)
+def test_context_checks_stay_linear(text: str) -> None:
+    import time
+
+    start = time.perf_counter()
+    changed_fact(text, text + " x")
+    assert time.perf_counter() - start < 3.0
+
+
+@pytest.mark.parametrize("superseder", [{"_id": "D-9", "Supersedes": "C"}, {"_id": "D-9", "Supersedes": "C", "content": "x"}])
+def test_superseder_without_text_still_blocks_the_merge(superseder: dict) -> None:
+    blocks = [
+        {"_id": "A", "content": "The standup is on Tuesday at 10am.", "Status": "active"},
+        {"_id": "C", "content": "The standup is on Tuesday at 10am.", "Status": "active"},
+        superseder,
+    ]
+    assert find_merge_candidates([b for b in blocks if b["_id"] != "D-9"]) != []  # positive control
+    assert find_merge_candidates(blocks) == []
+
+
+@pytest.mark.parametrize(
+    "new,old,changed",
+    [
+        ("Rate limit is 100 req/min.", "Rate limit is 100 req/s.", True),
+        ("CI uses Node 22.", "CI uses Node 20.", True),
+        ("The SDK requires Java 21 or later.", "The SDK requires Java 17 or later.", True),
+        ("Use Room 14 today", "Use Room 12 today", False),
+    ],
+)
+def test_round9_rates_and_product_versions(new: str, old: str, changed: bool) -> None:
+    assert changed_fact(new, old) is changed

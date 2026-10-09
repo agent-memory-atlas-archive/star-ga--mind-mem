@@ -497,7 +497,8 @@ def scan_pairs(
     # Non-mapping entries carry no fields to compare: skipped, never a crash.
     indexed = [(blk, _term_vec(toks)) for blk in blocks if isinstance(blk, dict) and (toks := _tokenize(_block_text(blk)))]
     identities = [_identity(blk) for blk, _ in indexed]
-    replaced = _superseded_by_reference(blk for blk, _ in indexed)
+    # Every block's Supersedes counts, including one with no comparable text of its own.
+    replaced = _superseded_by_reference(blk for blk in blocks if isinstance(blk, dict))
     mergeable = [
         _status(blk) in _MERGEABLE_STATUSES and str(_block_id(blk)).casefold() not in replaced and not _marked_superseded(blk)
         for blk, _ in indexed
