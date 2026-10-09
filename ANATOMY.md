@@ -5,8 +5,8 @@
 > Re-generate with: `anatomy .`
 
 **Project:** `mind-mem`
-**Files:** 1706 | **Est. tokens:** ~5,013,199
-**Generated:** 2026-10-09 05:08 UTC
+**Files:** 1706 | **Est. tokens:** ~5,013,255
+**Generated:** 2026-10-09 05:10 UTC
 
 ## Token Budget Guide
 
@@ -93,7 +93,7 @@
 | `src/mind_mem/tool_output/` | 3 | ~5,895 |
 | `src/mind_mem/v4/` | 24 | ~96,311 |
 | `src/mind_mem/viewer_static/` | 3 | ~865 |
-| `tests/` | 767 | ~2,250,595 |
+| `tests/` | 767 | ~2,250,651 |
 | `tests/fixtures/` | 7 | ~11,912 |
 | `tests/fixtures/importers/` | 5 | ~1,218 |
 | `tests/fixtures/importers/agent_memory/` | 4 | ~383 |
@@ -1260,7 +1260,7 @@
 - `test_active_only_filter.py` (~312 tok, medium) — Tests for active_only recall filter."""
 - `test_adjacent_public_acl.py` (~3611 tok, huge) — ACL controls for public retrieval doors beside the ranked recall tool."""
 - `test_admissibility_unreadable_status.py` (~1104 tok, large) — An unreadable ``Status`` must be withheld on the stale-index path too.
-- `test_admission_routing_read_legs.py` (~2957 tok, huge) — # Copyright 2026 STARGA, Inc.
+- `test_admission_routing_read_legs.py` (~3013 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_admission_seam.py` (~12891 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_admit_proposal_openers.py` (~3596 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_adversarial_corpus.py` (~2329 tok, huge) — # Copyright 2026 STARGA, Inc.

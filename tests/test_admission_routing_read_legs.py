@@ -315,8 +315,12 @@ def test_core_leaves_are_admission_filtered(indexed_ws) -> None:
     assert admitted == {"D-20261008-001", "D-20261008-002"}
 
 
-def test_build_core_ships_only_admitted_blocks(indexed_ws) -> None:
+def test_build_core_ships_only_admitted_blocks(indexed_ws, monkeypatch) -> None:
     import tarfile
+
+    # build_core writes a bundle file, so it is admin-scope (no user-scope tool
+    # writes); this test is about WHAT it ships, so it runs with the admin grant.
+    monkeypatch.setenv("MIND_MEM_SCOPE", "admin")
 
     from mind_mem.mcp.infra.workspace import use_workspace
     from mind_mem.mcp.tools.core import build_core
