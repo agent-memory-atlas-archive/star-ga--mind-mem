@@ -2210,3 +2210,51 @@ class TestServedLedgerDefault:
             pytest.skip("the default is off again")
         roadmap = (ROOT / "ROADMAP.md").read_text(encoding="utf-8")
         assert "default ON since 5.0.2" in roadmap, "RA.1 still describes the ledger as default OFF"
+
+
+# --- comparison tables: other products' tool counts are not MIND-Mem claims ---
+
+
+def test_comparison_row_other_products_tool_counts_are_left_alone():
+    # Positive control: the MIND-Mem cell (bold) with a stale count is still caught.
+    line = "| MCP server | — | 23 tools | 27 tools | **95 tools** |"
+    findings = [f for f in scan(line, rel="README.md") if f.kind == "tools"]
+    assert [f.claimed for f in findings] == ["95"]
+
+
+def test_comparison_row_distinct_cell_is_still_checked():
+    line = "| MCP tools | 95 distinct (registrations) | - | 23 | 27 |"
+    assert [f.claimed for f in scan(line, rel="README.md") if f.kind == "tools"] == ["95"]
+
+
+def test_short_table_row_tool_count_is_still_checked():
+    # A two-column row is an ordinary claim, not a product comparison.
+    assert [f.claimed for f in scan("| MCP tools | 95 tools |", rel="README.md") if f.kind == "tools"] == ["95"]
+
+
+def test_glance_row_naming_another_product_is_left_alone():
+    # A two-value-column "At a Glance" row about a linked third-party product.
+    line = "| [**ClawMem**](https://github.com/yoloshii/ClawMem) | Full pipeline, 33 MCP tools | Needs Bun |"
+    assert [f for f in scan(line, rel="README.md") if f.kind == "tools"] == []
+
+
+def test_glance_row_for_mind_mem_is_still_checked():
+    # Positive control for the exemption above: the same row shape about
+    # MIND-Mem (plain bold label, or a link to this project) is still a claim.
+    plain = "| **MIND-Mem** | Integrity + 95 MCP tools | Lexical by default |"
+    linked = "| [**MIND-Mem**](https://github.com/star-ga/mind-mem) | Integrity + 95 MCP tools | x |"
+    for line in (plain, linked):
+        assert [f.claimed for f in scan(line, rel="README.md") if f.kind == "tools"] == ["95"], line
+
+
+def test_count_mcp_tools_gate_exempts_the_same_other_product_cells():
+    # count_mcp_tools --check-docs is a separate CI gate; it flagged Engram's
+    # and Basic Memory's counts after check_docs_alignment had stopped doing so.
+    other = [
+        "| MCP server | — | 23 tools | 27 tools | **107 tools** |",
+        "| [**ClawMem**](https://github.com/yoloshii/ClawMem) | Full pipeline, 33 MCP tools | Needs Bun |",
+    ]
+    assert [c[3] for c in cmt.scan_doc_claims(other)] == [107]
+    # Positive control: a stale MIND-Mem cell in the same shapes is still found.
+    stale = ["| MCP server | — | 23 tools | **95 tools** |", "| **MIND-Mem** | Integrity + 95 MCP tools | x |"]
+    assert sorted(c[3] for c in cmt.scan_doc_claims(stale)) == [95, 95]

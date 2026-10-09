@@ -700,6 +700,8 @@ def scan_line(rel: str, lineno: int, line: str, auth: Authorities, historical: b
                 span = (match.start("n"), match.end("plus"))
                 if span in seen:
                     continue
+                if kind == "tools" and _is_other_product_cell(line, span[0]):
+                    continue
                 expected = expected_for(match)
                 if expected is None:
                     continue
@@ -720,6 +722,10 @@ def scan_line(rel: str, lineno: int, line: str, auth: Authorities, historical: b
     findings.extend(_scan_python_support(rel, lineno, line, auth))
     findings.extend(_scan_retired_tests_spelling(rel, lineno, line, seen))
     return findings
+
+
+# Shared with count_mcp_tools so both tool-count gates exempt the same cells.
+_is_other_product_cell = cmt.is_other_product_cell
 
 
 def _scan_retired_tests_spelling(rel: str, lineno: int, line: str, seen: set[tuple[int, int]]) -> list[Finding]:

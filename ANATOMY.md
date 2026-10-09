@@ -5,8 +5,8 @@
 > Re-generate with: `anatomy .`
 
 **Project:** `mind-mem`
-**Files:** 1706 | **Est. tokens:** ~5,013,366
-**Generated:** 2026-10-09 05:14 UTC
+**Files:** 1707 | **Est. tokens:** ~5,017,624
+**Generated:** 2026-10-09 09:58 UTC
 
 ## Token Budget Guide
 
@@ -35,7 +35,7 @@
 | `deploy/docker/` | 1 | ~824 |
 | `deploy/edge/` | 2 | ~1,149 |
 | `deploy/grafana/` | 1 | ~1,145 |
-| `docs/` | 95 | ~220,363 |
+| `docs/` | 95 | ~221,542 |
 | `docs/adr/` | 2 | ~521 |
 | `docs/advisories/` | 1 | ~834 |
 | `docs/audit/` | 1 | ~4,973 |
@@ -62,7 +62,7 @@
 | `lib/` | 1 | ~2,451 |
 | `mind/` | 27 | ~9,634 |
 | `.roo/` | 1 | ~22 |
-| `scripts/` | 24 | ~82,843 |
+| `scripts/` | 24 | ~83,399 |
 | `sdk/go/` | 11 | ~9,920 |
 | `sdk/go/testdata/contract/` | 6 | ~675 |
 | `sdk/js/` | 6 | ~4,864 |
@@ -78,7 +78,7 @@
 | `skills/mind-mem/` | 1 | ~1,671 |
 | `skills/mind-mem/references/` | 6 | ~18,811 |
 | `src/` | 1 | ~280 |
-| `src/mind_mem/` | 242 | ~1,084,340 |
+| `src/mind_mem/` | 242 | ~1,084,364 |
 | `src/mind_mem/api/` | 5 | ~27,259 |
 | `src/mind_mem/bench/` | 17 | ~48,632 |
 | `src/mind_mem/compliance/` | 7 | ~15,436 |
@@ -93,7 +93,7 @@
 | `src/mind_mem/tool_output/` | 3 | ~5,895 |
 | `src/mind_mem/v4/` | 24 | ~96,311 |
 | `src/mind_mem/viewer_static/` | 3 | ~865 |
-| `tests/` | 767 | ~2,250,755 |
+| `tests/` | 768 | ~2,253,254 |
 | `tests/fixtures/` | 7 | ~11,912 |
 | `tests/fixtures/importers/` | 5 | ~1,218 |
 | `tests/fixtures/importers/agent_memory/` | 4 | ~383 |
@@ -386,8 +386,8 @@
 - `block-type-taxonomy-roadmap.md` (~911 tok, large) — Block-Type Taxonomy Enhancement — Roadmap Note
 - `changelog-format.md` (~217 tok, medium) — Changelog Format Guide
 - `ci-workflows.md` (~861 tok, large) — CI Workflows
-- `claude-desktop-setup.md` (~764 tok, large) — Claude Desktop Setup Guide
-- `client-integrations.md` (~4267 tok, huge) — Client Integrations
+- `claude-desktop-setup.md` (~807 tok, large) — Claude Desktop Setup Guide
+- `client-integrations.md` (~5015 tok, huge) — Client Integrations
 - `cli-reference.md` (~8426 tok, huge) — CLI Reference
 - `companion-tools.md` (~1111 tok, large) — Companion Tools
 - `comparison.md` (~599 tok, large) — Comparison with Alternatives
@@ -440,7 +440,7 @@
 - `hf-mind-mem-4b-v2-README.md` (~2426 tok, huge) — mind-mem-4b v2 (2026-04-21)
 - `HYPEREDGE_DESIGN_2026-06-17.md` (~1350 tok, large) — Hyperedge + temporal-anchor design (Hyper-Extract steal)
 - `install-guide.md` (~2881 tok, huge) — Installation guide — every step + every option
-- `integrations.md` (~1567 tok, huge) — Integrations
+- `integrations.md` (~1845 tok, huge) — Integrations
 - `local-viewer.md` (~629 tok, large) — Local memory viewer
 - `locomo-v3.4-conv0-results.md` (~475 tok, medium) — LoCoMo v3.4.0 conv-0 results (2026-04-22)
 - `maintenance-namespaces.md` (~1625 tok, huge) — `maintenance/` namespaces
@@ -449,7 +449,7 @@
 - `MHS_DEVICE_MEMORY.md` (~522 tok, large) — MHS / Device Memory Boundary
 - `mic-map.md` (~1686 tok, huge) — MIC/MAP — MIND IR Graph Serialization
 - `migration-guide.md` (~421 tok, medium) — Migration Guide
-- `migration.md` (~2761 tok, huge) — Migration Guide: mem-os to MIND-Mem
+- `migration.md` (~2798 tok, huge) — Migration Guide: mem-os to MIND-Mem
 - `MIND_CONFIG_VS_MIND_LANG.md` (~743 tok, large) — Pipeline configuration and MIND language sources
 - `mind-kernels.md` (~398 tok, medium) — MIND Kernels
 - `mind-mem-4b-setup.md` (~3199 tok, huge) — Setting up the mind-mem-4b model
@@ -466,7 +466,7 @@
 - `POST-V4.4.0-ROADMAP-PLAN.md` (~1905 tok, huge) — mind-mem — Post-v4.4.0 Roadmap Plan (reference)
 - `protection.md` (~1443 tok, large) — MIND-Mem Library Protection
 - `quality-gate.md` (~1267 tok, large) — Quality Gate — Operator Runbook
-- `quickstart.md` (~602 tok, large) — MIND-Mem Quickstart
+- `quickstart.md` (~644 tok, large) — MIND-Mem Quickstart
 - `recompaction.md` (~3132 tok, huge) — Iterative Re-Compression Engine (Recompaction)
 - `red-team-audit.md` (~1164 tok, large) — Behavioral Audit — Operator Runbook
 - `rest-api.md` (~1650 tok, huge) — MIND-Mem REST API
@@ -496,7 +496,7 @@
 - `retrieval-receipt-local-v1.json` (~570 tok, large) — Keys: $schema, $id, title, type, additionalProperties
 ### `docs/`
 
-- `status.md` (~2057 tok, huge) — MIND-Mem — implementation status (alignment companion)
+- `status.md` (~2088 tok, huge) — MIND-Mem — implementation status (alignment companion)
 - `storage-backends.md` (~1620 tok, huge) — Storage Backends
 - `storage-migration.md` (~2391 tok, huge) — Storage Backend Migration Guide
 - `supply-chain-security.md` (~1096 tok, large) — Supply-Chain Security
@@ -627,12 +627,12 @@
 - `check_ci_green.py` (~5240 tok, huge) — Release gate: CI must have concluded success for the EXACT commit being released.
 - `check_claims.sh` (~385 tok, medium) — Cross-repo docs-claim regression gate (mind-mem side).
 - `check_code_scanning_alerts.py` (~5185 tok, huge) — Release gate: zero open code-scanning alerts, AND proof the scanner actually ran.
-- `check_docs_alignment.py` (~17242 tok, huge) — Recompute every counted doc claim from its authority and fail on drift.
+- `check_docs_alignment.py` (~17302 tok, huge) — Recompute every counted doc claim from its authority and fail on drift.
 - `check_index_absence.py` (~2246 tok, huge) — Release gate: the version being released must not exist on the index in ANY state.
 - `check_reachable_modules.py` (~5034 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `check_roadmap_ticks.py` (~4387 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `check_tool_surface.py` (~4151 tok, huge) — Reachability, applied to the MCP tool surface.
-- `count_mcp_tools.py` (~5819 tok, huge) — Count registered MCP tools and assert the count matches CLAUDE.md.
+- `count_mcp_tools.py` (~6315 tok, huge) — Count registered MCP tools and assert the count matches CLAUDE.md.
 - `docs-alignment-hook.sh` (~454 tok, medium) — docs-alignment-hook.sh — Git pre-commit step to refresh derived doc counts.
 - `gen_skill_cli_reference.py` (~2937 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `pre-commit-hook.sh` (~489 tok, medium) — STARGA author guard (chained first: a wrong-identity commit must never be created).
@@ -875,7 +875,7 @@
 - `guardrails.py` (~6254 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `guardrail_surface.py` (~1704 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `hash_chain_v2.py` (~11016 tok, huge) — # Copyright 2026 STARGA, Inc.
-- `hook_installer.py` (~11417 tok, huge) — # Copyright 2026 STARGA, Inc.
+- `hook_installer.py` (~11441 tok, huge) — # Copyright 2026 STARGA, Inc.
 ### `src/mind_mem/importers/`
 
 - `engine.py` (~9872 tok, huge) — # Copyright 2026 STARGA, Inc.
@@ -1726,6 +1726,7 @@
 - `test_ra1v2_all_doors_snapshot.py` (~3382 tok, huge) — Every serving door binds ONE snapshot, or says it could not.
 - `test_ra1v2_live_serve_binding.py` (~4335 tok, huge) — The live serve binding: a real serve records a v2 row, and a failed bind is visible.
 - `test_ra4_proposal_rationale.py` (~932 tok, large) — Every accepted proposal type needs the caller's written rationale."""
+- `test_readme_client_tables.py` (~2499 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_read_surface_admission.py` (~6897 tok, huge) — Every read surface, swept with a three-status canary.
 - `test_read_surface_classification.py` (~9253 tok, huge) — The registry-wide read-surface classification — the committed table.
 - `test_read_surface_paths.py` (~4260 tok, huge) — # Copyright 2026 STARGA, Inc.
