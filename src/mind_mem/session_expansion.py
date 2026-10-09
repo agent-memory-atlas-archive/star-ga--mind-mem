@@ -84,8 +84,7 @@ def _bm25(question: str, docs: Mapping[str, list[str]], k1: float = 1.2, b: floa
             if w in query:
                 tf[w] = tf.get(w, 0) + 1
         out[key] = sum(
-            math.log(1 + (n - df[w] + 0.5) / (df[w] + 0.5)) * f * (k1 + 1) / (f + k1 * (1 - b + b * len(d) / avg))
-            for w, f in tf.items()
+            math.log(1 + (n - df[w] + 0.5) / (df[w] + 0.5)) * f * (k1 + 1) / (f + k1 * (1 - b + b * len(d) / avg)) for w, f in tf.items()
         )
     return out
 
@@ -116,8 +115,9 @@ def expand_sessions(
 
     Sessions are taken in :func:`rank_sessions` order; a session that does not fit the remaining
     budget is skipped (a later, smaller one may still fit). The result lists the chosen sessions in
-    corpus order (chronological for an append-only store) and each session's blocks in corpus
-    order. Each item is a hit-shaped dict: ``_id``, full text as ``excerpt``, and the block's
+    chronological order (by date where parseable, else by natural session number; never by
+    string order of the corpus keys) and each session's blocks by natural DiaID/id order.
+    Each item is a hit-shaped dict: ``_id``, full text as ``excerpt``, and the block's
     ``Date`` / ``speaker`` / ``DiaID`` / source fields when present. Returns ``[]`` for a
     non-positive budget, so a disabled expansion cannot change the caller's evidence.
     """
@@ -132,15 +132,60 @@ def expand_sessions(
             chosen.add(key)
             used += cost
     out: list[dict[str, Any]] = []
-    for block_id, block in corpus.items():
-        if session_of(block) not in chosen:
-            continue
-        item: dict[str, Any] = {"_id": block_id, "excerpt": _text(block), "score": 0.0, "session": session_of(block)}
-        for key in ("Date", "speaker", "DiaID", "_source_file", "file", "Status"):
-            if block.get(key):
-                item[key] = block[key]
-        out.append(item)
+    for key in sorted(chosen, key=lambda k: _session_order(k, corpus, groups)):
+        for block_id in sorted(groups[key], key=lambda b: _natural(str(corpus[b].get("DiaID") or b))):
+            out.append(_item(block_id, corpus[block_id]))
     return out
+
+
+def _item(block_id: str, block: Mapping[str, Any]) -> dict[str, Any]:
+    item: dict[str, Any] = {"_id": block_id, "excerpt": _text(block), "score": 0.0, "session": session_of(block)}
+    for key in ("Date", "speaker", "DiaID", "_source_file", "file", "Status"):
+        if block.get(key):
+            item[key] = block[key]
+    return item
+
+
+def _natural(text: str) -> tuple[Any, ...]:
+    """'D10:2' sorts after 'D2:10': digit runs compare as numbers, the rest as text."""
+    return tuple((0, int(part), "") if part.isdigit() else (1, 0, part) for part in re.findall(r"\d+|\D+", text))
+
+
+def _session_order(
+    key: str,
+    corpus: Mapping[str, Mapping[str, Any]],
+    groups: Mapping[str, Sequence[str]],
+) -> tuple[Any, ...]:
+    """Chronological where the session has a parseable date, otherwise by session number.
+
+    Corpus keys are often sorted as strings (DIA-D10 before DIA-D2), so corpus order is not
+    session order; the transcript a reader sees must be.
+    """
+    dates = [_parse_date(corpus[b].get("Date") or corpus[b].get("date")) for b in groups.get(key, ())]
+    known = [d for d in dates if d is not None]
+    return (0, min(known), _natural(key)) if known else (1, (), _natural(key))
+
+
+_DATE_FORMATS = ("%Y-%m-%d", "%Y/%m/%d", "%d %B, %Y", "%d %B %Y", "%B %d, %Y", "%I:%M %p on %d %B, %Y")
+
+
+def _parse_date(value: Any) -> tuple[int, ...] | None:
+    """A comparable (y, m, d, h, min) for the date formats the stores use, else None."""
+    if not isinstance(value, str) or not value.strip():
+        return None
+    text = value.strip()
+    iso = re.match(r"^(\d{4})-(\d{1,2})-(\d{1,2})", text)
+    if iso:
+        return (int(iso.group(1)), int(iso.group(2)), int(iso.group(3)), 0, 0)
+    from datetime import datetime
+
+    for fmt in _DATE_FORMATS:
+        try:
+            dt = datetime.strptime(text, fmt)
+        except ValueError:
+            continue
+        return (dt.year, dt.month, dt.day, dt.hour, dt.minute)
+    return None
 
 
 def render_transcript(items: Sequence[Mapping[str, Any]]) -> str:

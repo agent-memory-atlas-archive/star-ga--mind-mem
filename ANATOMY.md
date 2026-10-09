@@ -5,8 +5,8 @@
 > Re-generate with: `anatomy .`
 
 **Project:** `mind-mem`
-**Files:** 1675 | **Est. tokens:** ~4,897,598
-**Generated:** 2026-10-08 06:29 UTC
+**Files:** 1676 | **Est. tokens:** ~4,898,545
+**Generated:** 2026-10-09 12:13 UTC
 
 ## Token Budget Guide
 
@@ -76,7 +76,7 @@
 | `skills/integrity-scan/` | 1 | ~376 |
 | `skills/memory-recall/` | 1 | ~549 |
 | `src/` | 1 | ~280 |
-| `src/mind_mem/` | 240 | ~1,076,159 |
+| `src/mind_mem/` | 240 | ~1,076,627 |
 | `src/mind_mem/api/` | 5 | ~27,259 |
 | `src/mind_mem/bench/` | 17 | ~48,632 |
 | `src/mind_mem/compliance/` | 7 | ~15,436 |
@@ -91,7 +91,7 @@
 | `src/mind_mem/tool_output/` | 3 | ~5,895 |
 | `src/mind_mem/v4/` | 24 | ~96,311 |
 | `src/mind_mem/viewer_static/` | 3 | ~865 |
-| `tests/` | 748 | ~2,185,353 |
+| `tests/` | 749 | ~2,185,832 |
 | `tests/fixtures/` | 7 | ~11,912 |
 | `tests/fixtures/importers/` | 5 | ~1,218 |
 | `tests/fixtures/importers/agent_memory/` | 4 | ~383 |
@@ -1030,7 +1030,7 @@
 - `semantic_capability.py` (~219 tok, medium) — Explicit capability boundary for semantic answer verification.
 - `served_ledger.py` (~13315 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `session_boost.py` (~1511 tok, huge) — Session-boundary preservation for recall (v3.3.0 Tier 2 #5).
-- `session_expansion.py` (~1636 tok, huge) — Session expansion: answer from whole conversation sessions instead of isolated turns.
+- `session_expansion.py` (~2104 tok, huge) — Session expansion: answer from whole conversation sessions instead of isolated turns.
 - `session_summarizer.py` (~3852 tok, huge) — mind-mem Session Summarizer. Zero external deps.
 ### `src/mind_mem/skill_opt/`
 
@@ -1839,6 +1839,7 @@
 - `test_served_ledger.py` (~12124 tok, huge) — RA.1 — the served-set ledger: proof of what was served, joinable to outcome.
 - `test_served_ledger_v2_compat.py` (~1724 tok, huge) — Reader-only compatibility controls for mixed v1/v2 served ledgers.
 - `test_session_boost.py` (~1488 tok, large) — v3.3.0 Tier 2 #5 — session-boundary preservation via recall-side boost.
+- `test_session_expansion_order.py` (~479 tok, medium) — Chosen sessions come out in session order, not in the corpus's alphabetical key order.
 - `test_session_expansion.py` (~751 tok, large) — Session expansion returns whole admitted sessions, ranked by hits then session BM25, within a budget."""
 - `test_session_summarizer_door.py` (~3747 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_session_summarizer.py` (~3976 tok, huge) — Comprehensive tests for mind_mem/session_summarizer.py.
