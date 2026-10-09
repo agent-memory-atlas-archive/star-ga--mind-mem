@@ -134,7 +134,7 @@ from .evidence_objects import EvidenceAction, EvidenceChain, EvidenceObject
 from .hash_chain_v2 import HashChainV2, HashEntry
 from .merkle_tree import MerkleTree
 from .observability import get_logger
-from .spec_binding import SpecBindingManager
+from .spec_binding import SpecBindingManager, armed_on_record, record_arming
 
 __all__ = [
     "AdmissionReceipt",
@@ -795,6 +795,8 @@ class GovernanceGate:
         """
         spec_hash = self._current_spec_hash()
         if spec_hash is not None:
+            if not self._armed_seen:
+                self._ensure_arming_record(spec_hash)
             self._armed_seen = True
         elif self._was_armed():
             self._refuse_disarm(block_id)
@@ -841,6 +843,18 @@ class GovernanceGate:
             )
         return spec_hash
 
+    def _ensure_arming_record(self, spec_hash: str) -> None:
+        """Make sure the durable arming record exists. Once per gate, a stat per location.
+
+        ``init`` and ``mm config set`` write the record; this covers every
+        other way a workspace gets armed (``mm bind`` on a pre-5.0.2
+        workspace, a workspace restored or copied from one made before the
+        record existed). Only ever adds a record — it can make the gate
+        stricter, never laxer.
+        """
+        if not armed_on_record(self._config_path, self._ws):
+            record_arming(self._config_path, self._ws, spec_hash=spec_hash)
+
     def _was_armed(self) -> bool:
         """Has this workspace ever been armed? Monotone, and cheap after the first call.
 
@@ -850,27 +864,31 @@ class GovernanceGate:
         took the unbound branch, so deleting ``.spec_binding.json`` silently
         lifted a drift block on a live gate — including an ``enforce`` one.
 
-        Two sources, both of which only an armed workspace can produce:
+        Independent sources, any one of which proves the workspace armed,
+        so deleting any single file (or the binding plus any one other)
+        cannot make an armed workspace read as never-armed:
 
-        * this gate observed a binding earlier in its life; or
+        * this gate observed a binding earlier in its life;
+        * the durable arming record, kept in two places
+          (:func:`~mind_mem.spec_binding.arming_record_paths`): written by
+          ``init`` when it arms a workspace, by every ``mm config set``
+          re-attestation, and by the gate the first time it sees a binding
+          — so it exists from birth, before any governed write;
         * the evidence chain holds a row only an armed gate writes — an
           admission stamped with ``spec_hash``, a ``DRIFT`` row
           (``drift_reason``), or an earlier disarm record
-          (``binding_disarmed``). The chain is append-only and
-          hash-linked, so this history cannot be erased the way the
-          binding file can.
+          (``binding_disarmed``).
 
-        The chain is scanned once per gate and the answer cached (rule:
-        an off path pays no per-item work). A ``True`` answer never needs
-        re-checking; a ``False`` one can only turn ``True`` through a
-        binding this gate will itself observe.
-
-        Known gap, stated rather than hidden: a workspace armed by
-        ``init`` whose binding is deleted before its FIRST governed write,
-        and before any gate in this process saw it, has no armed history
-        anywhere and still reads as never-armed.
+        A ``True`` answer is cached for the life of the gate (monotone).
+        The evidence scan is cached either way (one scan per gate); the
+        arming-record check is a stat per location and is repeated while
+        the answer is ``False``, so a record written by another process is
+        seen at once.
         """
         if self._armed_seen:
+            return True
+        if armed_on_record(self._config_path, self._ws):
+            self._armed_seen = True
             return True
         if self._armed_history is None:
             count = len(self._evidence)

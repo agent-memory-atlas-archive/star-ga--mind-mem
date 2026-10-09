@@ -40,6 +40,77 @@ _BINDING_FILENAME = ".spec_binding.json"
 _CURRENT_VERSION = "1.0.0"
 
 
+#: Arming record: written whenever a workspace is armed or re-attested
+#: (``init``, ``mm config set``, and the gate the first time it verifies a
+#: binding). Unlike the binding it never stops existing on a normal path —
+#: nothing un-arms a workspace — so its presence answers "was this workspace
+#: ever armed?" after the binding itself is gone. Kept in TWO places, see
+#: :func:`arming_record_paths`, so deleting any single file cannot erase it.
+_ARMING_FILENAME = ".spec_armed.json"
+_ARMING_AUDIT_DIR = ".mind-mem-audit"
+
+
+def arming_record_paths(config_path: str, workspace: Optional[str] = None) -> tuple[str, str]:
+    """Where the arming record for *config_path* lives: beside the binding, and in the audit dir.
+
+    The first copy sits next to the config and its binding. The second sits
+    in the workspace's ``.mind-mem-audit/`` directory (the audit ledger's
+    home, outside every snapshot and restore scope), so removing the binding
+    together with the record beside it still leaves the workspace armed.
+    *workspace* defaults to the config's directory, which is where
+    :func:`~mind_mem.governance_gate.config_path_for` puts it.
+    """
+    config_dir = os.path.dirname(os.path.abspath(config_path))
+    ws = os.path.abspath(workspace) if workspace else config_dir
+    return (
+        os.path.join(config_dir, _ARMING_FILENAME),
+        os.path.join(ws, _ARMING_AUDIT_DIR, "spec_armed.json"),
+    )
+
+
+def record_arming(config_path: str, workspace: Optional[str] = None, *, spec_hash: str = "") -> list[str]:
+    """Write the arming record to every location in :func:`arming_record_paths`.
+
+    Returns the paths written. A location that cannot be written is logged
+    and skipped — the other copy still stands, and the binding written
+    alongside is what the gate verifies; this record only ever makes the
+    gate STRICTER (a missing binding reads as drift, not as "unbound").
+    A path that is a symlink is replaced, never written through.
+    """
+    record = {
+        "config_file": os.path.basename(os.path.abspath(config_path)),
+        "spec_hash": spec_hash,
+        "armed_at": datetime.now(timezone.utc).isoformat(),
+        "version": _CURRENT_VERSION,
+    }
+    data = json.dumps(record, indent=2, sort_keys=True)
+    written: list[str] = []
+    for path in arming_record_paths(config_path, workspace):
+        try:
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+            tmp_path = path + ".tmp"
+            with open(tmp_path, "w", encoding="utf-8") as f:
+                f.write(data)
+                f.flush()
+                os.fsync(f.fileno())
+            os.replace(tmp_path, path)
+            written.append(path)
+        except OSError as exc:
+            _log.warning("spec_binding.arming_record_unwritable", path=path, error=str(exc))
+    return written
+
+
+def armed_on_record(config_path: str, workspace: Optional[str] = None) -> bool:
+    """True when any arming record for *config_path* exists. A stat per location, never a read.
+
+    Presence is the signal: any entry at the path (file, symlink, even a
+    directory someone put there) counts, because the only way to make it
+    read as absent is to remove it, and removal is exactly the tampering
+    this exists to survive.
+    """
+    return any(os.path.lexists(path) for path in arming_record_paths(config_path, workspace))
+
+
 class SpecBindingCorruptedError(Exception):
     """Raised when the binding file exists but cannot be parsed.
 

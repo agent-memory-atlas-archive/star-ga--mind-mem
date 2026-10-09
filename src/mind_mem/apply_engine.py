@@ -2210,6 +2210,36 @@ def _sanitize_reason_for_markdown(reason: str) -> str:
     return "\n".join(out_lines)
 
 
+_PROPOSAL_BLOCK_HEADER_RE = re.compile(r"^\[[A-Z]+-[^\]]+\]")
+
+
+def _proposal_status_line(lines, proposal_id):
+    """Index of the ``Status:`` line of *proposal_id*'s block in *lines*, or ``-1``.
+
+    The block is the span from its ``[ID]`` header to the next header, and
+    it is the one whose ``ProposalId:`` line is exactly *proposal_id* (not a
+    prefix of a longer id). Field order inside a block is free — the parser
+    that ``find_proposal`` uses accepts ``Status:`` before ``ProposalId:`` —
+    so the Status line is searched for in the whole block, not only after
+    the ProposalId line.
+    """
+    target = f"ProposalId: {proposal_id}"
+    for idx, line in enumerate(lines):
+        if line.strip() != target:
+            continue
+        start = idx
+        while start > 0 and not _PROPOSAL_BLOCK_HEADER_RE.match(lines[start]):
+            start -= 1
+        end = idx + 1
+        while end < len(lines) and not _PROPOSAL_BLOCK_HEADER_RE.match(lines[end]):
+            end += 1
+        for j in range(start, end):
+            if lines[j].startswith("Status:"):
+                return j
+        return -1
+    return -1
+
+
 def _mark_proposal_status(source_file, proposal_id, new_status, *, reason=""):
     """Update the Status field in the proposal's source file.
 
@@ -2241,21 +2271,20 @@ def _mark_proposal_status(source_file, proposal_id, new_status, *, reason=""):
         with lock:
             with open(source_file, "r", encoding="utf-8") as f:
                 content = f.read()
-            # Find the proposal block and update its Status
-            # Simple approach: find line with "ProposalId: <id>" then find "Status:" nearby
             lines = content.split("\n")
-            in_proposal = False
-            status_idx = -1
-            for i, line in enumerate(lines):
-                if f"ProposalId: {proposal_id}" in line:
-                    in_proposal = True
-                    continue
-                if in_proposal and line.startswith("Status:"):
-                    lines[i] = f"Status: {new_status}"
-                    status_idx = i
-                    break
-                if in_proposal and re.match(r"^\[[A-Z]+-[^\]]+\]", line):
-                    break
+            status_idx = _proposal_status_line(lines, proposal_id)
+            if status_idx < 0:
+                # Nothing to write: no block carries this exact ProposalId,
+                # or its block has no Status line. Reporting success here is
+                # what let an apply write an `applied` receipt while the
+                # proposal stayed `staged` (the Status line came before the
+                # ProposalId line, which the old forward-only scan missed).
+                print(
+                    f"WARNING: no Status line for proposal {proposal_id} in {source_file}; status not recorded",
+                    file=sys.stderr,
+                )
+                return False
+            lines[status_idx] = f"Status: {new_status}"
             if reason and status_idx >= 0:
                 sanitized = _sanitize_reason_for_markdown(reason.strip())
                 first, *rest = sanitized.split("\n")
@@ -2275,6 +2304,13 @@ def _mark_proposal_status(source_file, proposal_id, new_status, *, reason=""):
             with open(tmp_path, "w", encoding="utf-8") as f:
                 f.write("\n".join(lines))
             os.replace(tmp_path, source_file)
+            # Read it back: the status is only recorded if the file now says so.
+            with open(source_file, "r", encoding="utf-8") as f:
+                landed = f.read().split("\n")
+            landed_idx = _proposal_status_line(landed, proposal_id)
+            if landed_idx < 0 or landed[landed_idx].strip() != f"Status: {new_status}":
+                print(f"WARNING: proposal status write for {proposal_id} did not land in {source_file}", file=sys.stderr)
+                return False
         return True
     except LockTimeout as e:
         print(
@@ -2323,6 +2359,58 @@ def _receipt_result(receipt_path):
     return result
 
 
+def _rollback_refusal(ws, snap_dir, receipt_ts):
+    """Why the snapshot at *snap_dir* may NOT be rolled back, or ``None``. Reads only; restores nothing.
+
+    Returns ``(reason, receipt_path)``. ``reason`` is ``None`` only when all
+    of these hold:
+
+    * neither the snapshot directory nor its ``APPLY_RECEIPT.md`` is a
+      symlink, and the receipt is a regular file inside the snapshot;
+    * the receipt names a ``Proposal:``;
+    * the receipt's current state (its last ``Result:`` line) is
+      ``applied`` and it carries no ``RolledBack:`` line;
+    * if that proposal is still on file, its ``Status`` is ``applied``
+      (a proposal already rolled back has nothing left to undo).
+
+    A snapshot directory with no receipt is never a rollback target: it is
+    what an apply that failed its preconditions leaves behind, and it
+    proves nothing was applied.
+    """
+    literal_snap = os.path.join(ws, "intelligence", "applied", receipt_ts)
+    if os.path.islink(literal_snap):
+        return "the snapshot directory is a symlink", None
+    literal_receipt = os.path.join(snap_dir, "APPLY_RECEIPT.md")
+    if os.path.islink(literal_receipt):
+        return "APPLY_RECEIPT.md is a symlink, not a receipt this workspace wrote", None
+    if not os.path.lexists(literal_receipt):
+        return "no APPLY_RECEIPT.md — a snapshot without a receipt proves no applied proposal", None
+    try:
+        receipt_path = _safe_resolve(snap_dir, "APPLY_RECEIPT.md")
+    except ValueError as exc:
+        return f"receipt path escaped the snapshot dir: {exc}", None
+    if not os.path.isfile(receipt_path):
+        return "APPLY_RECEIPT.md is not a regular file", None
+    proposal_id = _proposal_id_from_receipt(receipt_path)
+    if not proposal_id:
+        return "the receipt names no Proposal", None
+    state = _receipt_result(receipt_path)
+    if state != "applied":
+        return f"receipt state is {state!r}, not 'applied'", None
+    try:
+        with open(receipt_path, "r", encoding="utf-8") as fh:
+            if any(line.startswith("RolledBack:") for line in fh):
+                return "the receipt records an earlier rollback", None
+    except OSError as exc:
+        return f"receipt unreadable: {exc}", None
+    proposal, _source = find_proposal(ws, proposal_id)
+    if proposal is not None:
+        status = str(proposal.get("Status", "")).strip()
+        if status != "applied":
+            return f"proposal {proposal_id} is {status!r}, not 'applied'", None
+    return None, receipt_path
+
+
 def rollback(ws, receipt_ts, reason="", strict=False):
     """Rollback from a receipt timestamp.
 
@@ -2362,32 +2450,23 @@ def rollback(ws, receipt_ts, reason="", strict=False):
         print(f"ERROR: Snapshot directory not found: {snap_dir}")
         return False
 
+    # Decide whether this snapshot may be rolled back at all — BEFORE the
+    # restore. Only a snapshot whose receipt proves an applied, not yet
+    # rolled-back proposal is a rollback target. Each check below closes a
+    # path that used to rewind every write made after the snapshot:
+    # a receipt-less snapshot dir (left by an apply that failed its
+    # preconditions), a deleted receipt on an already rolled-back snapshot,
+    # and a symlinked receipt (whose state check was skipped while the
+    # restore still ran, so the caller heard "refused" after the rewind).
+    refusal, _pre_receipt = _rollback_refusal(ws, snap_dir, receipt_ts)
+    if refusal is not None:
+        msg = f"ERROR: refusing rollback of {receipt_ts}: {refusal}"
+        print(msg)
+        print(msg, file=sys.stderr)
+        _log.warning("rollback_refused", receipt_ts=receipt_ts, reason=refusal)
+        return False
+    rolled_back_proposal = _proposal_id_from_receipt(_pre_receipt)
     print(f"Restoring from snapshot: {snap_dir}")
-    # Read the proposal id BEFORE the restore: it belongs in the record the
-    # restore mints, and the receipt is the only place it is written down.
-    # The guarded twin of this exact read is 40 lines below at :2238, which
-    # routes the same literal filename through _safe_resolve. This one joined
-    # raw, so a symlinked receipt let a foreign file's Proposal: id be recorded
-    # as the thing that was rolled back. Audible on refusal, mirroring :2240 --
-    # a silent None here would look like "no receipt", which is a real state.
-    try:
-        _pre_receipt = _safe_resolve(snap_dir, "APPLY_RECEIPT.md")
-    except ValueError as exc:
-        print(f"WARNING: pre-restore receipt path escaped snapshot dir: {exc}", file=sys.stderr)
-        _pre_receipt = None
-    rolled_back_proposal = _proposal_id_from_receipt(_pre_receipt) if _pre_receipt is not None else None
-    # Only an APPLIED receipt can be rolled back. Without this, a receipt
-    # already rolled back was restored a second time — rewinding every write
-    # made since — and an in-progress or aborted one was "rolled back" as if
-    # it had landed. The receipt's last Result line is its current state.
-    if _pre_receipt is not None and os.path.isfile(_pre_receipt):
-        receipt_state = _receipt_result(_pre_receipt)
-        if receipt_state != "applied":
-            msg = f"ERROR: refusing rollback of {receipt_ts}: receipt state is {receipt_state!r}, not 'applied'"
-            print(msg)
-            print(msg, file=sys.stderr)
-            _log.warning("rollback_refused_not_applied", receipt_ts=receipt_ts, receipt_state=receipt_state)
-            return False
     restore_snapshot(  # nosec — snap_dir validated by _safe_resolve above
         ws,
         snap_dir,
@@ -2468,20 +2547,12 @@ def rollback(ws, receipt_ts, reason="", strict=False):
                 file=sys.stderr,
             )
             return False
-    else:
-        # Reachable without anyone deleting anything: a precondition failure
-        # inside apply_proposal restores the snapshot and returns BEFORE
-        # write_receipt, leaving intelligence/applied/<ts>/ with no receipt.
-        # Rolling that ts back restores the files but has no Proposal: id to
-        # reconcile the governance record against — a legitimate outcome, but
-        # it must not print the same banner as a fully reconciled rollback.
-        msg = (
-            f"WARNING: no APPLY_RECEIPT.md in {snap_dir} — files were restored, but no "
-            "proposal status was reconciled and no rollback record was appended."
-        )
+    else:  # pragma: no cover - _rollback_refusal proved the receipt exists before the restore
+        msg = f"WARNING: APPLY_RECEIPT.md in {snap_dir} disappeared during the rollback; no rollback record was appended."
         print(msg)
         print(msg, file=sys.stderr)
-        _log.warning("rollback_receipt_missing", receipt_ts=receipt_ts, snap_dir=snap_dir)
+        _log.warning("rollback_receipt_vanished", receipt_ts=receipt_ts, snap_dir=snap_dir)
+        return False
 
     if not postcheck_ok:
         print(f"\n═══ ROLLED BACK from {receipt_ts} — POST-ROLLBACK VALIDATION FAILED ═══")

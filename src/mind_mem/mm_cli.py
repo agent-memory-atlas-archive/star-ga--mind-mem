@@ -3044,7 +3044,7 @@ def config_set(config_path: str, key: str, value: Any) -> dict[str, Any]:
             config, or a path that runs through a non-object value.
             Raised before any write, so nothing is left half-applied.
     """
-    from mind_mem.spec_binding import SpecBindingManager
+    from mind_mem.spec_binding import SpecBindingManager, armed_on_record, record_arming
 
     path = _split_config_key(key)
     abs_path = os.path.abspath(os.path.expanduser(config_path))
@@ -3063,6 +3063,15 @@ def config_set(config_path: str, key: str, value: Any) -> dict[str, Any]:
     binding_path = os.path.join(os.path.dirname(abs_path), ".spec_binding.json")
     manager = SpecBindingManager(abs_path)
     armed = os.path.exists(binding_path)
+    if not armed and armed_on_record(abs_path):
+        # The workspace was armed and its binding is gone. Writing here
+        # would either leave it disarmed under a new value (no rebind) or
+        # re-arm it over a config nobody reviewed — both are the disarm the
+        # gate refuses. Re-attesting is `mm bind`'s job, after a review.
+        raise ConfigSetError(
+            f"refusing to set {key!r}: this workspace was armed but its spec binding {binding_path!r} is "
+            "missing, which is drift. Review mind-mem.json and re-attest it with `mm bind` first."
+        )
     if armed:
         valid, reason = manager.verify()
         if not valid:
@@ -3089,6 +3098,9 @@ def config_set(config_path: str, key: str, value: Any) -> dict[str, Any]:
         binding = manager.rebind(abs_path)
         spec_hash = binding.spec_hash
         rebound = True
+        # Every re-attestation refreshes the durable arming record, so a
+        # workspace armed before the record existed gains it here.
+        record_arming(abs_path, spec_hash=spec_hash)
 
     result: dict[str, Any] = {
         "config_path": abs_path,
