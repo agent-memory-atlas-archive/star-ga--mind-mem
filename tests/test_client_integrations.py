@@ -39,7 +39,6 @@ try:
     import tomllib as _toml
 except ImportError:  # pragma: no cover - Python 3.10
     _toml = pytest.importorskip("tomli")
-yaml = pytest.importorskip("yaml")
 
 CMD = "/opt/mind-mem/bin/python"
 ARGS = ["/opt/mind-mem/mcp_server.py"]
@@ -147,6 +146,8 @@ def _load(kind: str, path: Path) -> Any:
         return json.loads(text)
     if kind.startswith("toml"):
         return _toml.loads(text)
+    # Gate per test, not per module: only the YAML dialects need PyYAML.
+    yaml = pytest.importorskip("yaml")
     return yaml.safe_load(text)
 
 
@@ -346,7 +347,7 @@ def test_extra_locations_written_only_when_present(home: Path) -> None:
     devin.mkdir(parents=True)
     result = install_mcp_config("windsurf", WS)
     assert [Path(r["path"]) for r in result["also"]] == [devin / "mcp_config.json"]
-    assert json.loads((devin / "mcp_config.json").read_text())["mcpServers"]["mind-mem"] == STD
+    assert json.loads((devin / "mcp_config.json").read_text(encoding="utf-8"))["mcpServers"]["mind-mem"] == STD
     (home / ".cline" / "data" / "settings").mkdir(parents=True)
     cline = install_mcp_config("cline", WS)
     assert any(r["path"].endswith(".cline/data/settings/cline_mcp_settings.json") and r["written"] for r in cline["also"])
@@ -361,7 +362,7 @@ def test_existing_alternate_file_is_preferred(home: Path) -> None:
     result = install_mcp_config("kilo", WS)
     assert Path(result["path"]) == alt
     assert not (alt.parent / "kilo.jsonc").exists()
-    assert json.loads(alt.read_text())["mcp"]["mind-mem"] == OPENCODE
+    assert json.loads(alt.read_text(encoding="utf-8"))["mcp"]["mind-mem"] == OPENCODE
 
 
 def test_yaml_flow_style_is_refused_byte_identical(home: Path) -> None:
@@ -408,7 +409,7 @@ def test_openclaw_hooks_and_mcp_share_one_file(home: Path) -> None:
     cfg.parent.mkdir()
     cfg.write_text(json.dumps({"channels": {"telegram": {"enabled": True}}}), encoding="utf-8")
     install_all(WS, agents=["openclaw"])
-    doc = json.loads(cfg.read_text())
+    doc = json.loads(cfg.read_text(encoding="utf-8"))
     assert doc["channels"] == {"telegram": {"enabled": True}}
     assert doc["hooks"]["internal"]["entries"]["mind-mem"]["enabled"] is True
     assert doc["mcp"]["servers"]["mind-mem"] == STD
