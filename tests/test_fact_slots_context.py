@@ -13,7 +13,7 @@ from pathlib import Path
 
 import pytest
 
-from mind_mem.fact_slots import canonical_tokens, changed_fact, slots_differ
+from mind_mem.fact_slots import canonical_tokens, changed_fact, fact_slots, slots_differ
 from mind_mem.granularity_align import find_merge_candidates, find_similar_pairs, merge_blocks, scan_pairs
 
 # (new, old): different people, places, IDs or events, or an additive change. Not a correction.
@@ -777,3 +777,56 @@ def test_superseder_without_text_still_blocks_the_merge(superseder: dict) -> Non
 )
 def test_round9_rates_and_product_versions(new: str, old: str, changed: bool) -> None:
     assert changed_fact(new, old) is changed
+
+
+@pytest.mark.parametrize(
+    "old,new",
+    [
+        ("Meet Sat at 10am", "Meet Sun at 10am"),
+        ("Deploys happen Tue at 10am", "Deploys happen Thu at 10am"),
+        ("The review is Mon at 2pm and Wed at 4pm", "The review is Mon at 2pm and Thu at 4pm"),
+        ("Møtet er på tirsdag", "Møtet er på torsdag"),
+        ("Retention is 48h for logs", "Retention is 72h for logs"),
+        ("Latency is 120ms", "Latency is 150ms"),
+        ("Disk is 500GB", "Disk is 750GB"),
+        ("Bandwidth is 100 Mbps", "Bandwidth is 1 Gbps"),
+        ("We send 10 messages per minute", "We send 20 messages per minute"),
+        ("We allow 60 calls per hour", "We allow 60 calls per day"),
+        ("Budget is 1.250.000 ₽", "Budget is 1.300.000 ₽"),
+        ("Rent is 1 200,50 €", "Rent is 2 200,50 €"),
+        ("Cena je 500 Kč", "Cena je 600 Kč"),
+        ("Budget is $5-10k", "Budget is $5-12k"),
+        ("O prazo é 30 de setembro", "O prazo é 30 de outubro"),
+        ("La riunione è il 3 marzo alle 10", "La riunione è il 3 marzo alle 11"),
+        ("会议在下午3点", "会议在下午4点"),
+        ("Kokous alkaa klo 9", "Kokous alkaa klo 10"),
+        ("The team has 7 engineers and 2 designers", "The team has 7 engineers and 3 designers"),
+        ("인원은 12명입니다", "인원은 15명입니다"),
+        ("Schůzka je ve čtvrtek", "Schůzka je v pátek"),
+        ("Η συνάντηση είναι την Τρίτη.", "Η συνάντηση είναι την Πέμπτη."),
+    ],
+)
+def test_round10_changes(old: str, new: str) -> None:
+    assert changed_fact(new, old) is True
+
+
+@pytest.mark.parametrize(
+    "old,new",
+    [
+        ("Lunch with Sun at noon", "Lunch with Wed at noon"),
+        ("予算は50万円です", "予算は500000円です"),
+        ("予算は50万円です", "予算は500,000円です"),
+        ("Kosten: 2.500 €", "Kosten: 2.500,00 €"),
+        ("Use the 3D printer in the lab.", "Use the 2D printer in the lab."),
+        ("Take bus 5d to work.", "Take bus 6d to work."),
+    ],
+)
+def test_round10_not_changes(old: str, new: str) -> None:
+    assert changed_fact(new, old) is False
+
+
+@pytest.mark.parametrize("digits", [30, 308, 309, 400, 5000])
+def test_cjk_ten_thousands_never_overflow(digits: int) -> None:
+    text = "予算は" + "9" * digits + "万円です。"
+    fact_slots(text)
+    changed_fact(text, text.replace("予算", "費用"))
