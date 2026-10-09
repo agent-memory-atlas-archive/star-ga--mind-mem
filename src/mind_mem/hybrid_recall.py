@@ -82,6 +82,24 @@ def validate_recall_config(cfg: dict[str, Any]) -> list[str]:
 DEFAULT_RERANK_DEPTH = 50
 
 
+def _is_replaced(hit: Mapping[str, Any]) -> bool:
+    """True when *hit* carries a superseded/revoked/dead status."""
+    from ._recall_core import _is_replaced as _core_is_replaced
+
+    return _core_is_replaced(hit)
+
+
+def _demote_replaced(hits: list[dict]) -> list[dict]:
+    """Dead-status hits re-scored below every live hit, before a leg cuts to ``limit``.
+
+    The single demotion rule lives in ``_recall_core._rank_replaced_below_live``;
+    this is the local-import seam (``_recall_core`` imports this module).
+    """
+    from ._recall_core import _rank_replaced_below_live
+
+    return _rank_replaced_below_live(hits)
+
+
 def resolve_rerank_depth(config: dict[str, Any] | None, limit: int) -> int:
     """How many fused candidates the reranker may see for this request.
 
@@ -1085,7 +1103,7 @@ class HybridBackend:
                     vector_degraded = {"leg": "vector", "reason": "unavailable"}
                 if not _skip_validity:
                     results = self._apply_validity(results, workspace, scoring_instant)
-                results = results[:limit]
+                results = _demote_replaced(results)[:limit]
                 return _as_results(results, _merge_leg_markers(bm25_degraded, vector_degraded))
 
             # Run BM25 + vector in parallel
@@ -1302,7 +1320,8 @@ class HybridBackend:
             # Final slice so callers never receive more than they asked for.
             # Validity must sort the full fused pool first; otherwise a stale
             # hit at the requested boundary can crowd out a fresh candidate.
-            result = result[:limit]
+            # Dead statuses drop below live ones for the same reason.
+            result = _demote_replaced(result)[:limit]
 
             _log.info(
                 "hybrid_search_complete",
@@ -1463,7 +1482,7 @@ class HybridBackend:
         fused = _as_results(fused, combined_degraded)
         if not _skip_validity:
             fused = _as_results(self._apply_validity(fused, workspace, scoring_instant), combined_degraded)
-        return _as_results(fused[:limit], combined_degraded)
+        return _as_results(_demote_replaced(fused)[:limit], combined_degraded)
 
     def _maybe_session_boost(self, results: list[dict]) -> list[dict]:
         """Apply session-boundary preservation (v3.3.0 Tier 2 #5)."""
@@ -1961,10 +1980,26 @@ class HybridBackend:
         if ce_active is None:
             ce_active = self._cross_encoder_active(self._detect_query_type(query))
         if not ce_active:
-            return result[:limit]
+            return _demote_replaced(result)[:limit]
         if rerank_depth is None:
             rerank_depth = resolve_rerank_depth(self._config, limit)
+        # Demote BEFORE slicing the reranker's candidates: the fused pool
+        # still ranks dead hits by their own score (the vector leg never
+        # demotes, and RRF then places superseded versions above their
+        # replacement), so a narrow ``rerank_depth`` slice of it can hold
+        # nothing but dead hits and the replacement never reaches the
+        # reranker or its failure fallback. Returns ``result`` itself when
+        # nothing needs demoting.
+        result = _demote_replaced(result)
         candidates = result[:rerank_depth]
+        # A reranker returns only its own top-k, so a dead-status candidate it
+        # scores high would take a live replacement's slot before any later
+        # demotion could see it. Ask for one extra slot per dead candidate
+        # (bounded by the candidate pool), demote, then cut back. With no dead
+        # candidate the request is exactly the historical one.
+        top_k = ce_cfg.get("top_k", limit)
+        n_dead = sum(1 for r in candidates if _is_replaced(r))
+        rerank_k = min(len(candidates), top_k + n_dead) if n_dead else top_k
         # ``None`` until a reranker actually produced an ordering. The
         # distinction is load-bearing: on a failure we must hand back
         # ``limit`` blocks, not the ``rerank_depth`` candidates we fetched
@@ -1985,7 +2020,7 @@ class HybridBackend:
                 reranked = ensemble.rerank(
                     query,
                     candidates,
-                    top_k=ce_cfg.get("top_k", limit),
+                    top_k=rerank_k,
                     blend_weight=ce_cfg.get("blend_weight", 0.6),
                 )
                 _log.info("reranker_ensemble_applied", candidates=len(candidates), depth=rerank_depth)
@@ -2004,7 +2039,7 @@ class HybridBackend:
                     reranked = ce.rerank(
                         query,
                         candidates,
-                        top_k=ce_cfg.get("top_k", limit),
+                        top_k=rerank_k,
                         blend_weight=ce_cfg.get("blend_weight", 0.6),
                     )
                     _log.info(
@@ -2018,7 +2053,9 @@ class HybridBackend:
             except Exception as e:
                 _log.warning("cross_encoder_unavailable", error=str(e))
         if reranked is None:
-            return candidates[:limit]
+            return _demote_replaced(candidates)[:limit]
+        if n_dead:
+            return _demote_replaced(reranked)[:top_k]
         return reranked
 
     # -- backend wrappers ---------------------------------------------------

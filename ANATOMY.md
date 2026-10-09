@@ -5,8 +5,8 @@
 > Re-generate with: `anatomy .`
 
 **Project:** `mind-mem`
-**Files:** 1689 | **Est. tokens:** ~4,938,504
-**Generated:** 2026-10-09 01:23 UTC
+**Files:** 1693 | **Est. tokens:** ~4,947,189
+**Generated:** 2026-10-09 01:33 UTC
 
 ## Token Budget Guide
 
@@ -93,7 +93,7 @@
 | `src/mind_mem/tool_output/` | 3 | ~5,895 |
 | `src/mind_mem/v4/` | 24 | ~96,311 |
 | `src/mind_mem/viewer_static/` | 3 | ~865 |
-| `tests/` | 750 | ~2,197,602 |
+| `tests/` | 754 | ~2,206,287 |
 | `tests/fixtures/` | 7 | ~11,912 |
 | `tests/fixtures/importers/` | 5 | ~1,218 |
 | `tests/fixtures/importers/agent_memory/` | 4 | ~383 |
@@ -1765,6 +1765,7 @@
 - `test_recall_query_id_join.py` (~7740 tok, huge) — RA.1's residual, closed: the recall envelope publishes the run identity.
 - `test_recall_recursion_fix.py` (~2069 tok, huge) — Regression tests for the recall ↔ query_index mutual recursion bug.
 - `test_recall_references.py` (~270 tok, medium) — Tests for reference-based recall."""
+- `test_recall_replaced_demotion_invariants.py` (~1917 tok, huge) — Dead-status demotion keeps every recall invariant it sits next to.
 - `test_recall_rerank_depth_and_score_contract.py` (~12176 tok, huge) — One score contract (F1) + rerank depth (F2).
 - `test_recall_reranking.py` (~2740 tok, huge) — Tests for _recall_reranking.py — deterministic reranker + LLM rerank."""
 - `test_recall_scoring_dates.py` (~1424 tok, large) — A slash-dated corpus must not silently lose its temporal signal.
@@ -1774,7 +1775,10 @@
 - `test_recall_speaker.py` (~263 tok, medium) — Tests for speaker-based recall."""
 - `test_recall_status_boost.py` (~399 tok, medium) — Tests for status boost in recall."""
 - `test_recall_sufficiency.py` (~1295 tok, large) — Regression gate for Group I item 2 recall-sufficiency score.
+- `test_recall_superseded_leg_cut.py` (~2502 tok, huge) — A superseded block never displaces its live replacement at ANY limit.
 - `test_recall_superseded_rank.py` (~403 tok, medium) — A superseded memory never outranks the live memory that replaced it.
+- `test_recall_superseded_scan_cross_encoder.py` (~1345 tok, large) — The scan leg's cross-encoder cut must not let a superseded block take its replacement's slot.
+- `test_recall_superseded_wide_pool.py` (~2921 tok, huge) — A superseded block never displaces its live replacement, whatever the pool size.
 - `test_recall_supersedes.py` (~216 tok, medium) — Tests for supersedes field in recall."""
 - `test_recall_tags.py` (~320 tok, medium) — Tests for tag-based recall."""
 - `test_recall_temporal.py` (~2800 tok, huge) — Tests for _recall_temporal.py — time-aware hard filters for temporal queries."""
