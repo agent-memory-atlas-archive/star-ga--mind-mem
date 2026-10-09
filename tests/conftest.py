@@ -401,3 +401,25 @@ def _isolate_operator_home_state(tmp_path_factory, monkeypatch):
     monkeypatch.setenv("MIND_MEM_GATE_REGISTRY", str(home / "model_gate.json"))
     monkeypatch.setenv("MIND_MEM_PROMOTION_LEDGER", str(home / "model_promotions.json"))
     yield
+
+
+# Variables AI clients use to relocate their own config files. The installer
+# honours them (``AgentSpec.mcp_env_override``), so a developer shell that
+# sets one would point an installer test at a real config outside the temp
+# HOME. Cleared for every test; a test that exercises an override sets it.
+_CLIENT_RELOCATION_VARS = (
+    "XDG_CONFIG_HOME",
+    "VIBE_HOME",
+    "COPILOT_HOME",
+    "CLINE_MCP_SETTINGS_PATH",
+    "AMP_SETTINGS_FILE",
+    "KIMI_CODE_HOME",
+    "JAN_DATA_FOLDER",
+    "FAST_AGENT_HOME",
+)
+
+
+@pytest.fixture(autouse=True)
+def _isolate_client_config_relocation(monkeypatch: pytest.MonkeyPatch) -> None:
+    for var in _CLIENT_RELOCATION_VARS:
+        monkeypatch.delenv(var, raising=False)

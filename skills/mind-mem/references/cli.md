@@ -38,6 +38,7 @@ Conventions that hold for every command:
 | [`mm detect`](#mm-detect) | Auto-detect installed AI coding clients for this workspace. |
 | [`mm install`](#mm-install) | Configure mind-mem for one named AI coding client. |
 | [`mm install-all`](#mm-install-all) | Auto-detect + configure every installed AI coding client. |
+| [`mm uninstall-all`](#mm-uninstall-all) | Remove the mind-mem MCP entry from every detected (or named) AI client; other entries are kept. |
 | [`mm install-model`](#mm-install-model) | Download `mind-mem-4b` GGUF (~2.5GB) from HuggingFace and import into Ollama as `mind-mem:4b`. Idempotent. |
 | [`mm doctor`](#mm-doctor) | Diagnose workspace state (block-store parity, recall-log schema drift). Add --rebuild-cache or --migrate-recall-log to actually repair. |
 | [`mm token`](#mm-token) | Federation/HTTP transport token management (rotation primitive). |
@@ -419,12 +420,31 @@ mm install-all [--agent AGENT] [--dry-run] [--force] [--no-mcp]
 | `--agent` | Restrict installation to these named agents. Repeat flag for multiple. Default = auto-detect every installed client. |
 | `--dry-run` | - |
 | `--force` | - |
-| `--no-mcp` | Skip native MCP server registration. Default: write both the text hook AND the MCP registration for every agent that supports MCP (Codex, OpenCode, Gemini, Cursor, Windsurf, Continue, Cline, Roo, Zed). |
+| `--no-mcp` | Skip native MCP server registration. Default: write both the text hook AND the MCP registration for every agent with an MCP config file (see `mm detect` and docs/client-integrations.md); clients without one get printed manual steps. |
 
 Example:
 
 ```bash
 mm install-all --dry-run
+```
+
+## mm uninstall-all
+
+Remove the mind-mem MCP entry from every detected (or named) AI client; other entries are kept.
+
+```text
+mm uninstall-all [--agent AGENT] [--dry-run]
+```
+
+| Argument | Meaning |
+| --- | --- |
+| `--agent` | Restrict to these named agents. Repeat flag for multiple. Default = auto-detect. |
+| `--dry-run` | - |
+
+Example:
+
+```bash
+mm uninstall-all --dry-run --agent cursor
 ```
 
 ## mm install-model
