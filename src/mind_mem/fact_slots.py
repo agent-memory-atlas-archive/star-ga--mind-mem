@@ -34,7 +34,7 @@ _DIGIT_JOINERS = frozenset(".,:-/")
 
 
 def _is_digits(tok: str) -> bool:
-    return bool(tok) and all(c in _ASCII_DIGITS for c in tok)
+    return tok.isascii() and tok.isdigit()
 
 
 def _spaced_tokens(text: str) -> list[tuple[str, bool]]:
@@ -149,7 +149,7 @@ _PERIODS = frozenset({"week", "month", "year", "weekend"})
 _DATE_PREV = frozenset(
     (
         "from on at in by until till through since before after during early mid late each every next this last following : → , "
-        "в во на w we am um im ab bis op på i le à en el la di de il"
+        "в во на w we um im ab bis op på le à en el la di de il"
     ).split()
 )
 #: "to" makes a month a date only in a scheduling sentence ("moved the review
@@ -708,6 +708,7 @@ def _compare_tokens_cased(text: str) -> tuple[list[str], list[bool]]:
     Abbreviated month and weekday names are kept as written here: whether one
     is a date or a name is decided in context by :func:`_value_at`.
     """
+    text = re.sub(r"(?<=\d)[–—](?=\d)", "-", text)  # "5–10%" == "5-10%"
     orig = _signed_tokens(_cjk_spaced(_ascii_digits(unicodedata.normalize("NFKC", text))))
     raw = [t.casefold() for t in orig]
     out: list[str] = []
@@ -778,7 +779,15 @@ def _compare_tokens_cased(text: str) -> tuple[list[str], list[bool]]:
             i += 1  # "12 noon" == "noon"
             titled.extend([False] * (len(out) - mark))
             continue
-        if tok in ("noon", "midday", "midnight") and orig[i].istitle() and i + 1 < n and orig[i + 1].istitle():
+        if (
+            tok in ("noon", "midday", "midnight")
+            and orig[i].istitle()
+            and i + 1 < n
+            and orig[i + 1].istitle()
+            and raw[i + 1] not in _WEEKDAYS
+            and _EQUIV.get(raw[i + 1], raw[i + 1]) not in _WEEKDAYS
+            and raw[i + 1] not in _MONTHS
+        ):
             out.append(tok)  # "Midnight Oil": a name
             i += 1
             titled.extend([True] * (len(out) - mark))
@@ -1023,6 +1032,23 @@ _VERSION_VERBS = frozenset(
 )
 
 
+_TEMP_CUES = frozenset(
+    "thermostat temperature temp degrees heat heating cool cooling freezer fridge oven warm cold celsius fahrenheit "
+    "room ac hvac indoor outdoor weather forecast".split()
+)
+_DURATION_CUES = frozenset("lasts last takes take took duration long for every runs run within after in about".split())
+
+
+def _glued_unit_cue(toks: list[str], i: int, unit: str) -> bool:
+    """A glued unit ("21C", "30min", "1h") counts only where the sentence talks about that quantity."""
+    if unit in ("c", "f"):
+        return any(t in _TEMP_CUES for t in toks)
+    if unit in ("min", "mins"):
+        return True  # "30min" is never a label
+    prev = toks[i - 1] if i > 0 else ""
+    return prev in _DURATION_CUES or any(t in ("lasts", "takes", "duration", "long") for t in toks)
+
+
 def _canon_num(t: str) -> str:
     """'5,000' == '5000', '5.00' == '5', '5,5' (decimal comma) == '5.5'."""
     neg = t.startswith("-")
@@ -1042,8 +1068,22 @@ def _plain(tok: str) -> str:
 
 
 def _version_object(toks: list[str], i: int) -> bool:
-    """Is the version at *i* the object of a usage verb (within 3 words before it)?"""
-    return any(toks[k] in _VERSION_VERBS for k in range(max(0, i - 3), i))
+    """Is the version at *i* a stated value rather than the subject's name?
+
+    True after a usage verb anywhere earlier in the same clause ("We run the billing
+    service on version 2.3.1", "upgraded the cluster to 1.29.3"), or after a copula
+    that states a version ("The server version is 1.2.4", "Prod is on 1.2.4").
+    """
+    k = i - 1
+    while k >= 0 and toks[k] not in (".", ";", "!", "?", ":"):
+        if toks[k] in _VERSION_VERBS:
+            return True
+        k -= 1
+    prev = toks[i - 1] if i > 0 else ""
+    before = toks[i - 2] if i > 1 else ""
+    if prev in ("is", "was", "now") and "version" in toks[max(0, i - 4) : i]:
+        return True  # "The server version is 1.2.4"
+    return prev == "on" and before in ("is", "are", "was", "runs", "stays")  # "Prod is on 1.2.4"
 
 
 def _value_at(toks: list[str], i: int, titled: list[bool] | None = None, scheduling: bool | None = None) -> str | None:
@@ -1057,7 +1097,7 @@ def _value_at(toks: list[str], i: int, titled: list[bool] | None = None, schedul
         dayish = _is_digits(prev) or _is_digits(nxt) or bool(_ORDINAL_DAY.match(prev or ""))
         if _named(toks, titled, i):
             return None
-        german_cue = prev in ("am", "im", "um", "ab", "bis", "vom", "zum", "seit")
+        german_cue = prev in ("am", "im", "um", "ab", "bis", "vom", "zum", "seit", "i", "på", "w", "we", "в", "во", "op")
         if src in _FOREIGN_AMBIGUOUS:  # "Mars", "Mai", "Pazar" are names or words too
             cue = dayish or german_cue or nxt in _DATE_NEXT_CUES or (_date_context(toks, i, scheduling) and not titled[i])
             return word if cue else None
@@ -1095,6 +1135,7 @@ def _value_at(toks: list[str], i: int, titled: list[bool] | None = None, schedul
         return None  # "section 1.2.3", "Ticket 2026.10.09": identifiers
     if (_VERSION.match(t) or _SEMVER.match(t) or re.match(r"^\d+\.\d+$", t)) and prev in ("version", "release", "v", "build") and i <= 2:
         return None  # "Release 10.8 is out": the version names the subject, not a changed value
+    unit_next = nxt in _DURATION_UNITS or nxt in _CURRENCY_WORDS or nxt in ("%", "°", "degrees", "percent")
     if (_VERSION.match(t) or _SEMVER.match(t)) and not _version_object(toks, i):
         return None  # "mind-mem 5.0.4 fixes ...", "The 1.2.5 release": the version names the subject
     if _VERSION.match(t) or _SEMVER.match(t):
@@ -1102,13 +1143,15 @@ def _value_at(toks: list[str], i: int, titled: list[bool] | None = None, schedul
         if i + 2 < n and toks[i + 1] == "-" and re.match(r"^(rc|beta|alpha|pre|dev|post|b|a)\d*$", toks[i + 2]):
             suffix = "-" + toks[i + 2]  # "v1.2.3-rc1"
         return f"v:{t.lstrip('v')}{suffix}"  # "v1.3", "1.2.3"
-    if re.match(r"^\d+\.\d+$", t) and i > 0 and _version_object(toks, i):
+    if re.match(r"^\d+\.\d+$", t) and i > 0 and not unit_next and _version_object(toks, i):
         return f"v:{t}"  # "Use Python 3.12", "runs version 2.1"
     if t[:1].isdigit() and _id_context(toks, i):
         return None  # "INV-10%": part of an identifier
     sign = "-" if (prev in ("-", "−") and (i < 2 or not toks[i - 2].isalnum())) else ""
     num = bool(re.match(r"^-?\d+(?:[.,]\d+)*$", t)) or t in _NUMBER_WORDS
     glued = _UNIT_GLUED.match(t)
+    if glued and not _glued_unit_cue(toks, i, glued.group(2)):
+        glued = None  # "seat 12C", "bus 5d", "3D printer": a label, not a unit
     if glued:
         unit = glued.group(2)
         if unit in ("c", "f"):
@@ -1136,16 +1179,26 @@ def _value_at(toks: list[str], i: int, titled: list[bool] | None = None, schedul
     if num and prev in _CURRENCY and i >= 2 and toks[i - 2] in ("-", "−"):
         return f"m:{prev}-{_canon_num(t)}"  # "-$50"
     if num and (nxt in _PERCENT_WORDS or (nxt == "per" and i + 2 < n and toks[i + 2] == "cent")):
-        return f"p:{sign}{t}"
+        return f"p:{sign}{_canon_num(t)}"
     if num and nxt in ("°", "degrees", "°c", "°f", "deg"):
         scale = toks[i + 2] if nxt == "°" and i + 2 < n and toks[i + 2] in ("c", "f") else ""
-        return f"deg:{sign}{t}{scale}"  # "21°C" != "21°F"
+        return f"deg:{sign}{_canon_num(t)}{scale}"  # "21°C" != "21°F"
     if num and nxt in _DURATION_UNITS:
-        return f"q:{_NUMBER_WORDS.get(t, t)}{_DURATION_UNITS[nxt]}"  # "2 hours", "in 3 days", "two weeks"
+        return f"q:{_NUMBER_WORDS.get(t, _canon_num(t))}{_DURATION_UNITS[nxt]}"  # "2 hours", "in 3 days", "two weeks"
     if num and prev in _CURRENCY:
         return f"m:{prev}{_canon_num(t)}"  # "$12", "€90"
     if num and nxt == "%":
         return f"p:{sign}{_canon_num(t)}"  # "12%", "-5%"
+    rng = re.match(r"^(\d+(?:[.,]\d+)?)-(\d+(?:[.,]\d+)?)$", t)
+    if rng:
+        cur = (
+            _CURRENCY_WORDS.get(nxt)
+            or (nxt if (nxt in _CURRENCY or nxt in _CURRENCY_CODES) else "")
+            or (prev if (prev in _CURRENCY or prev in _CURRENCY_CODES) else "")
+            or _CURRENCY_WORDS.get(prev, "")
+        )
+        if cur:
+            return f"m:{cur}{_canon_num(rng.group(1))}-{_canon_num(rng.group(2))}"  # "10-20 USD", "$10-20"
     if _DAY_RANGE.match(t) and nxt == "%":
         return f"p:{t}"  # "5-10%"
     if _DAY_RANGE.match(t) and (prev in _MONTHS or prev in _MONTH_ABBR or nxt in _MONTHS or nxt in _MONTH_ABBR):

@@ -663,3 +663,33 @@ def test_supersedes_with_trailing_punctuation(tmp_path: Path) -> None:
     for ref in ("D-1.", "D-1, D-9."):
         blocks = [_blk("D-1"), _blk("D-2"), {"_id": "D-3", "content": "Other.", "Status": "active", "Supersedes": ref}]
         assert find_merge_candidates(blocks) == []
+
+
+@pytest.mark.parametrize(
+    "new,old",
+    [
+        ("The job runs 2.5 hours.", "The job runs 2.50 hours."),
+        ("Set the room to 21C.", "Set the room to 21 °C."),
+        ("Mötet är i mars", "Mötet är i mars."),
+        ("The range is 10–20 units.", "The range is 10-20 units."),
+        ("I am April's manager.", "I am April's manager."),
+        ("Budget is 10–20 USD.", "Budget is 10-20 USD."),
+        ("The range is 10 units.", "The range is 12 units."),
+    ],
+)
+def test_round8_not_changes(new: str, old: str) -> None:
+    assert changed_fact(new, old) is False
+
+
+@pytest.mark.parametrize(
+    "new,old",
+    [
+        ("The job runs 2.5 hours.", "The job runs 3.5 hours."),
+        ("Set the room to 21C.", "Set the room to 23C."),
+        ("Mötet är i mars", "Mötet är i maj"),
+        ("Budget is 10–20 USD.", "Budget is 10-25 USD."),
+        ("Budget is $10-20.", "Budget is $10-25."),
+    ],
+)
+def test_round8_changes(new: str, old: str) -> None:
+    assert changed_fact(new, old) is True

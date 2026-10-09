@@ -326,7 +326,7 @@ def _store_block(workspace: str, block_id: str) -> dict | None:
     """The full admitted block from the configured store (store-backed corpora carry no committed files)."""
     try:
         from .admissibility import admit_corpus
-        from .block_store_encrypted import get_block_store
+        from .storage import get_block_store  # the configured backend (mind-mem.json), not only markdown
 
         block = get_block_store(workspace).get_by_id(block_id)
         if not block:
@@ -458,6 +458,8 @@ def detect_contradictions(
             # The recall hit carries a 300-char excerpt; the changed-fact comparison reads the
             # full admitted statement (a store-backed corpus without committed files keeps the hit).
             full_block = committed_by_id.get(str(block_id)) or _store_block(ws, str(block_id)) or result
+            if _marked_superseded(full_block):
+                continue  # the full block says it was superseded: history, not a live fact
             changed = changed_fact(proposal_claim, _statement(full_block, existing_text))
             if similarity < threshold and not (changed and similarity > _CHANGED_FACT_MIN_SIMILARITY):
                 continue

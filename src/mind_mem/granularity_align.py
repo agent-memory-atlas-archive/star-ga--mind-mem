@@ -385,14 +385,19 @@ def _superseded_by_reference(blocks: Any) -> set[str]:
     return out
 
 
+def _empty_ref(value: Any) -> bool:
+    """None, '', 'none', 'null', 'n/a', '-' and whitespace are placeholders, not a successor."""
+    return value is None or str(value).strip().lower() in ("", "none", "null", "n/a", "na", "-", "—")
+
+
 def _marked_superseded(block: dict[str, Any]) -> bool:
     """A block whose own SupersededBy / Superseded_by field names a successor is history."""
     nested = block.get("fields") if isinstance(block.get("fields"), dict) else {}
     for key in ("SupersededBy", "Superseded_by", "superseded_by", "supersededBy"):
         for raw in (block.get(key), nested.get(key)):
-            if isinstance(raw, list) and any(str(v).strip() for v in raw):
+            if isinstance(raw, list) and any(not _empty_ref(v) for v in raw):
                 return True
-            if isinstance(raw, str) and raw.strip().lower() not in ("", "none", "n/a"):
+            if isinstance(raw, str) and not _empty_ref(raw):
                 return True
             if raw is not None and not isinstance(raw, (str, list)) and raw not in (0, {}, False):
                 return True  # a store may hold an int or a mapping
