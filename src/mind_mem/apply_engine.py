@@ -1548,6 +1548,215 @@ def _op_supersede_decision(filepath, op, store=None, ws=None):
 
 
 # ═══════════════════════════════════════════════
+# Supersede staging (MCP propose_update(supersedes=...))
+# ═══════════════════════════════════════════════
+
+#: Where a staged supersession is queued; ``Type: edit`` routes here.
+SUPERSEDE_PROPOSAL_FILE: Final = "intelligence/proposed/EDITS_PROPOSED.md"
+#: The one corpus file ``supersede_decision`` retires decisions in.
+SUPERSEDE_DECISION_FILE: Final = "decisions/DECISIONS.md"
+#: A decision id as the corpus writes it (``D-20261001-001``). Anything else --
+#: spaces, newlines, brackets -- is refused before it can reach a block field.
+_SUPERSEDE_TARGET_RE = re.compile(r"^D-[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")
+#: Statuses a supersession may retire: a live decision.
+_SUPERSEDABLE_STATUSES = frozenset({"active", "in_progress", "monitoring", "completed"})
+#: Provenance fields copied onto the staged proposal, in emission order.
+_SUPERSEDE_PROVENANCE_ORDER: Final = ("ActorId", "ActorRole", "SessionId", "ToolId", "Purpose", "ContentSource")
+
+
+class SupersedeStagingError(ValueError):
+    """A supersede proposal was refused; nothing was staged."""
+
+
+def _one_line(text: str, limit: int) -> str:
+    """Collapse whitespace so a value can never open a second block field."""
+    return " ".join(str(text).split())[:limit]
+
+
+def resolve_supersede_target(ws: str, target: str) -> dict[str, Any]:
+    """Return the live decision *target* names, or raise :class:`SupersedeStagingError`.
+
+    Read-only: the format is checked before any lookup, and the lookup goes
+    through the configured block store so a Postgres workspace resolves the
+    same id the apply will retire.
+    """
+    if not isinstance(target, str) or not _SUPERSEDE_TARGET_RE.fullmatch(target):
+        raise SupersedeStagingError(f"invalid supersedes id {target!r}: expected a decision id such as D-YYYYMMDD-NNN")
+    from .storage import get_block_store
+
+    block = get_block_store(ws).get_by_id(target)
+    if not block:
+        raise SupersedeStagingError(f"supersedes target {target} not found")
+    status = str(block.get("Status", "")).strip().lower()
+    if status not in _SUPERSEDABLE_STATUSES:
+        raise SupersedeStagingError(f"supersedes target {target} is not active (Status: {status or 'none'})")
+    return block
+
+
+def _render_supersede_proposal(proposal: dict[str, Any]) -> str:
+    op = proposal["Ops"][0]
+    patch = "\n".join(f"    {line}" for line in str(op["patch"]).splitlines())
+    provenance = "".join(f"{field}: {proposal[field]}\n" for field in _SUPERSEDE_PROVENANCE_ORDER if proposal.get(field))
+    evidence = "\n".join(f"- {line}" for line in proposal["Evidence"])
+    return (
+        f"\n[{proposal['ProposalId']}]\n"
+        f"ProposalId: {proposal['ProposalId']}\nType: {proposal['Type']}\n"
+        f"TargetBlock: {proposal['TargetBlock']}\nRisk: {proposal['Risk']}\n"
+        f"Evidence:\n{evidence}\nRollback: {proposal['Rollback']}\nOps:\n"
+        f"- op: {op['op']}\n  file: {op['file']}\n  target: {op['target']}\n  patch: |\n{patch}\n"
+        f"Fingerprint: {proposal['Fingerprint']}\nStatus: {proposal['Status']}\n"
+        f"{provenance}"
+        f"FilesTouched:\n- {SUPERSEDE_DECISION_FILE}\nSources:\n- mcp:propose_update\n"
+    )
+
+
+def build_supersede_proposal(
+    ws: str,
+    *,
+    target: str,
+    statement: str,
+    rationale: str,
+    tags: list[str],
+    provenance: dict[str, str],
+    proposal_id: str,
+    new_id: str,
+    date_iso: str,
+) -> dict[str, Any]:
+    """Build the staged ``supersede_decision`` proposal for a correction (no writes).
+
+    *provenance* maps block field names (``ActorId`` ...) to cleaned values.
+    The successor inherits the retired block's ``Scope`` so a project-scoped
+    fact is corrected inside its project rather than promoted to global.
+    """
+    from .block_store import _render_block
+
+    old = resolve_supersede_target(ws, target)
+    block: dict[str, Any] = {
+        "_id": new_id,
+        "Statement": _one_line(statement, 500),
+        "Date": date_iso,
+        "Status": "active",
+        "Type": "decision",
+        "Scope": _one_line(old.get("Scope") or "global", 200),
+        "Rationale": _one_line(rationale, 2000),
+        "Supersedes": target,
+        "Sources": ["mcp:propose_update"],
+    }
+    # Tags is a required decision field (validate_py): the caller's, else the
+    # retired block's, so the successor stays findable under the same labels.
+    inherited = old.get("Tags")
+    if tags:
+        block["Tags"] = ", ".join(_one_line(t, 64) for t in tags)
+    elif isinstance(inherited, str) and inherited.strip():
+        block["Tags"] = _one_line(inherited, 1024)
+    else:
+        block["Tags"] = "correction"
+    block.update({field: _one_line(value, 500) for field, value in provenance.items() if value})
+    patch = _render_block(block).rstrip("\n")
+    proposal: dict[str, Any] = {
+        "ProposalId": proposal_id,
+        "Type": "edit",
+        "TargetBlock": target,
+        "Risk": "medium",
+        "Evidence": [_one_line(f"Correction of {target} proposed via MCP propose_update(supersedes={target})", 280)],
+        "Rollback": "restore_snapshot",
+        "Ops": [{"op": "supersede_decision", "file": SUPERSEDE_DECISION_FILE, "target": target, "patch": patch}],
+        "Status": "staged",
+        "FilesTouched": [SUPERSEDE_DECISION_FILE],
+        "Sources": ["mcp:propose_update"],
+    }
+    proposal.update({field: block[field] for field in provenance if field in block})
+    proposal["Fingerprint"] = compute_fingerprint(proposal)
+    return proposal
+
+
+def _staged_supersede_of(ws: str, target: str) -> str:
+    """ProposalId of a staged ``supersede_decision`` of *target*, or ``""``."""
+    for pfile in PROPOSED_FILES:
+        path = os.path.join(ws, pfile)
+        if not os.path.isfile(path):
+            continue
+        for proposal in parse_file(path):
+            if proposal.get("Status") != "staged":
+                continue
+            ops = proposal.get("Ops")
+            if isinstance(ops, list) and any(
+                isinstance(op, dict) and op.get("op") == "supersede_decision" and op.get("target") == target for op in ops
+            ):
+                return str(proposal.get("ProposalId") or proposal.get("_id", ""))
+    return ""
+
+
+def stage_supersede_decision(
+    ws: str,
+    *,
+    target: str,
+    statement: str,
+    rationale: str,
+    tags: list[str] | None = None,
+    provenance: dict[str, str] | None = None,
+    now: datetime | None = None,
+) -> dict[str, Any]:
+    """Stage a ``supersede_decision`` that retires *target* in favour of *statement*.
+
+    Never touches source truth: it appends one proposal to
+    :data:`SUPERSEDE_PROPOSAL_FILE` for ``approve_apply``. The proposal is
+    built, validated and admitted (backlog limit, fingerprint dedup) under the
+    proposal-file lock, so two concurrent corrections cannot allocate the same
+    proposal or block id. Raises :class:`SupersedeStagingError` (nothing
+    written) when the target is not a live decision or admission refuses.
+    """
+    from .closed_slots import ClosedSlotError, _next_block_id, _next_proposal_id
+
+    stamp = now or datetime.now(timezone.utc)
+    date_iso = stamp.astimezone(timezone.utc).strftime("%Y-%m-%d")
+    date_compact = date_iso.replace("-", "")
+    path = os.path.join(ws, SUPERSEDE_PROPOSAL_FILE)
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with FileLock(path):
+        staged_text = ""
+        for pfile in PROPOSED_FILES:
+            ppath = os.path.join(ws, pfile)
+            if os.path.isfile(ppath):
+                with open(ppath, encoding="utf-8") as handle:
+                    staged_text += handle.read() + "\n"
+        try:
+            new_id = _next_block_id(ws, date_compact, staged_text)
+            proposal_id = _next_proposal_id(staged_text, date_compact)
+        except ClosedSlotError as exc:
+            raise SupersedeStagingError(str(exc)) from exc
+        proposal = build_supersede_proposal(
+            ws,
+            target=target,
+            statement=statement,
+            rationale=rationale,
+            tags=list(tags or []),
+            provenance=dict(provenance or {}),
+            proposal_id=proposal_id,
+            new_id=new_id,
+            date_iso=date_iso,
+        )
+        errors = validate_proposal(proposal)
+        if errors:
+            raise SupersedeStagingError(f"generated supersede proposal failed validation: {errors}")
+        backlog_count, over_limit = check_backlog_limit(ws)
+        if over_limit:
+            raise SupersedeStagingError(f"proposal backlog limit exceeded ({backlog_count} staged)")
+        pending = _staged_supersede_of(ws, target)
+        if pending:
+            # A second staged supersession of the same block could only fail
+            # at apply (its target is no longer active) -- or, applied in the
+            # other order, retire the correction the reviewer just approved.
+            raise SupersedeStagingError(f"a supersede proposal for {target} is already staged as {pending}")
+        duplicate, duplicate_id = check_fingerprint_dedup(ws, proposal)
+        if duplicate:
+            raise SupersedeStagingError(f"an identical supersede proposal is already staged as {duplicate_id}")
+        with open(path, "a", encoding="utf-8") as handle:
+            handle.write(_render_supersede_proposal(proposal))
+    return proposal
+
+
+# ═══════════════════════════════════════════════
 # v2.1.2 Operational Hardening
 # ═══════════════════════════════════════════════
 

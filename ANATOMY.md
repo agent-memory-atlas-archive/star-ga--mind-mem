@@ -5,8 +5,8 @@
 > Re-generate with: `anatomy .`
 
 **Project:** `mind-mem`
-**Files:** 1695 | **Est. tokens:** ~4,958,091
-**Generated:** 2026-10-09 01:35 UTC
+**Files:** 1696 | **Est. tokens:** ~4,963,295
+**Generated:** 2026-10-09 02:23 UTC
 
 ## Token Budget Guide
 
@@ -78,14 +78,14 @@
 | `skills/mind-mem/` | 1 | ~1,671 |
 | `skills/mind-mem/references/` | 6 | ~18,811 |
 | `src/` | 1 | ~280 |
-| `src/mind_mem/` | 242 | ~1,079,567 |
+| `src/mind_mem/` | 242 | ~1,080,471 |
 | `src/mind_mem/api/` | 5 | ~27,259 |
 | `src/mind_mem/bench/` | 17 | ~48,632 |
 | `src/mind_mem/compliance/` | 7 | ~15,436 |
 | `src/mind_mem/importers/` | 10 | ~34,469 |
 | `src/mind_mem/mcp/` | 3 | ~6,672 |
 | `src/mind_mem/mcp/infra/` | 8 | ~16,195 |
-| `src/mind_mem/mcp/tools/` | 29 | ~125,497 |
+| `src/mind_mem/mcp/tools/` | 29 | ~126,595 |
 | `src/mind_mem/skill_opt/` | 11 | ~20,899 |
 | `src/mind_mem/spec/` | 4 | ~6,845 |
 | `src/mind_mem/storage/` | 2 | ~11,712 |
@@ -93,7 +93,7 @@
 | `src/mind_mem/tool_output/` | 3 | ~5,895 |
 | `src/mind_mem/v4/` | 24 | ~96,311 |
 | `src/mind_mem/viewer_static/` | 3 | ~865 |
-| `tests/` | 756 | ~2,214,140 |
+| `tests/` | 757 | ~2,217,342 |
 | `tests/fixtures/` | 7 | ~11,912 |
 | `tests/fixtures/importers/` | 5 | ~1,218 |
 | `tests/fixtures/importers/agent_memory/` | 4 | ~383 |
@@ -834,7 +834,7 @@
 - `consolidation_maturity_gate.py` (~2589 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `content_lifecycle.py` (~3292 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `context_core.py` (~4313 tok, huge) — # Copyright 2026 STARGA, Inc.
-- `contradiction_detector.py` (~5236 tok, huge) — mind-mem Contradiction Detector — Surface conflicts at the governance gate.
+- `contradiction_detector.py` (~6140 tok, huge) — mind-mem Contradiction Detector — Surface conflicts at the governance gate.
 - `core_export.py` (~8336 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `corpus_registry.py` (~5767 tok, huge) — Central corpus path registry for mind-mem.
 - `cron_runner.py` (~3583 tok, huge) — mind-mem Cron Runner — single entry point for all periodic jobs. Zero external deps.
@@ -943,7 +943,7 @@
 - `core.py` (~2862 tok, huge) — Context-core MCP tools — ``.mmcore`` bundle lifecycle.
 - `encryption.py` (~2670 tok, huge) — At-rest encryption MCP tools — ``encrypt_file`` / ``decrypt_file``.
 - `frames.py` (~2034 tok, huge) — # Copyright 2026 STARGA, Inc.
-- `governance.py` (~16068 tok, huge) — Governance MCP tools — propose / apply / rollback / scan / contradictions / memory_evolution.
+- `governance.py` (~17166 tok, huge) — Governance MCP tools — propose / apply / rollback / scan / contradictions / memory_evolution.
 - `graph.py` (~8747 tok, huge) — Knowledge-graph + causal-graph MCP tools.
 - `guardrails.py` (~1835 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `_helpers.py` (~1412 tok, large) — Shared tool-internal helpers — workspace paths + lazy-init singletons.
@@ -1387,6 +1387,7 @@
 - `test_contradiction_detector.py` (~5871 tok, huge) — Tests for contradiction_detector.py — Contradiction detection at governance gate (#432).
 - `test_core_export_wiring.py` (~4543 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_core_v140.py` (~2707 tok, huge) — Tests for v1.4.0 core hardening: issues #28, #30, #32, #34."""
+- `test_correction_supersede_loop.py` (~3202 tok, huge) — A correction proposed through MCP never lands as a second active truth.
 - `test_cron_runner_config_fail_closed.py` (~1159 tok, large) — An unreadable toggle file must mean "run nothing", never "run everything".
 - `test_cron_runner.py` (~4320 tok, huge) — Tests for cron_runner.py — periodic job orchestration, config loading, subprocess dispatch."""
 - `test_cross_encoder_auto_enable.py` (~1801 tok, huge) — v3.3.0 Tier 2 #6 — cross-encoder rerank auto-enables on ambiguous queries.

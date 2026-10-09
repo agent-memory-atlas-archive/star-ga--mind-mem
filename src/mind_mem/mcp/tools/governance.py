@@ -205,6 +205,7 @@ def propose_update(
     tool_id: str = "",
     purpose: str = "",
     content_source: str = "",
+    supersedes: str = "",
 ) -> str:
     """Propose a new decision or task. Writes to SIGNALS.md for human review.
 
@@ -230,6 +231,16 @@ def propose_update(
     with an error envelope and **nothing is written**. Omitting it leaves
     the field absent — there is no default, because stamping ``agent`` on
     an untagged proposal would invent a claim the caller never made.
+
+    Corrections: ``supersedes=<decision id>`` (``decision`` only) says the
+    statement replaces that live decision. Instead of a SIGNALS.md entry it
+    stages a ``supersede_decision`` proposal in
+    ``intelligence/proposed/EDITS_PROPOSED.md`` and returns its
+    ``proposal_id``; ``approve_apply`` then retires the old block
+    (``Status: superseded``, ``SupersededBy:`` the new id) in the same write
+    that adds the correction, so the old value never stays a second active
+    truth. A proposal without it that contradicts committed memory gets a
+    ``contradicts`` list whose ``supersedes`` field is the id to pass back.
     """
     ws = _workspace()
 
@@ -277,6 +288,18 @@ def propose_update(
 
     if block_type not in ("decision", "task"):
         return json.dumps({"error": f"block_type must be 'decision' or 'task', got '{block_type}'"})
+
+    if supersedes:
+        # Refused before screening or any write: a bad target must leave no
+        # signal, no staged proposal and no redaction-ledger entry behind.
+        if block_type != "decision":
+            return json.dumps({"error": "supersedes is only valid for block_type 'decision'", "block_type": block_type})
+        from mind_mem.apply_engine import SupersedeStagingError, resolve_supersede_target
+
+        try:
+            resolve_supersede_target(ws, supersedes)
+        except SupersedeStagingError as exc:
+            return json.dumps({"error": str(exc), "field": "supersedes"})
 
     rationale_length = sum(not char.isspace() for char in rationale)
     if rationale_length < 8:
@@ -416,7 +439,14 @@ def propose_update(
         # `recent` is what makes rule 6 (near_duplicate) run at all. Without
         # it the rule reports as skipped and a re-proposal that is 97%+
         # identical to one staged an hour ago sails through.
-        _qg_verdict = validate_block(statement, strict=_qg_is_strict, recent=_recent_statements(ws))
+        _qg_recent = _recent_statements(ws)
+        if supersedes:
+            # Re-proposing a contradicted statement as a supersession is the
+            # documented next step, not a near-duplicate: drop the caller's own
+            # identical prior. The staged proposal is fingerprint-deduped.
+            _qg_norm = " ".join(statement.split())
+            _qg_recent = [(text, ts) for text, ts in _qg_recent if " ".join(text.split()) != _qg_norm]
+        _qg_verdict = validate_block(statement, strict=_qg_is_strict, recent=_qg_recent)
         if not _qg_verdict.accept:
             # Increment aggregate rejection counter.
             metrics.inc("quality_gate_rejections")
@@ -533,6 +563,9 @@ def propose_update(
 
     statement = statement[:500]
 
+    if supersedes:
+        return _stage_supersede(ws, supersedes, statement, rationale, raw_tags, provenance)
+
     signal = {
         "line": 0,
         "type": block_type,
@@ -569,26 +602,84 @@ def propose_update(
     }
     if provenance:
         response["provenance_attached"] = sorted(provenance)
-    contradicts = _committed_contradictions(ws, statement)
+    contradicts = _committed_contradictions(ws, {"Statement": statement})
     if contradicts:
         # Present only when a committed memory states a different value for
         # the same fact, so the reviewer sees the conflict at proposal time
         # (a correction should be applied as a supersede, not as a second truth).
         response["contradicts"] = contradicts
+        response["next_step"] = _SUPERSEDE_HINT.format(block_id=contradicts[0]["block_id"])
     return json.dumps(response, indent=2)
 
 
-def _committed_contradictions(ws: str, statement: str) -> list[dict[str, str]]:
-    """Committed blocks the proposed statement contradicts (fail-soft: [] on detector error)."""
+_SUPERSEDE_HINT = (
+    "This statement contradicts committed memory. If it is a correction, call propose_update again with "
+    "supersedes='{block_id}' (each contradicts entry names its id) so the old block is retired, "
+    "not kept as a second active truth; approve_apply blocks this proposal while the contradiction stands."
+)
+
+
+def _stage_supersede(
+    ws: str,
+    target: str,
+    statement: str,
+    rationale: str,
+    tags: list[str],
+    provenance: dict[str, str],
+) -> str:
+    """Stage ``supersede_decision`` for a screened correction; the MCP envelope.
+
+    The contradiction report is computed on the staged proposal itself -- the
+    same dict ``approve_apply`` will re-read -- so propose time and apply time
+    give the same verdict. The retired target is not in it: that conflict is
+    the one this proposal resolves.
+    """
+    from mind_mem.apply_engine import SupersedeStagingError, stage_supersede_decision
+    from mind_mem.block_provenance import PROVENANCE_FIELDS
+
+    fields = {PROVENANCE_FIELDS[key]: value for key, value in provenance.items()}
+    try:
+        proposal = stage_supersede_decision(ws, target=target, statement=statement, rationale=rationale, tags=tags, provenance=fields)
+    except SupersedeStagingError as exc:
+        return json.dumps({"error": str(exc), "field": "supersedes"})
+    metrics.inc("mcp_proposals")
+    _log.info("mcp_propose_supersede", target=target, proposal_id=proposal["ProposalId"])
+    _invalidate_recall_cache()
+    new_id = parse_blocks(proposal["Ops"][0]["patch"])[0]["_id"]
+    response: dict[str, Any] = {
+        "_schema_version": MCP_SCHEMA_VERSION,
+        "status": "staged",
+        "proposal_id": proposal["ProposalId"],
+        "operation": "supersede_decision",
+        "target_block": target,
+        "new_block": new_id,
+        "location": "intelligence/proposed/EDITS_PROPOSED.md",
+        "next_step": f"Review, then approve_apply('{proposal['ProposalId']}', dry_run=False).",
+        "safety": f"Staged only. {target} stays active until approve_apply retires it.",
+    }
+    if provenance:
+        response["provenance_attached"] = sorted(provenance)
+    contradicts = _committed_contradictions(ws, proposal)
+    if contradicts:
+        response["contradicts"] = contradicts
+    return json.dumps(response, indent=2)
+
+
+def _committed_contradictions(ws: str, proposal: dict[str, Any]) -> list[dict[str, str]]:
+    """Committed blocks *proposal* contradicts (fail-soft: [] on detector error).
+
+    Each entry carries ``supersedes``: the id to pass back to
+    ``propose_update(supersedes=...)`` when the proposal is a correction.
+    """
     from mind_mem.contradiction_detector import check_proposal_contradictions
 
     try:
-        report = check_proposal_contradictions(ws, {"Statement": statement})
+        report = check_proposal_contradictions(ws, proposal)
     except Exception as exc:  # detector failure must not block a proposal
         _log.warning("propose_contradiction_check_failed", error=str(exc))
         return []
     return [
-        {"block_id": c["block_id"], "existing": c["existing_excerpt"][:200]}
+        {"block_id": c["block_id"], "supersedes": c["block_id"], "existing": c["existing_excerpt"][:200]}
         for c in report.get("conflicts", [])
         if c.get("conflict_type") == "contradiction"
     ]
