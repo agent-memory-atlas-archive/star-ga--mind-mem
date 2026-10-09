@@ -5,8 +5,8 @@
 > Re-generate with: `anatomy .`
 
 **Project:** `mind-mem`
-**Files:** 1691 | **Est. tokens:** ~4,942,661
-**Generated:** 2026-10-09 00:47 UTC
+**Files:** 1692 | **Est. tokens:** ~4,944,006
+**Generated:** 2026-10-09 00:58 UTC
 
 ## Token Budget Guide
 
@@ -93,7 +93,7 @@
 | `src/mind_mem/tool_output/` | 3 | ~5,895 |
 | `src/mind_mem/v4/` | 24 | ~96,311 |
 | `src/mind_mem/viewer_static/` | 3 | ~865 |
-| `tests/` | 752 | ~2,201,759 |
+| `tests/` | 753 | ~2,203,104 |
 | `tests/fixtures/` | 7 | ~11,912 |
 | `tests/fixtures/importers/` | 5 | ~1,218 |
 | `tests/fixtures/importers/agent_memory/` | 4 | ~383 |
@@ -1777,6 +1777,7 @@
 - `test_recall_sufficiency.py` (~1295 tok, large) — Regression gate for Group I item 2 recall-sufficiency score.
 - `test_recall_superseded_leg_cut.py` (~2502 tok, huge) — A superseded block never displaces its live replacement at ANY limit.
 - `test_recall_superseded_rank.py` (~403 tok, medium) — A superseded memory never outranks the live memory that replaced it.
+- `test_recall_superseded_scan_cross_encoder.py` (~1345 tok, large) — The scan leg's cross-encoder cut must not let a superseded block take its replacement's slot.
 - `test_recall_supersedes.py` (~216 tok, medium) — Tests for supersedes field in recall."""
 - `test_recall_tags.py` (~320 tok, medium) — Tests for tag-based recall."""
 - `test_recall_temporal.py` (~2800 tok, huge) — Tests for _recall_temporal.py — time-aware hard filters for temporal queries."""

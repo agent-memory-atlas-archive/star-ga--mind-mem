@@ -2722,12 +2722,23 @@ def recall(
                 for r in ce_input:
                     if "content" not in r:
                         r["content"] = r.get("excerpt", "")
+                # The reranker returns only its own top-k, so a dead-status
+                # candidate it keeps on top would take a live replacement's
+                # slot before the later demotion could see it. Ask for one
+                # extra slot per dead candidate (bounded by the pool), demote,
+                # then cut back to the historical size. With no dead candidate
+                # the request and the result are exactly the historical ones.
+                ce_top_k = ce_config.get("top_k", limit)
+                ce_dead = sum(1 for r in ce_input if _is_replaced(r))
+                ce_request = min(len(ce_input), ce_top_k + ce_dead) if ce_dead else ce_top_k
                 deduped = ce.rerank(
                     query,
                     ce_input,
-                    top_k=ce_config.get("top_k", limit),
+                    top_k=ce_request,
                     blend_weight=ce_config.get("blend_weight", 0.6),
                 )
+                if ce_dead:
+                    deduped = _rank_replaced_below_live(deduped)[:ce_top_k]
                 _log.info("cross_encoder_rerank", candidates=len(ce_input), blend_weight=ce_config.get("blend_weight", 0.6))
                 # #429: Record hard negatives — blocks BM25 liked but CE rejected
                 try:
