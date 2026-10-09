@@ -5,8 +5,8 @@
 > Re-generate with: `anatomy .`
 
 **Project:** `mind-mem`
-**Files:** 1706 | **Est. tokens:** ~5,012,893
-**Generated:** 2026-10-09 04:15 UTC
+**Files:** 1706 | **Est. tokens:** ~5,013,199
+**Generated:** 2026-10-09 05:08 UTC
 
 ## Token Budget Guide
 
@@ -93,7 +93,7 @@
 | `src/mind_mem/tool_output/` | 3 | ~5,895 |
 | `src/mind_mem/v4/` | 24 | ~96,311 |
 | `src/mind_mem/viewer_static/` | 3 | ~865 |
-| `tests/` | 767 | ~2,250,289 |
+| `tests/` | 767 | ~2,250,595 |
 | `tests/fixtures/` | 7 | ~11,912 |
 | `tests/fixtures/importers/` | 5 | ~1,218 |
 | `tests/fixtures/importers/agent_memory/` | 4 | ~383 |
@@ -1530,7 +1530,7 @@
 - `test_importers_qdrant.py` (~3597 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_importers_quarantine.py` (~6695 tok, huge) — Acceptance gate for import quarantine (``mind_mem.importers.quarantine``).
 - `test_inbox.py` (~2729 tok, huge) — Tests for the v3.9 inbox folder ingestion."""
-- `test_indexed_filter_metadata.py` (~1879 tok, huge) — Real SQLite/public-path coverage for compound recall filters."""
+- `test_indexed_filter_metadata.py` (~2103 tok, huge) — Real SQLite/public-path coverage for compound recall filters."""
 - `test_indexed_namespace_acl.py` (~3227 tok, huge) — Namespace ACLs must guard indexed recall before any result processing."""
 - `test_indexed_source_admission.py` (~1124 tok, large) — # Copyright 2026 STARGA, Inc.
 - `test_indexed_source_hash_admission.py` (~636 tok, large) — # Copyright 2026 STARGA, Inc.
@@ -1837,7 +1837,7 @@
 - `test_retrieval_graph.py` (~2242 tok, huge) — Tests for retrieval_graph.py — retrieval logging, co-retrieval graph, hard negatives."""
 - `test_retrieval_receipts.py` (~5208 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_retrieval_trace.py` (~978 tok, large) — Tests for v3.3.0 per-feature retrieval attribution."""
-- `test_retrieval_trace_wiring.py` (~3142 tok, huge) — ``retrieval_trace`` wired into the live recall pipeline.
+- `test_retrieval_trace_wiring.py` (~3224 tok, huge) — ``retrieval_trace`` wired into the live recall pipeline.
 - `test_review_batch.py` (~2787 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_review_cli.py` (~3748 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_review_evidence.py` (~1361 tok, large) — # Copyright 2026 STARGA, Inc.
