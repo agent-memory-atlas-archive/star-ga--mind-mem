@@ -328,7 +328,7 @@ def _superseded_ids(blocks: list[dict]) -> set[str]:
         raw = block.get("Supersedes")
         for value in raw if isinstance(raw, list) else [raw]:
             if isinstance(value, str) and value.strip().lower() not in ("", "none", "n/a"):
-                out.update(_BLOCK_ID_RE.findall(value))
+                out.update(t.casefold() for t in re.findall(r"[A-Za-z0-9][A-Za-z0-9_.-]*", value) if t.casefold() not in ("none", "n/a"))
     return out
 
 
@@ -405,6 +405,8 @@ def detect_contradictions(
     # A block named in another block's Supersedes field is history even when
     # its own Status was never updated: it is not a live fact to contradict.
     replaced_ids = _superseded_ids(committed_blocks)
+    # Recall hits carry a truncated excerpt (300 chars); comparisons use the full admitted block.
+    committed_by_id = {str(b.get("_id", "")): b for b in committed_blocks if b.get("_id")}
 
     # Build results: compare proposal against each candidate
     conflicts = []
@@ -417,7 +419,7 @@ def detect_contradictions(
             if block_id in seen_ids:
                 continue
             seen_ids.add(block_id)
-            if block_id in replaced_ids:
+            if str(block_id).casefold() in replaced_ids:
                 continue
             # Superseded, archived or retracted memory is history: a proposal cannot contradict it.
             result_status = str(result.get("status") or result.get("Status") or "active").strip().lower()
@@ -429,7 +431,10 @@ def detect_contradictions(
                 existing_text = _extract_block_text(result)
 
             similarity = _tfidf_cosine_similarity(proposal_text, existing_text)
-            changed = changed_fact(proposal_claim, _statement(result, existing_text))
+            # The recall hit carries a 300-char excerpt; the changed-fact comparison reads the
+            # full admitted statement (a store-backed corpus without committed files keeps the hit).
+            full_block = committed_by_id.get(str(block_id), result)
+            changed = changed_fact(proposal_claim, _statement(full_block, existing_text))
             if similarity < threshold and not (changed and similarity > _CHANGED_FACT_MIN_SIMILARITY):
                 continue
 
@@ -457,7 +462,7 @@ def detect_contradictions(
             continue
 
         seen_ids.add(block_id)
-        if block_id in replaced_ids:
+        if str(block_id).casefold() in replaced_ids:
             continue
         existing_text = _extract_block_text(block)
         if not existing_text.strip():

@@ -372,8 +372,22 @@ def _superseded_by_reference(blocks: Any) -> set[str]:
         for raw in (blk.get("Supersedes"), nested.get("Supersedes")):
             for value in raw if isinstance(raw, list) else [raw]:
                 if isinstance(value, str) and value.strip().lower() not in ("", "none", "n/a"):
-                    out.update(_ID_RE.findall(value))
+                    out.update(
+                        t.casefold() for t in re.findall(r"[A-Za-z0-9][A-Za-z0-9_.-]*", value) if t.casefold() not in ("none", "n/a")
+                    )
     return out
+
+
+def _marked_superseded(block: dict[str, Any]) -> bool:
+    """A block whose own SupersededBy / Superseded_by field names a successor is history."""
+    nested = block.get("fields") if isinstance(block.get("fields"), dict) else {}
+    for key in ("SupersededBy", "Superseded_by", "superseded_by", "supersededBy"):
+        for raw in (block.get(key), nested.get(key)):
+            if isinstance(raw, list) and any(str(v).strip() for v in raw):
+                return True
+            if isinstance(raw, str) and raw.strip().lower() not in ("", "none", "n/a"):
+                return True
+    return False
 
 
 def _identity(block: dict[str, Any]) -> tuple:
@@ -470,7 +484,10 @@ def scan_pairs(
     indexed = [(blk, _term_vec(toks)) for blk in blocks if isinstance(blk, dict) and (toks := _tokenize(_block_text(blk)))]
     identities = [_identity(blk) for blk, _ in indexed]
     replaced = _superseded_by_reference(blk for blk, _ in indexed)
-    mergeable = [_status(blk) in _MERGEABLE_STATUSES and _block_id(blk) not in replaced for blk, _ in indexed]
+    mergeable = [
+        _status(blk) in _MERGEABLE_STATUSES and str(_block_id(blk)).casefold() not in replaced and not _marked_superseded(blk)
+        for blk, _ in indexed
+    ]
     candidates: list[GranularityMergeCandidate] = []
     pairs: list[SimilarPair] = []
     for i in range(len(indexed)):

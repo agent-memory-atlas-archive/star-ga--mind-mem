@@ -40,6 +40,14 @@ NOT_CORRECTIONS = [
     ("The standup is at 10 Downing Street", "The standup is at 11 Downing Street"),
     ("The price is 1.50", "The price is 2.50"),
     ("Q3 review on Friday", "Q2 review on Friday"),
+    ("Our office is at 10.30 Main Street", "Our office is at 9.30 Main Street"),
+    ("Invoice INV-10% is due", "Invoice INV-12% is due"),
+    ("The meeting is at noon", "The meeting is at 12pm"),
+    ("The meeting is at 12:00", "The meeting is at noon"),
+    ("See section 1.2.3", "See section 1.2.4"),
+    ("Ticket 2026.10.09 is open", "Ticket 2026.10.10 is open"),
+    ("Release 10.8 is out.", "Release 10.9 is out."),
+    ("Version 2026.10 released.", "Version 2026.11 released."),
     ("The Tuesday team ships on Friday.", "The Thursday team ships on Friday."),
     ("The Monday group meets at noon", "The Friday group meets at noon"),
     ("Ilona's Tuesday class is at 6pm.", "Ilona's Thursday class is at 6pm."),
@@ -175,6 +183,40 @@ CORRECTIONS = [
     ("The budget is 12%.", "The budget is 10%."),
     ("Prod runs v1.3.", "Prod runs v1.2."),
     ("Ilona's rate is €90/h.", "Ilona's rate is €80/h."),
+    ("Launch is on the 9th of October", "Launch is on the 9th of November"),
+    ("Launch is on the ninth of October", "Launch is on the tenth of October"),
+    ("Call at 10am UTC+5:30", "Call at 10am UTC+1"),
+    ("Growth was -5%", "Growth was 5%"),
+    ("Growth was −5%", "Growth was 5%"),
+    ("The fee is -$50", "The fee is $50"),
+    ("The license fee is 12 USD.", "The license fee is 15 USD."),
+    ("The fee is 10€", "The fee is 12€"),
+    ("The fee is EUR 10", "The fee is EUR 12"),
+    ("The fee is 500円", "The fee is 600円"),
+    ("The budget is $5k", "The budget is $6k"),
+    ("Growth was 5 percent", "Growth was 6 percent"),
+    ("The freezer is at -18 degrees", "The freezer is at -20 degrees"),
+    ("The freezer is at -18°C", "The freezer is at -20°C"),
+    ("Use Python 3.12.", "Use Python 3.11."),
+    ("Prod runs 1.2.4", "Prod runs 1.2.3"),
+    ("Prod runs version 1.2.4", "Prod runs version 1.2.3"),
+    ("Prod runs v1.2.3-rc2", "Prod runs v1.2.3-rc1"),
+    ("Office hours are 9-5", "Office hours are 8-4"),
+    ("Ilona is in America/New_York.", "Ilona is in America/Chicago."),
+    ("Termin am 9. Oktober", "Termin am 10. Oktober"),
+    ("Termin um 10 Uhr", "Termin um 11 Uhr"),
+    ("Standup at 10：30", "Standup at 10：45"),
+    ("会議は月曜日です", "会議は火曜日です"),
+    ("会議は10月9日です", "会議は10月10日です"),
+    ("会議は午後3時です", "会議は午後4時です"),
+    ("회의는 월요일입니다", "회의는 화요일입니다"),
+    ("Встреча в понедельник", "Встреча во вторник"),
+    ("Встреча 9 октября", "Встреча 10 октября"),
+    ("Spotkanie w poniedziałek", "Spotkanie we wtorek"),
+    ("Vergadering op maandag", "Vergadering op dinsdag"),
+    ("Möte på måndag", "Möte på tisdag"),
+    ("Toplantı pazartesi", "Toplantı salı"),
+    ("The standup is on _Thursday_.", "The standup is on _Tuesday_."),
 ]
 
 
@@ -554,3 +596,35 @@ def test_parser_round5_shapes() -> None:
     (b,) = parse_blocks("[D-1]\nStatement: s\n--- with Ilona\nTags: t\n")
     assert b["_unparsed"] == ["--- with Ilona"] and b["Tags"] == "t"
     assert len(parse_blocks("[D-1]\nStatement: a\n---\n[D-2]\nStatement: b\n")) == 2
+
+
+def test_long_statement_is_compared_in_full(tmp_path: Path) -> None:
+    from mind_mem.contradiction_detector import check_proposal_contradictions
+
+    tail = " ".join(f"Context sentence number {k} about the planning process." for k in range(15))
+    old = "The weekly call with Ilona is on Tuesday at 10am. " + tail
+    new = "The weekly call with Ilona is on Thursday at 10am. " + tail
+    assert len(old) > 600
+    (tmp_path / "decisions").mkdir()
+    (tmp_path / "decisions" / "DECISIONS.md").write_text(
+        f"# DECISIONS\n\n[D-20261001-001]\nDate: 2026-10-01\nStatus: active\nScope: global\nStatement: {old}\nTags: test\n",
+        encoding="utf-8",
+    )
+    report = check_proposal_contradictions(str(tmp_path), {"Statement": new})
+    assert report["has_contradictions"]
+
+
+@pytest.mark.parametrize("field", ["SupersededBy", "Superseded_by"])
+def test_block_marked_superseded_never_merges(field: str) -> None:
+    a = _blk("D-1", **{field: "D-3"})
+    b = _blk("D-2", **{field: "D-3"})
+    assert find_merge_candidates([a, b]) == []
+    assert len(find_merge_candidates([_blk("D-1"), _blk("D-2")])) == 1  # positive control
+
+
+@pytest.mark.parametrize("ref", ["d-1", "D-1", "1001"])
+def test_supersede_reference_matching_is_case_insensitive(ref: str) -> None:
+    a = _blk("D-1" if ref != "1001" else "1001")
+    b = _blk("D-2" if ref != "1001" else "1002")
+    c = {"_id": "D-9", "content": "Something else entirely.", "Status": "active", "Supersedes": ref}
+    assert find_merge_candidates([a, b, c]) == []

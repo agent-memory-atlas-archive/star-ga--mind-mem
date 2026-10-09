@@ -141,7 +141,7 @@ _ZONE_ABBR = frozenset("utc gmt pt pst pdt et est edt ct cst cdt mt mst mdt hst 
 #: phrase ("timezone is Arizona").
 _ZONE_NAMES = frozenset("pacific eastern central mountain arizona hawaii alaska".split())
 _ZONE_CONTEXT = frozenset({"time", "tz", "timezone", "zone"})
-_RELATIVE = frozenset("today tomorrow yesterday tonight morning afternoon evening noon midnight weekend".split())
+_RELATIVE = frozenset("today tomorrow yesterday tonight morning afternoon evening weekend".split())
 _PERIOD_AFTER = frozenset({"next", "this", "last", "every", "following"})
 _PERIODS = frozenset({"week", "month", "year", "weekend"})
 #: Words before a month or abbreviated weekday that make it a date ("in May",
@@ -162,9 +162,9 @@ _SPAN_OF = frozenset({"end", "start", "beginning", "middle", "mid", "rest", "fir
 _QUARTER_PREV = frozenset("in by to until till before after during through from since".split())
 #: Nouns whose following date-shaped token is an identifier ("Invoice 2026-10-08", "Ticket 10/8").
 _ID_NOUNS = frozenset(
-    "invoice ticket order build release version ref id case po issue pr bug incident "
+    "invoice ticket order build release ref id case po issue pr bug incident "
     "receipt account room flight item sku batch run job commit tag # no doc document page section chapter "
-    "employee badge serial code file row line inc ticket req".split()
+    "employee badge serial code file row line inc ticket req section clause article paragraph figure table step".split()
 )
 #: Words that make a following weekday a name ("Project Tuesday", "Operation Monday").
 _LABEL_PREV = frozenset({"project", "operation", "codename", "club", "team"})
@@ -178,7 +178,10 @@ _CORRECTION = frozenset(
     "of and but correction actually update updated again starting as the a an with rather than anymore".split()
 )
 # Prepositions dropped only when a when-value follows ("to Thursday" yes, "to Denver" no).
-_VALUE_PREPOSITIONS = frozenset({"to", "from", "for", "on", "at", "in", "by", "until", "till", "through"})
+_VALUE_PREPOSITIONS = frozenset(
+    {"to", "from", "for", "on", "at", "in", "by", "until", "till", "through"}
+    | {"в", "во", "на", "w", "we", "am", "um", "le", "el", "la", "di", "de", "op", "på", "i", "en", "à", "a", "の", "에"}
+)
 _NEGATION = frozenset({"not", "never", "cancelled", "canceled", "cancel"})
 #: State words whose opposite is a negation: "disabled" == "not enabled".
 _ANTONYM = {
@@ -248,6 +251,13 @@ _LABEL_NEXT = frozenset("team crew group squad club cohort committee choir band 
 #: Recurrence words are when-values ("weekly" vs "biweekly").
 _RECURRENCE = frozenset("daily weekly biweekly fortnightly monthly bimonthly quarterly yearly annually hourly".split())
 _ORDINAL_WORDS = frozenset("first second third fourth fifth".split())
+_ORDINAL_DAY_WORDS = {
+    w: i + 1
+    for i, w in enumerate(
+        "first second third fourth fifth sixth seventh eighth ninth tenth eleventh twelfth thirteenth fourteenth fifteenth "
+        "sixteenth seventeenth eighteenth nineteenth twentieth".split()
+    )
+}
 _OLD_VALUE_PREV = frozenset({"formerly", "previously", "originally"})
 _LABEL_NEXT_EXTRA = frozenset("class course lecture seminar workshop practice".split())
 _DURATION_UNITS = {
@@ -258,7 +268,12 @@ _DURATION_UNITS = {
     **{u: "mo" for u in ("month", "months")},
     **{u: "y" for u in ("year", "years", "yr", "yrs")},
 }
-_CURRENCY = frozenset("$ € £ ¥ ₹ ₽ ₩".split())
+_CURRENCY = frozenset("$ € £ ¥ ₹ ₽ ₩ 円 元".split())
+_CURRENCY_CODES = frozenset("usd eur gbp jpy cny rmb inr rub chf cad aud nzd sek nok dkk pln krw brl mxn".split())
+_MAGNITUDE = re.compile(r"^(\d+(?:[.,]\d+)?)(k|m|bn|b)$")
+_SEMVER = re.compile(r"^\d+\.\d+\.\d+$")
+_PERCENT_WORDS = frozenset({"percent", "pct", "per cent"})
+_SIGNS = ("-", "−", "+")
 _VERSION = re.compile(r"^v\d+(\.\d+)*$")
 _DOT_ISO = re.compile(r"^\d{4}\.\d{1,2}\.\d{1,2}$")
 _DAY_RANGE = re.compile(r"^\d{1,2}-\d{1,2}$")
@@ -345,7 +360,95 @@ _FOREIGN = {
     "outubro": "october",
     "dezembro": "december",
 }
+_FOREIGN.update(
+    {
+        # Dutch
+        "maandag": "monday",
+        "dinsdag": "tuesday",
+        "woensdag": "wednesday",
+        "donderdag": "thursday",
+        "vrijdag": "friday",
+        "zaterdag": "saturday",
+        "zondag": "sunday",
+        "januari": "january",
+        "februari": "february",
+        "maart": "march",
+        "mei": "may",
+        "augustus": "august",
+        # Swedish
+        "måndag": "monday",
+        "tisdag": "tuesday",
+        "onsdag": "wednesday",
+        "torsdag": "thursday",
+        "fredag": "friday",
+        "lördag": "saturday",
+        "söndag": "sunday",
+        "maj": "may",
+        "augusti": "august",
+        # Polish (incl. accusative forms used after "w")
+        "poniedziałek": "monday",
+        "wtorek": "tuesday",
+        "środa": "wednesday",
+        "środę": "wednesday",
+        "czwartek": "thursday",
+        "piątek": "friday",
+        "sobota": "saturday",
+        "sobotę": "saturday",
+        "niedziela": "sunday",
+        "niedzielę": "sunday",
+        # Turkish
+        "pazartesi": "monday",
+        "salı": "tuesday",
+        "çarşamba": "wednesday",
+        "perşembe": "thursday",
+        "cuma": "friday",
+        "cumartesi": "saturday",
+        "pazar": "sunday",
+        # Russian (incl. accusative forms used after "в")
+        "понедельник": "monday",
+        "вторник": "tuesday",
+        "среда": "wednesday",
+        "среду": "wednesday",
+        "четверг": "thursday",
+        "пятница": "friday",
+        "пятницу": "friday",
+        "суббота": "saturday",
+        "субботу": "saturday",
+        "воскресенье": "sunday",
+        "январь": "january",
+        "января": "january",
+        "февраль": "february",
+        "февраля": "february",
+        "март": "march",
+        "марта": "march",
+        "апрель": "april",
+        "апреля": "april",
+        "май": "may",
+        "мая": "may",
+        "июнь": "june",
+        "июня": "june",
+        "июль": "july",
+        "июля": "july",
+        "август": "august",
+        "августа": "august",
+        "сентябрь": "september",
+        "сентября": "september",
+        "октябрь": "october",
+        "октября": "october",
+        "ноябрь": "november",
+        "ноября": "november",
+        "декабрь": "december",
+        "декабря": "december",
+    }
+)
 _CJK_WEEKDAY = re.compile(r"(?:星期|礼拜|週|周)([一二三四五六日天])")
+_JA_WEEKDAY = re.compile(r"([月火水木金土日])曜(?:日)?")
+_JA_DAYS = {"月": "monday", "火": "tuesday", "水": "wednesday", "木": "thursday", "金": "friday", "土": "saturday", "日": "sunday"}
+_KO_WEEKDAY = re.compile(r"([월화수목금토일])요일")
+_KO_DAYS = {"월": "monday", "화": "tuesday", "수": "wednesday", "목": "thursday", "금": "friday", "토": "saturday", "일": "sunday"}
+_CJK_MONTH_DAY = re.compile(r"(\d{1,2})\s*[月월]\s*(\d{1,2})\s*[日일]")
+_JA_TIME = re.compile(r"(午前|午後)?\s*(\d{1,2})\s*時(?:\s*(\d{1,2})\s*分)?")
+_MONTH_NAMES = ("january february march april may june july august september october november december").split()
 _CJK_DAYS = {
     "一": "monday",
     "二": "tuesday",
@@ -372,7 +475,8 @@ def _canon_clock(hour: int, minute: int | None, meridiem: str | None, *, twenty_
     if hour > 23:
         return None
     # A bare "7:00" or "at 7" does not say am or pm: it stays distinct from both ("a" = ambiguous).
-    return f"t{hour:02d}:{m:02d}" if (twenty_four or hour > 12) else f"t{hour:02d}:{m:02d}a"
+    # "12:00" reads as noon (midnight is written 0:00/00:00 or "midnight").
+    return f"t{hour:02d}:{m:02d}" if (twenty_four or hour >= 12) else f"t{hour:02d}:{m:02d}a"
 
 
 def _time_word(tok: str) -> bool:
@@ -414,6 +518,23 @@ def _compare_tokens(text: str) -> list[str]:
     return _compare_tokens_cased(text)[0]
 
 
+def _signed_tokens(text: str) -> list[str]:
+    """Raw tokens with a minus sign joined to the number it touches when the sign itself
+    stands free ("was -5%" -> "-5"); a sign inside an identifier ("INV-10%") stays apart."""
+    pairs = _spaced_tokens(text)
+    out: list[str] = []
+    k = 0
+    while k < len(pairs):
+        tok, space = pairs[k]
+        if tok in ("-", "−") and k + 1 < len(pairs) and not pairs[k + 1][1] and pairs[k + 1][0][:1].isdigit() and (k == 0 or space):
+            out.append("-" + pairs[k + 1][0])
+            k += 2
+            continue
+        out.append(tok)
+        k += 1
+    return out
+
+
 def _ascii_digits(text: str) -> str:
     """Map every Unicode decimal digit (full-width, Arabic-Indic, ...) to ASCII for comparison only."""
     if text.isascii():
@@ -431,14 +552,29 @@ def _cjk_spaced(text: str) -> str:
     other ideograph its own token, so the core and values compare as in English."""
     if text.isascii():
         return text
+    text = _CJK_MONTH_DAY.sub(
+        lambda m: f" {_MONTH_NAMES[int(m.group(1)) - 1] if 1 <= int(m.group(1)) <= 12 else m.group(1)} {m.group(2)} ", text
+    )
+    text = _JA_TIME.sub(
+        lambda m: f" {m.group(2)}:{(m.group(3) or '0').zfill(2)}{'pm' if m.group(1) == '午後' else 'am' if m.group(1) == '午前' else ''} ",
+        text,
+    )
+    text = _JA_WEEKDAY.sub(lambda m: f" {_JA_DAYS[m.group(1)]} ", text)
+    text = _KO_WEEKDAY.sub(lambda m: f" {_KO_DAYS[m.group(1)]} ", text)
     text = _CJK_WEEKDAY.sub(lambda m: f" {_CJK_DAYS[m.group(1)]} ", text)
     return "".join(f" {c} " if _is_cjk(c) else c for c in text)
 
 
-def _range_clocks(tok: str) -> tuple[str, str] | None:
-    """'10-11am' / '9:30-9:45' -> two canonical clocks; the start inherits the end's am/pm."""
+_HOURS_WORDS = frozenset("hours hour open opens opening shift shifts".split())
+
+
+def _range_clocks(tok: str, hours_text: bool = False) -> tuple[str, str] | None:
+    """'10-11am' / '9:30-9:45' -> two canonical clocks; the start inherits the end's am/pm.
+
+    A bare range ('9-5') is a time range only in a sentence about hours ("Office hours are 9-5").
+    """
     m = _RANGE.match(tok)
-    if not m or not (m.group(5) or m.group(2) or m.group(4)):
+    if not m or not (m.group(5) or m.group(2) or m.group(4) or hours_text):
         return None
     h1, m1, h2, m2, mer = int(m.group(1)), m.group(2), int(m.group(3)), m.group(4), m.group(5)
     if mer == "h":  # "14-16h": 24-hour clock
@@ -461,11 +597,12 @@ def _compare_tokens_cased(text: str) -> tuple[list[str], list[bool]]:
     Abbreviated month and weekday names are kept as written here: whether one
     is a date or a name is decided in context by :func:`_value_at`.
     """
-    orig = _raw_tokens(_cjk_spaced(_ascii_digits(text)))
+    orig = _signed_tokens(_cjk_spaced(_ascii_digits(unicodedata.normalize("NFKC", text))))
     raw = [t.casefold() for t in orig]
     out: list[str] = []
     titled: list[bool] = []  # was the source token Title-case ("Networks", "Club")?
     i, n = 0, len(raw)
+    hours_text = any(t in _HOURS_WORDS for t in raw)
     while i < n:
         mark = len(out)
         tok = raw[i]
@@ -504,13 +641,39 @@ def _compare_tokens_cased(text: str) -> tuple[list[str], list[bool]]:
             i += 1
             titled.extend([False] * (len(out) - mark))
             continue
-        if tok in ("utc", "gmt") and i + 2 < n and raw[i + 1] in ("+", "-", "−") and raw[i + 2].isdigit():
-            out.append(f"{tok}{'+' if raw[i + 1] == '+' else '-'}{int(raw[i + 2])}")
+        if tok in ("utc", "gmt") and i + 2 < n and raw[i + 1] in ("+", "-", "−") and re.match(r"^\d{1,2}(:\d{2})?$", raw[i + 2]):
+            hh, _, mm = raw[i + 2].partition(":")
+            out.append(f"{tok}{'+' if raw[i + 1] == '+' else '-'}{int(hh)}" + (f":{mm}" if mm and mm != "00" else ""))
             i += 3
             titled.extend([False] * (len(out) - mark))
             continue
         if tok in _MONTH_ABBR and i + 1 < n and raw[i + 1] == ".":
             out.append(tok)  # "Oct. 9" == "Oct 9"
+            i += 2
+            titled.extend([False] * (len(out) - mark))
+            continue
+        if tok in ("noon", "midday"):
+            out.append("t12:00")  # "noon" == "12pm" == "12:00"
+            i += 1
+            titled.extend([False] * (len(out) - mark))
+            continue
+        if tok == "midnight":
+            out.append("t00:00")
+            i += 1
+            titled.extend([False] * (len(out) - mark))
+            continue
+        if (
+            _is_digits(tok)
+            and i + 2 < n
+            and raw[i + 1] == "."
+            and (raw[i + 2] in _FOREIGN or raw[i + 2] in _MONTH_NAMES or raw[i + 2] in _MONTH_ABBR)
+        ):
+            out.append(tok)  # German "9. Oktober" == "9 Oktober"
+            i += 2
+            titled.extend([False] * (len(out) - mark))
+            continue
+        if _is_digits(tok) and i + 1 < n and raw[i + 1] == "uhr" and int(tok) < 24:
+            out.append(_canon_clock(int(tok), 0, None, twenty_four=True) or tok)  # "um 10 Uhr"
             i += 2
             titled.extend([False] * (len(out) - mark))
             continue
@@ -520,11 +683,16 @@ def _compare_tokens_cased(text: str) -> tuple[list[str], list[bool]]:
             titled.extend([orig[i - 1].istitle()] * (len(out) - mark))
             continue
         if tok in _IANA_AREAS and i + 2 < n and raw[i + 1] == "/" and raw[i + 2].isalpha():
-            out.append(f"tz:{tok}/{raw[i + 2]}")  # "Europe/Berlin"
-            i += 3
+            j = i + 3
+            parts = [raw[i + 2]]
+            while j + 1 < n and raw[j] == "_" and raw[j + 1].isalpha():  # "America/New_York"
+                parts.append(raw[j + 1])
+                j += 2
+            out.append(f"tz:{tok}/{'_'.join(parts)}")  # "Europe/Berlin"
+            i = j
             titled.extend([False] * (len(out) - mark))
             continue
-        rng = _range_clocks(tok)
+        rng = _range_clocks(tok, hours_text)
         if rng is not None:
             out.extend(rng)
             i += 1
@@ -606,8 +774,8 @@ def _clock_at(raw: list[str], i: int, prev: str) -> tuple[str | None, int]:
             if tuple(raw[j : j + len(form)]) == form:
                 mer, j = value, j + len(form)
                 break
-    if minute_s is not None and "." in tok and mer is None and prev not in _BARE_HOUR_PREV:
-        return None, 0  # "1.50" is a number; "10.30am" and "at 10.30" are times
+    if minute_s is not None and "." in tok and mer is None and (prev not in _BARE_HOUR_PREV or not _follower_ok(raw, i + 1)):
+        return None, 0  # "1.50" is a number, "at 10.30 Main Street" an address; "10.30am", "at 10.30" are times
     if raw[j : j + 3] == ["o", "'", "clock"] and minute_s is None and mer is None:
         return _canon_clock(hour, None, None), j + 3 - i
     if mer is not None:
@@ -656,7 +824,9 @@ def _date_context(toks: list[str], i: int, scheduling: bool | None = None) -> bo
     if prev == "to":
         return scheduling if scheduling is not None else any(t in _SCHEDULING for t in toks)
     if prev == "of":
-        return i >= 2 and toks[i - 2] in _SPAN_OF
+        before = toks[i - 2] if i >= 2 else ""
+        dayish_before = bool(_ORDINAL_DAY.match(before)) or _is_digits(before) or before in _ORDINAL_DAY_WORDS
+        return before in _SPAN_OF or dayish_before  # "end of May", "the 9th of October"
     if prev in ("and", "or", "&", "/") and i >= 2:
         before = toks[i - 2]  # "Tue and Thu": a list continues the date it follows
         return before in _WEEKDAYS or before in _WEEKDAY_ABBR or before in _MONTHS or before in _MONTH_ABBR
@@ -723,15 +893,41 @@ def _value_at(toks: list[str], i: int, titled: list[bool] | None = None, schedul
         return None  # "The Tuesday team", "Ilona's Tuesday class": a label
     if t in _RECURRENCE:
         return t
-    if _VERSION.match(t):
-        return t  # "v1.3"
-    num = _is_digits(t) or bool(re.match(r"^\d+[.,]\d+$", t)) or t in _NUMBER_WORDS
+    if _id_context(toks, i) and (_SEMVER.match(t) or _DOT_ISO.match(t) or _VERSION.match(t)):
+        return None  # "section 1.2.3", "Ticket 2026.10.09": identifiers
+    if (_VERSION.match(t) or _SEMVER.match(t) or re.match(r"^\d+\.\d+$", t)) and prev in ("version", "release", "v", "build") and i <= 2:
+        return None  # "Release 10.8 is out": the version names the subject, not a changed value
+    if _VERSION.match(t) or _SEMVER.match(t):
+        suffix = ""
+        if i + 2 < n and toks[i + 1] == "-" and toks[i + 2].isalnum() and not _is_digits(toks[i + 2]):
+            suffix = "-" + toks[i + 2]  # "v1.2.3-rc1"
+        return f"v:{t.lstrip('v')}{suffix}"  # "v1.3", "1.2.3"
+    if re.match(r"^\d+\.\d+$", t) and i > 0 and (prev in ("version", "release", "v") or (titled[i - 1] and prev.isalpha() and i - 1 > 0)):
+        return f"v:{t}"  # "Python 3.12", "version 2.1"
+    if t[:1].isdigit() and _id_context(toks, i):
+        return None  # "INV-10%": part of an identifier
+    sign = "-" if (prev in ("-", "−") and (i < 2 or not toks[i - 2].isalnum())) else ""
+    num = bool(re.match(r"^-?\d+(?:[.,]\d+)?$", t)) or t in _NUMBER_WORDS
+    mag = _MAGNITUDE.match(t)
+    if mag and (prev in _CURRENCY or prev in _CURRENCY_CODES):
+        return f"m:{prev}{mag.group(1)}{mag.group(2)}"  # "$5k"
+    if num and (nxt in _CURRENCY or nxt in _CURRENCY_CODES):
+        neg = "-" if (prev in ("-", "−")) else ""
+        return f"m:{nxt}{neg}{t}"  # "12 USD", "10€", "500円"
+    if num and prev in _CURRENCY_CODES:
+        return f"m:{prev}{t}"  # "EUR 10"
+    if num and prev in _CURRENCY and i >= 2 and toks[i - 2] in ("-", "−"):
+        return f"m:{prev}-{t}"  # "-$50"
+    if num and (nxt in _PERCENT_WORDS):
+        return f"p:{sign}{t}"
+    if num and nxt in ("°", "degrees", "°c", "°f", "deg"):
+        return f"deg:{sign}{t}"
     if num and nxt in _DURATION_UNITS:
         return f"q:{_NUMBER_WORDS.get(t, t)}{_DURATION_UNITS[nxt]}"  # "2 hours", "in 3 days", "two weeks"
     if num and prev in _CURRENCY:
         return f"m:{prev}{t}"  # "$12", "€90"
     if num and nxt == "%":
-        return f"p:{t}"  # "12%"
+        return f"p:{sign}{t}"  # "12%", "-5%"
     if _DAY_RANGE.match(t) and (prev in _MONTHS or prev in _MONTH_ABBR or nxt in _MONTHS or nxt in _MONTH_ABBR):
         return "r" + t  # "9-10 Oct"
     if t in _WEEKDAYS or (t in _EQUIV and _EQUIV[t] in _WEEKDAYS and t not in _WEEKDAY_ABBR):
@@ -767,6 +963,8 @@ def _value_at(toks: list[str], i: int, titled: list[bool] | None = None, schedul
         return "n" + (od.group(1) if od else t)
     if od and prev == "the" and (nxt in ("", "of", "day") or len(nxt) == 1 and not nxt.isalnum()):
         return "n" + od.group(1)
+    if t in _ORDINAL_DAY_WORDS and prev == "the" and nxt == "of" and i + 2 < n and (toks[i + 2] in _MONTHS or toks[i + 2] in _MONTH_ABBR):
+        return f"n{_ORDINAL_DAY_WORDS[t]}"  # "the ninth of October"
     return None
 
 
@@ -789,7 +987,17 @@ def fact_slots(text: str) -> FactSlots:
         if v is not None and v.startswith("m:") and i > 0:
             is_value[i - 1] = True  # the currency symbol
         if v is not None and v.startswith("p:") and i + 1 < n:
-            is_value[i + 1] = True  # the % sign
+            is_value[i + 1] = True  # the % sign / "percent"
+        if v is not None and v.startswith("deg:") and i + 1 < n:
+            is_value[i + 1] = True
+        if v is not None and v.startswith("m:"):
+            for k in (i - 2, i - 1, i + 1):
+                if 0 <= k < n and (toks[k] in _CURRENCY or toks[k] in _CURRENCY_CODES or toks[k] in ("-", "−")):
+                    is_value[k] = True  # currency symbol/code and sign
+        if v is not None and (v.startswith("p:-") or v.startswith("deg:-")) and i > 0:
+            is_value[i - 1] = True  # the minus sign
+        if v is not None and v.startswith("v:") and "-" in v and i + 2 < n:
+            is_value[i + 1] = is_value[i + 2] = True  # "-rc1"
 
     def prev_word(i: int) -> int:
         k = i - 1
