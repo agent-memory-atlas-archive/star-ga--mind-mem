@@ -485,8 +485,12 @@ def scan_pairs(
     min_similarity: float = DEFAULT_MIN_SIMILARITY,
     max_candidates: int = 50,
     max_pairs: int = 50,
+    superseded_ids: set[str] | None = None,
 ) -> tuple[list[GranularityMergeCandidate], list[SimilarPair]]:
     """One pairwise pass returning (merge candidates, advisory look-alike pairs).
+
+    ``superseded_ids`` adds ids superseded by blocks outside ``blocks`` (a caller
+    that scans a window of a larger corpus passes the corpus-wide set).
 
     A merge candidate is a pair of EXACT duplicates (equal :func:`_identity`),
     both active. ``min_similarity`` bounds the look-alike report; exact
@@ -499,6 +503,7 @@ def scan_pairs(
     identities = [_identity(blk) for blk, _ in indexed]
     # Every block's Supersedes counts, including one with no comparable text of its own.
     replaced = _superseded_by_reference(blk for blk in blocks if isinstance(blk, dict))
+    replaced |= {str(bid).casefold() for bid in (superseded_ids or ())}
     mergeable = [
         _status(blk) in _MERGEABLE_STATUSES and str(_block_id(blk)).casefold() not in replaced and not _marked_superseded(blk)
         for blk, _ in indexed

@@ -499,6 +499,54 @@ def _load_granularity_blocks(
     return blocks
 
 
+def _load_superseded_ids(
+    db_path: str,
+    *,
+    workspace: str | None = None,
+    canonical_blocks: dict[str, dict[str, Any]] | None = None,
+) -> set[str]:
+    """Ids named by any admitted block's Supersedes, across the whole corpus.
+
+    :func:`_load_granularity_blocks` reads a bounded window (``ORDER BY id LIMIT``);
+    a superseder that sorts after the window would otherwise leave its target
+    looking live. Only rows that mention ``Supersedes`` are parsed, and only
+    admitted rows count, so a quarantined block cannot retire a live one.
+    Never raises: an unreadable index yields an empty set.
+    """
+    import sqlite3 as _sqlite3
+
+    from mind_mem.granularity_align import _superseded_by_reference
+
+    if canonical_blocks is not None:
+        return _superseded_by_reference(raw for raw in canonical_blocks.values() if isinstance(raw, dict))
+    if not os.path.isfile(db_path):
+        return set()
+    try:
+        conn = _sqlite3.connect(f"file:{db_path}?mode=ro", uri=True, timeout=30.0)
+        conn.row_factory = _sqlite3.Row
+        try:
+            rows = conn.execute(
+                "SELECT id, status, json_blob FROM blocks WHERE parent_id = '' AND json_blob LIKE '%Supersedes%' ORDER BY id"
+            ).fetchall()
+        finally:
+            conn.close()
+    except _sqlite3.Error as exc:
+        _log.warning("granularity_supersedes_read_failed", error=str(exc))
+        return set()
+    from mind_mem.admissibility import admit_corpus
+
+    admitted = admit_corpus([{"_id": r["id"], "Status": r["status"], "_row": r} for r in rows], workspace=workspace)
+    parsed: list[dict[str, Any]] = []
+    for entry in admitted:
+        try:
+            raw = json.loads(entry["_row"]["json_blob"] or "{}")
+        except (json.JSONDecodeError, TypeError, ValueError):
+            continue
+        if isinstance(raw, dict):
+            parsed.append(raw)
+    return _superseded_by_reference(parsed)
+
+
 def _granularity_section(
     db_path: str,
     settings: dict[str, Any],
@@ -530,8 +578,12 @@ def _granularity_section(
     max_blocks = _bounded_int(settings.get("max_blocks", _GRANULARITY_MAX_BLOCKS), _GRANULARITY_MAX_BLOCKS, 1, 5000)
 
     blocks = _load_granularity_blocks(db_path, max_blocks, workspace=workspace, canonical_blocks=canonical_blocks)
+    # A block superseded by one outside the scanned window is still history.
+    superseded = _load_superseded_ids(db_path, workspace=workspace, canonical_blocks=canonical_blocks)
     # One pairwise pass yields both the exact-duplicate merges and the look-alikes.
-    candidates, similar = scan_pairs(blocks, min_similarity=min_similarity, max_candidates=max_candidates, max_pairs=max_candidates)
+    candidates, similar = scan_pairs(
+        blocks, min_similarity=min_similarity, max_candidates=max_candidates, max_pairs=max_candidates, superseded_ids=superseded
+    )
 
     entries: list[dict[str, Any]] = []
     for cand in candidates:

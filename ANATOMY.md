@@ -5,8 +5,8 @@
 > Re-generate with: `anatomy .`
 
 **Project:** `mind-mem`
-**Files:** 1698 | **Est. tokens:** ~4,998,382
-**Generated:** 2026-10-09 08:20 UTC
+**Files:** 1699 | **Est. tokens:** ~4,999,761
+**Generated:** 2026-10-09 08:25 UTC
 
 ## Token Budget Guide
 
@@ -78,14 +78,14 @@
 | `skills/mind-mem/` | 1 | ~1,671 |
 | `skills/mind-mem/references/` | 6 | ~18,811 |
 | `src/` | 1 | ~280 |
-| `src/mind_mem/` | 242 | ~1,100,172 |
+| `src/mind_mem/` | 242 | ~1,100,239 |
 | `src/mind_mem/api/` | 5 | ~27,259 |
 | `src/mind_mem/bench/` | 17 | ~48,632 |
 | `src/mind_mem/compliance/` | 7 | ~15,436 |
 | `src/mind_mem/importers/` | 10 | ~34,469 |
 | `src/mind_mem/mcp/` | 3 | ~6,672 |
 | `src/mind_mem/mcp/infra/` | 8 | ~16,195 |
-| `src/mind_mem/mcp/tools/` | 29 | ~125,837 |
+| `src/mind_mem/mcp/tools/` | 29 | ~126,376 |
 | `src/mind_mem/skill_opt/` | 11 | ~20,899 |
 | `src/mind_mem/spec/` | 4 | ~6,845 |
 | `src/mind_mem/storage/` | 2 | ~11,712 |
@@ -93,7 +93,7 @@
 | `src/mind_mem/tool_output/` | 3 | ~5,895 |
 | `src/mind_mem/v4/` | 24 | ~96,311 |
 | `src/mind_mem/viewer_static/` | 3 | ~865 |
-| `tests/` | 758 | ~2,229,042 |
+| `tests/` | 759 | ~2,229,815 |
 | `tests/fixtures/` | 8 | ~16,356 |
 | `tests/fixtures/importers/` | 5 | ~1,218 |
 | `tests/fixtures/importers/agent_memory/` | 4 | ~383 |
@@ -867,7 +867,7 @@
 - `governance_bench.py` (~1855 tok, huge) — mind-mem Governance Benchmark Suite.
 - `governance_gate.py` (~23279 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `governance_raft.py` (~2474 tok, huge) — Raft-style consensus wrapper for governance writes (v4.0 prep).
-- `granularity_align.py` (~6219 tok, huge) — Granularity / abstraction alignment — named merge operation (Group H, v4.0.x).
+- `granularity_align.py` (~6286 tok, huge) — Granularity / abstraction alignment — named merge operation (Group H, v4.0.x).
 - `graph_ingest.py` (~7489 tok, huge) — Corpus → typed knowledge-graph ingestion (HITL-gated).
 - `graph_recall.py` (~4634 tok, huge) — Multi-hop graph traversal for recall (v3.3.0 Tier 1 #2).
 - `graph_schema.py` (~2082 tok, huge) — # Copyright 2026 STARGA, Inc.
@@ -939,7 +939,7 @@
 - `benchmark.py` (~2387 tok, huge) — Benchmark + category-summary MCP tools.
 - `calibration.py` (~2915 tok, huge) — Calibration MCP tools — feedback (quality) + outcome attribution (utility).
 - `chat.py` (~1130 tok, large) — Chat surface — grounded question answering over the workspace.
-- `consolidation.py` (~7805 tok, huge) — Memory-consolidation MCP tools.
+- `consolidation.py` (~8344 tok, huge) — Memory-consolidation MCP tools.
 - `core.py` (~2862 tok, huge) — Context-core MCP tools — ``.mmcore`` bundle lifecycle.
 - `encryption.py` (~2670 tok, huge) — At-rest encryption MCP tools — ``encrypt_file`` / ``decrypt_file``.
 - `frames.py` (~2034 tok, huge) — # Copyright 2026 STARGA, Inc.
@@ -1378,6 +1378,7 @@
 - `test_consolidation_index_path.py` (~2113 tok, huge) — Regression: consolidation tools must read the index the product writes.
 - `test_consolidation_maturity_gate.py` (~3750 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_consolidation_namespace_acl.py` (~1860 tok, huge) — Consolidation previews must use the caller's canonical admitted corpus."""
+- `test_consolidation_supersede_window.py` (~773 tok, large) — plan_consolidation scans a bounded window of blocks (``ORDER BY id LIMIT``).
 - `test_constants.py` (~371 tok, medium) — Tests for recall constants module."""
 - `test_content_lifecycle.py` (~3227 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_content_source_provenance.py` (~5229 tok, huge) — Tests for content-provenance tagging (roadmap T-001).
