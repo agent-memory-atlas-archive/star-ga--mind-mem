@@ -72,6 +72,7 @@ from .guardrails import GuardrailContext, GuardrailPolicy
 from .namespace_retrieval import declared_custom_namespaces, filter_search_hits, namespace_search_allowed
 from .observability import get_logger, metrics
 from .recall_smart_chunk import chunk_statement, resolve_smart_chunking_config
+from .recall_supersede import edges_from_blocks, order_by_supersession, reapply_supersession, resolve_heads
 from .retrieval_graph import (
     feedback_quality_credit,
     get_hard_negative_ids,
@@ -1240,6 +1241,48 @@ def _knee_cutoff_live_aware(results: list[dict], *, min_results: int, min_score:
     return [r for r in results if id(r) in keep]
 
 
+def _scan_supersession(hits: list[dict], corpus: list[dict]) -> list[dict]:
+    """Supersession order for the scan leg, from the corpus it already holds.
+
+    *corpus* is the call's admitted, ACL-readable, search-allowed block list,
+    so every edge here comes from a superseder the caller may read and
+    recall may serve. Returns *hits* unchanged when nothing is retired.
+    """
+    if not hits:
+        return hits
+    edges = edges_from_blocks(corpus)
+    if not edges:
+        return hits
+    heads = resolve_heads([h["_id"] for h in hits if isinstance(h.get("_id"), str)], lambda ids: {i: edges[i] for i in ids if i in edges})
+    if not heads:
+        return hits
+    wanted = {path[-1] for path in heads.values()}
+    by_id: dict[str, dict] = {}
+    for block in corpus:
+        bid = block.get("_id")
+        if isinstance(bid, str) and bid in wanted and bid not in by_id:
+            by_id[bid] = block
+
+    def fetch(block_id: str) -> dict | None:
+        block = by_id.get(block_id)
+        if block is None:
+            return None
+        tags = normalise_tags(block.get("Tags", ""))
+        return {
+            "_id": block_id,
+            "type": get_block_type(block_id),
+            "score": 0.0,
+            "excerpt": get_excerpt(block),
+            "speaker": _parse_speaker_from_tags(tags),
+            "tags": tags,
+            "file": block.get("_source_file", "?"),
+            "line": block.get("_line", 0),
+            "status": block.get("Status", ""),
+        }
+
+    return order_by_supersession(hits, heads, fetch)
+
+
 def _apply_post_filters(
     hits: list[dict],
     *,
@@ -1295,6 +1338,11 @@ def _apply_post_filters(
     if min_maturity is not None:
         hits = _apply_min_maturity_filter(hits, min_maturity)
     hits = _rank_replaced_below_live(hits)
+    # A stage after the leg may have re-sorted by score (validity, fusion,
+    # a score-only sort). Restore supersession order from the chain each
+    # retired hit carries before the cut, so the cut can never keep a
+    # superseded block and drop its superseder.
+    hits = reapply_supersession(hits)
     # Apply the full conjunction before making the single result-size decision.
     # Slicing after each predicate can discard a later hit that satisfies all
     # filters and makes the answer depend on predicate order.
@@ -1821,7 +1869,7 @@ def recall(
                 all_merged = _apply_min_maturity_filter(all_merged, min_maturity)
             if as_of is not None:
                 all_merged = _apply_as_of_projection(all_merged, workspace, as_of)
-            all_merged = _rank_replaced_below_live(all_merged)
+            all_merged = reapply_supersession(_rank_replaced_below_live(all_merged))
             return apply_guardrail_surfacing(
                 all_merged[:limit],
                 workspace=workspace,
@@ -2854,6 +2902,10 @@ def recall(
     # narrowed, so a replacement cut here never reaches it. Returns the same
     # list when no hit needs demoting.
     deduped = _rank_replaced_below_live(deduped)
+    # Supersession by link, from the blocks this call already parsed and
+    # admitted (no second corpus read): a block a readable, admitted, live
+    # block supersedes gets the head of its chain directly above it.
+    deduped = _scan_supersession(deduped, all_blocks)
 
     _stage_counts["knee_cutoff"] = len(deduped)
 

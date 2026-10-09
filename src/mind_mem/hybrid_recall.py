@@ -94,10 +94,13 @@ def _demote_replaced(hits: list[dict]) -> list[dict]:
 
     The single demotion rule lives in ``_recall_core._rank_replaced_below_live``;
     this is the local-import seam (``_recall_core`` imports this module).
+    Supersession order is restored after it from the chain markers the BM25
+    leg put on retired hits, because fusion and validity re-sort by score.
     """
     from ._recall_core import _rank_replaced_below_live
+    from .recall_supersede import reapply_supersession
 
-    return _rank_replaced_below_live(hits)
+    return reapply_supersession(_rank_replaced_below_live(hits))
 
 
 def resolve_rerank_depth(config: dict[str, Any] | None, limit: int) -> int:
@@ -1316,6 +1319,13 @@ class HybridBackend:
 
             if not _skip_validity:
                 result = self._apply_validity(result, workspace, scoring_instant)
+
+            # A retired block the VECTOR leg alone surfaced carries no chain
+            # marker from the BM25 leg, so the fused pool is resolved against
+            # the index's supersede edges once, for this caller.
+            from .sqlite_index import _supersession_view
+
+            result = _supersession_view(workspace, result, agent_id)
 
             # Final slice so callers never receive more than they asked for.
             # Validity must sort the full fused pool first; otherwise a stale

@@ -75,13 +75,21 @@ def _assert_live_first(ids: list[str], limit: int) -> None:
 
 
 def test_control_the_superseded_block_outscores_its_replacement(tmp_path: Any) -> None:
-    """Positive control: without demotion the dead block IS the lexical #1."""
+    """Positive control: without demotion the dead block IS the lexical #1.
+
+    The replacement also names the dead block in ``Supersedes``, so the
+    link-supersession order is switched off too: both are demotions, and the
+    control is about the score order underneath them.
+    """
     from mind_mem.sqlite_index import query_index
 
     ws = _seed(tmp_path, "control", index=True)
     from unittest.mock import patch
 
-    with patch("mind_mem._recall_core._rank_replaced_below_live", side_effect=lambda h: list(h)):
+    with (
+        patch("mind_mem._recall_core._rank_replaced_below_live", side_effect=lambda h: list(h)),
+        patch("mind_mem.sqlite_index._apply_index_supersession", side_effect=lambda _c, _w, h, _v: list(h)),
+    ):
         raw = _ids(query_index(ws, QUERY, limit=10))
     assert raw and raw[0] == OLD, raw
     assert NEW in raw, raw
