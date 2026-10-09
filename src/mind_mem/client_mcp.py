@@ -24,10 +24,10 @@ import os
 import sys
 from typing import Any
 
-from mind_mem.client_config_io import UnsafeConfigError, read_json_object, read_text_file, write_config
+from mind_mem.client_config_io import UnsafeConfigError, atomic_write_text, read_json_object, read_text_file, write_config
 from mind_mem.client_paths import expand
 from mind_mem.client_registry import AGENT_REGISTRY, AgentSpec
-from mind_mem.client_restore import is_skeleton, matching_backup
+from mind_mem.client_restore import is_skeleton, matching_backup_path
 from mind_mem.client_writers import JSON_FORMATS, JSON_WRITERS, TEXT_FORMATS, json_entry, remove_json_mcp, remove_opencode_mcp
 
 NO_MCP_REASON = "agent does not support native MCP"
@@ -218,11 +218,13 @@ def _uninstall_one(spec: AgentSpec, path: str, *, dry_run: bool) -> dict:
         return {**base, "removed": True, "content": serialised}
     # Give back exactly what the user had: their pre-install bytes when a
     # backup holds the same document, or no file when mind-mem created it.
-    original = matching_backup(fmt, path, serialised)
-    if original is not None:
-        backup = write_config(path, original)  # exact bytes: no newline normalisation
-        result = {**base, "written": True, "removed": True, "restored": True, "content": original, "merged": True, "skipped": False}
-        return {**result, "backup": backup} if backup is not None else result
+    found = matching_backup_path(fmt, path, serialised)
+    if found is not None:
+        backup, original = found
+        atomic_write_text(os.path.realpath(path), original)  # exact bytes: no newline normalisation
+        # The file now holds that backup's exact bytes, so the backup is redundant.
+        os.unlink(backup)
+        return {**base, "written": True, "removed": True, "restored": True, "content": original, "merged": True, "skipped": False}
     if is_skeleton(fmt, serialised):
         os.unlink(os.path.realpath(path))
         return {**base, "removed": True, "deleted": True, "content": ""}

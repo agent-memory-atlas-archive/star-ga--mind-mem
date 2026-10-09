@@ -91,6 +91,37 @@ def test_install_then_uninstall_restores_existing_file_byte_identical(agent: str
     removed = uninstall_mcp_config(agent, WS)
     assert removed["removed"] is True, removed
     assert path.read_bytes() == original, f"{agent}: uninstall restores the user's bytes"
+    assert result.get("backup"), "positive control: install took a backup"
+    assert not list(path.parent.glob(path.name + BACKUP_INFIX + "*")), "the restored file leaves no backup litter"
+
+
+# A pre-existing config with no MCP-server container yet (the common real
+# case: a ~/.gemini/settings.json or Zed settings.json holding only settings).
+_BARE_SEEDS = {
+    "json": '{"theme": "dark"}\n',
+    "toml": '# my settings\nmodel = "sentinel"\n',
+    "toml-list": '# my settings\nmodel = "sentinel"\n',
+    "yaml": "# my settings\nmodel: sentinel\n",
+    "yaml-list": "name: Local\nversion: 1.0.0\nschema: v1\n",
+}
+
+
+@pytest.mark.parametrize("agent", AUTO)
+def test_install_then_uninstall_restores_file_without_server_container(agent: str, home: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    path, kind, keys = _setup(agent, home, monkeypatch)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    original = _BARE_SEEDS[kind].encode("utf-8")
+    path.write_bytes(original)
+    assert keys[0] not in _load(kind, path) or {}, "seed holds no server container"
+    result = install_mcp_config(agent, WS)
+    assert result["written"] is True, result
+    assert _entry(kind, _load(kind, path), keys), "positive control: the merged file holds mind-mem"
+    removed = uninstall_mcp_config(agent, WS)
+    assert removed["removed"] is True, removed
+    assert removed.get("restored") is True, removed
+    assert path.read_bytes() == original, f"{agent}: uninstall restores the user's bytes"
+    assert result.get("backup"), "positive control: install took a backup"
+    assert not list(path.parent.glob(path.name + BACKUP_INFIX + "*")), "the restored file leaves no backup litter"
 
 
 @pytest.mark.parametrize("agent", ["cursor", "codex", "goose"])

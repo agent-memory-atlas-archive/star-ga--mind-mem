@@ -10,7 +10,10 @@ content changed. Two cases are restored exactly instead:
   empty ``extensions:`` map ...), so the file is deleted;
 * the file existed: install took a ``<file>.bak-mind-mem-*`` backup first.
   When a backup holds the same document as the post-removal content, its
-  bytes are written back, so formatting and comments return unchanged.
+  bytes are written back, so formatting and comments return unchanged. The
+  post-removal content may also carry the empty server container install
+  added (``"mcpServers": {}`` in a settings file that had none): a backup
+  equal to it once that empty skeleton is laid over the backup matches too.
 
 Both checks compare parsed documents, never guess: a user edit made after
 install (another server, a changed setting) makes the post-removal document
@@ -86,9 +89,40 @@ def is_skeleton(fmt: str, removed_text: str) -> bool:
         return removed_text.strip() == skeleton(fmt).strip()
 
 
-def matching_backup(fmt: str, path: str, removed_text: str) -> str | None:
-    """Text of the newest ``<path>.bak-mind-mem-*`` equal to *removed_text*, if any."""
+def _overlay(doc: Any, skel: Any) -> Any:
+    """*doc* with every key of *skel* it lacks added (recursively); a new object."""
+    if not isinstance(skel, dict):
+        return doc
+    base = {} if doc is None else doc
+    if not isinstance(base, dict):
+        return doc
+    merged = dict(base)
+    for key, value in skel.items():
+        merged[key] = _overlay(base[key], value) if key in base else value
+    return merged
+
+
+def _skeleton_doc(fmt: str, kind: str) -> Any:
+    try:
+        return _parse(kind, skeleton(fmt))
+    except Exception:  # noqa: BLE001 - a format with no from-nothing skeleton
+        return None
+
+
+def _same_with_container(kind: str, skel: Any, backup_text: str, removed_text: str) -> bool:
+    """The backup plus the empty container install added equals *removed_text*."""
+    if not isinstance(skel, dict) or not skel:
+        return False
+    try:
+        return bool(_overlay(_parse(kind, backup_text), skel) == _parse(kind, removed_text))
+    except Exception:  # noqa: BLE001 - unparseable: only the exact comparison applies
+        return False
+
+
+def matching_backup_path(fmt: str, path: str, removed_text: str) -> tuple[str, str] | None:
+    """``(backup path, text)`` of the newest backup holding *removed_text*'s document."""
     kind = _kind(fmt)
+    skel = _skeleton_doc(fmt, kind)
     candidates = sorted(glob.glob(glob.escape(path) + BACKUP_INFIX + "*"), reverse=True)  # newest stamp first
     for backup in candidates:
         try:
@@ -96,9 +130,15 @@ def matching_backup(fmt: str, path: str, removed_text: str) -> str | None:
                 text = fh.read()
         except (OSError, UnicodeDecodeError):
             continue
-        if _same(kind, text, removed_text):
-            return text
+        if _same(kind, text, removed_text) or _same_with_container(kind, skel, text, removed_text):
+            return backup, text
     return None
 
 
-__all__ = ["is_skeleton", "matching_backup", "skeleton"]
+def matching_backup(fmt: str, path: str, removed_text: str) -> str | None:
+    """Text of the newest ``<path>.bak-mind-mem-*`` equal to *removed_text*, if any."""
+    found = matching_backup_path(fmt, path, removed_text)
+    return None if found is None else found[1]
+
+
+__all__ = ["is_skeleton", "matching_backup", "matching_backup_path", "skeleton"]
