@@ -32,6 +32,7 @@ from typing import TYPE_CHECKING, Any
 from mind_mem.error_codes import ErrorCode
 from mind_mem.recall import _CONFIG_HASH_UNRESOLVED as _RECALL_CONFIG_HASH_UNRESOLVED
 from mind_mem.recall import recall as recall_engine
+from mind_mem.recall_cache import corpus_stamp as _corpus_stamp
 from mind_mem.recall_cache import retrieval_config_fingerprint
 from mind_mem.retrieval_graph import retrieval_diagnostics as _retrieval_diag
 from mind_mem.scoring_instant import format_scoring_instant, resolve_scoring_instant
@@ -565,13 +566,23 @@ def _recall_impl_ranked(
     # coordinates to the recorder keeps those paths coherent. The context's read counter is
     # diagnostic only; a cache hit need not execute the engine to record a v2 row.
     with bind_request_context(_request_context):
-        if (
+        _cache_on = (
             _anchor_resolution.resolved
             and agent_id is None
             and isinstance(_cache_cfg, dict)
             and _cache_cfg.get("enabled", True)
             and not _trace_on
-        ):
+        )
+        # The second corpus coordinate: a stat-only stamp of the index, the
+        # knowledge graph and every corpus file. The anchor above moves only on
+        # governed writes; reindex, delete, compact, lint autofix, lineage /
+        # edge writes and out-of-band edits move this instead. ``None`` (a
+        # file modified inside the racy-timestamp window, or an unstattable
+        # input) means the state cannot be named, so the request bypasses the
+        # cache rather than risk keying a stale answer. Computed only when the
+        # cache is on, so the off path pays nothing.
+        _stamp = _corpus_stamp(ws) if _cache_on else None
+        if _cache_on and _stamp is not None:
             raw = cached_recall(
                 _inner,
                 query,
@@ -587,6 +598,7 @@ def _recall_impl_ranked(
                 schema_version=str(MCP_SCHEMA_VERSION),
                 filters=_active_filters,
                 agent_id=agent_id,
+                corpus_stamp=_stamp,
             )
         else:
             raw_result = _inner(query, limit=limit, active_only=active_only, backend=backend, **_active_filters)
