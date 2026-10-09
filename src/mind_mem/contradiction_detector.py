@@ -25,7 +25,7 @@ import json
 import os
 import re
 
-from .block_parser import parse_file
+from .block_parser import parse_blocks, parse_file
 from .fact_slots import changed_fact
 from .observability import get_logger, metrics
 
@@ -96,6 +96,74 @@ def _extract_proposal_text(proposal: dict) -> str:
             parts.append(value.strip())
 
     return " ".join(parts)[:_MAX_TEXT_LENGTH]
+
+
+#: Ops whose patch is the block the proposal would commit.
+_BLOCK_PAYLOAD_OPS = frozenset({"append_block", "insert_after_block", "supersede_decision"})
+
+
+def _payload_blocks(proposal: dict) -> list[dict]:
+    """Blocks carried in the proposal's op patches (what an apply would write)."""
+    blocks: list[dict] = []
+    ops = proposal.get("Ops", [])
+    if not isinstance(ops, list):
+        return blocks
+    for op in ops:
+        if not isinstance(op, dict) or op.get("op") not in _BLOCK_PAYLOAD_OPS:
+            continue
+        patch = op.get("new_block") or op.get("patch")
+        if not isinstance(patch, str) or not patch.strip():
+            continue
+        try:
+            blocks.extend(parse_blocks(patch))
+        except Exception as exc:  # a malformed patch falls back to the raw-text path
+            _log.debug("proposal_patch_parse_failed", error=str(exc))
+    return blocks
+
+
+def _proposal_claim(proposal: dict) -> str:
+    """The Statement a proposal would commit, or ``""`` when it carries none.
+
+    A proposal from ``propose_update`` states it directly; a staged proposal
+    carries it inside the op patch, beside field labels (``Date:``,
+    ``Status:``, ``Sources:``) that are not part of the claim. Reading the
+    patch's ``Statement`` is what makes propose time and apply time compare
+    the same text and reach the same verdict.
+    """
+    direct = proposal.get("Statement")
+    if isinstance(direct, str) and direct.strip():
+        return direct.strip()[:_MAX_TEXT_LENGTH]
+    claims = [b["Statement"].strip() for b in _payload_blocks(proposal) if isinstance(b.get("Statement"), str) and b["Statement"].strip()]
+    return " ".join(claims)[:_MAX_TEXT_LENGTH]
+
+
+def _superseded_targets(proposal: dict) -> frozenset[str]:
+    """Block ids this proposal retires: a conflict with them is the one it resolves."""
+    ops = proposal.get("Ops", [])
+    if not isinstance(ops, list):
+        return frozenset()
+    return frozenset(str(op["target"]) for op in ops if isinstance(op, dict) and op.get("op") == "supersede_decision" and op.get("target"))
+
+
+def _resolve_supersede(entry: dict, resolved: frozenset[str]) -> dict:
+    """Downgrade a contradiction with a block this proposal retires.
+
+    The conflict with the retired value is exactly what a
+    ``supersede_decision`` resolves; counting it would block every
+    correction at the apply gate. It stays in the report, as a refinement
+    marked ``resolved_by_supersede``, so the reviewer still sees what the
+    apply replaces.
+    """
+    if entry["block_id"] in resolved and entry["conflict_type"] == "contradiction":
+        return {**entry, "conflict_type": "refinement", "resolved_by_supersede": True}
+    return entry
+
+
+def _is_committed_status(status: object) -> bool:
+    """True for a live status, or for a block that states none (legacy corpus)."""
+    if not isinstance(status, str) or not status.strip():
+        return True
+    return status.strip().lower() in COMMITTED_STATUSES
 
 
 def _extract_block_text(block: dict) -> str:
@@ -331,8 +399,11 @@ def detect_contradictions(
         }]
     """
     ws = os.path.abspath(workspace)
-    proposal_text = _extract_proposal_text(proposal)
-    proposal_claim = _statement(proposal, proposal_text)
+    # Compare the claim when the proposal carries one, wherever it carries it.
+    claim = _proposal_claim(proposal)
+    proposal_text = claim or _extract_proposal_text(proposal)
+    proposal_claim = claim or _statement(proposal, proposal_text)
+    resolved = _superseded_targets(proposal)
 
     if not proposal_text.strip():
         _log.info("empty_proposal_text", proposal_id=proposal.get("ProposalId"))
@@ -345,6 +416,7 @@ def detect_contradictions(
 
     # Load committed blocks for direct comparison
     committed_blocks = _load_committed_blocks(ws)
+    corpus_status = {b.get("_id", ""): b.get("Status", "") for b in committed_blocks}
 
     # Build results: compare proposal against each candidate
     conflicts = []
@@ -357,6 +429,12 @@ def detect_contradictions(
             if block_id in seen_ids:
                 continue
             seen_ids.add(block_id)
+
+            # The same live-status rule as the direct scan below: a superseded
+            # or revoked block is history, never a live contradiction. A hit
+            # that does not carry its status is judged by the corpus copy.
+            if not _is_committed_status(result.get("Status") or corpus_status.get(block_id, "")):
+                continue
 
             existing_text = result.get("excerpt", result.get("text", ""))
             if not existing_text:
@@ -386,8 +464,7 @@ def detect_contradictions(
             continue
 
         # Skip non-committed blocks
-        status = block.get("Status", "active")
-        if status and status.lower() not in COMMITTED_STATUSES and status.lower() != "":
+        if not _is_committed_status(block.get("Status", "active")):
             continue
 
         seen_ids.add(block_id)
@@ -411,6 +488,8 @@ def detect_contradictions(
                 "proposal_excerpt": proposal_text[:300],
             }
         )
+
+    conflicts = [_resolve_supersede(c, resolved) for c in conflicts]
 
     # Sort by similarity (highest first), limit to top_k
     conflicts.sort(key=lambda c: c["similarity"], reverse=True)
