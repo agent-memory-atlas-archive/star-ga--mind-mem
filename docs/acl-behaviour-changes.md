@@ -56,6 +56,9 @@ Everything below applies to a BOUND caller; an unbound caller (stdio / local ope
 - Replies to a bound caller echo the path as supplied, never the resolved absolute host path (`model_path`, error text).
 - `sign_model_tool` is admin scope and unchanged.
 
+## vault_scan
+- A vault root that lies inside the workspace is corpus: a bound caller can scan it only if its ACL lets it read every file under it; otherwise the reply is `vault root not found: <resolved path>`, the answer for a vault that does not exist. A vault outside the workspace is governed by the existing operator allowlist (`MIND_MEM_VAULT_ALLOWLIST`) and is unchanged. `vault_sync` is admin scope and unchanged.
+
 ## mind_mem_verify
 - Refused unless the caller has a whole view (it reports workspace-wide ledger lengths, per-check counts and chain heads).
 - At non-admin scope the absolute workspace path is replaced by `<workspace>` in the whole reply (the `workspace` field and any quoted file paths).

@@ -5,8 +5,8 @@
 > Re-generate with: `anatomy .`
 
 **Project:** `mind-mem`
-**Files:** 1720 | **Est. tokens:** ~5,105,963
-**Generated:** 2026-10-09 10:36 UTC
+**Files:** 1720 | **Est. tokens:** ~5,106,069
+**Generated:** 2026-10-09 10:37 UTC
 
 ## Token Budget Guide
 
@@ -35,7 +35,7 @@
 | `deploy/docker/` | 1 | ~824 |
 | `deploy/edge/` | 2 | ~1,149 |
 | `deploy/grafana/` | 1 | ~1,145 |
-| `docs/` | 96 | ~224,576 |
+| `docs/` | 96 | ~224,682 |
 | `docs/adr/` | 2 | ~521 |
 | `docs/advisories/` | 1 | ~834 |
 | `docs/audit/` | 1 | ~4,973 |
@@ -283,7 +283,7 @@
 - `Makefile` (~82 tok, small) — .PHONY: up down logs shell status build pull
 ### `docs/`
 
-- `acl-behaviour-changes.md` (~3034 tok, huge) — ACL behaviour changes for namespace-bound callers
+- `acl-behaviour-changes.md` (~3140 tok, huge) — ACL behaviour changes for namespace-bound callers
 ### `docs/adr/`
 
 - `001-zero-dependencies.md` (~316 tok, medium) — ADR-001: Zero External Dependencies in Core
