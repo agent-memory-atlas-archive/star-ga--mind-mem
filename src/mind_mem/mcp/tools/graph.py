@@ -599,20 +599,29 @@ def graph_query(
     if direction not in {"outgoing", "incoming", "both"}:
         return json.dumps({"error": "direction must be 'outgoing' / 'incoming' / 'both'"})
 
-    kg = KnowledgeGraph(_kg_path(ws))
-    try:
-        neighbours = kg.neighbors(
-            entity,
-            depth=depth,
-            predicate=pred_obj,
-            direction=direction,
-            max_results=limit,
-            resolve_same_as=resolve_same_as,
-        )
-    except ValueError as exc:
-        return json.dumps({"error": str(exc)})
-    finally:
-        kg.close()
+    # A read must not mint the entity it looks up: ``neighbors`` resolves its
+    # start through ``EntityRegistry.resolve``, which INSERTs an unknown
+    # name. An unknown entity (or no graph at all) has no neighbours, so
+    # answer that without opening a write path -- graph_stats does the same
+    # for a missing graph file.
+    kg_file = _kg_path(ws)
+    neighbours: list = []
+    if os.path.isfile(kg_file):
+        kg = KnowledgeGraph(kg_file)
+        try:
+            if kg.entities.lookup(entity) is not None:
+                neighbours = kg.neighbors(
+                    entity,
+                    depth=depth,
+                    predicate=pred_obj,
+                    direction=direction,
+                    max_results=limit,
+                    resolve_same_as=resolve_same_as,
+                )
+        except ValueError as exc:
+            return json.dumps({"error": str(exc)})
+        finally:
+            kg.close()
     return json.dumps(
         {
             "entity": entity,

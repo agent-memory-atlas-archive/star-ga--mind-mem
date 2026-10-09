@@ -18,7 +18,7 @@ import os
 from contextlib import contextmanager
 from contextvars import ContextVar
 from dataclasses import dataclass
-from typing import Any, Iterator
+from typing import Any, Callable, Iterator
 
 from fastmcp.server.dependencies import get_access_token
 
@@ -324,6 +324,36 @@ ADMIN_TOOLS = frozenset(
         "arch_metric_explain",
         "arch_session_start",
         "arch_session_end",
+        # F14 (architecture review): a tool that writes in ANY argument
+        # combination is admin. Each of these was user-scope and was measured
+        # writing at user scope (tests/test_acl_user_scope_read_only.py):
+        #   add_block_edge             lineage edge + evidence-chain entry
+        #   compiled_truth_add_evidence  entities/compiled/*.md + evidence chain
+        #   ontology_load              the PROCESS-GLOBAL ontology registry, so
+        #                              on HTTP one client changed what every
+        #                              other client's ontology_validate used
+        #                              (make_active=False still replaces a
+        #                              loaded version of the same name)
+        #   vault_sync                 writes a file into an allow-listed vault
+        #   sign_model_tool            writes key material + manifest sidecars
+        #                              at a caller-chosen host path
+        #   build_core / export_core   .mmcore bundle / export artifact files
+        #   load_core / unload_core    the process-global core registry
+        #   governance_health_bench    its drift probe writes signals into the
+        #                              workspace drift store
+        # Their read-only neighbours (ontology_validate, vault_scan,
+        # verify_model_tool, audit_model_tool, list_cores, block_lineage,
+        # compiled_truth_load) stay user-scope.
+        "add_block_edge",
+        "compiled_truth_add_evidence",
+        "ontology_load",
+        "vault_sync",
+        "sign_model_tool",
+        "build_core",
+        "export_core",
+        "load_core",
+        "unload_core",
+        "governance_health_bench",
     }
 )
 
@@ -348,24 +378,13 @@ USER_TOOLS = frozenset(
         "list_entity_merge_proposals",
         # Entity observations — read-only view of accreted per-entity facts.
         "entity_observations",
-        "build_core",
-        "load_core",
-        # export_core RENDERS a loaded bundle into a static interchange
-        # format under memory/cores/exports/. It reads the corpus snapshot
-        # a user-scope build_core already produced and writes only an
-        # export artifact — never the corpus, never a proposal — so it
-        # carries build_core's scope, not admin.
-        "export_core",
-        "unload_core",
         "list_cores",
         "plan_consolidation",
         "pack_recall_budget",
-        "ontology_load",
         "ontology_validate",
         "stream_status",
         "propagate_staleness",
         "project_profile",
-        "vault_sync",
         "vault_scan",
         "agent_inject",
         "list_contradictions",
@@ -398,20 +417,16 @@ USER_TOOLS = frozenset(
         "stale_blocks",
         "dream_cycle",
         "compiled_truth_load",
-        "compiled_truth_add_evidence",
         "compiled_truth_contradictions",
-        "governance_health_bench",
         # v3.11.0 — quality gate + typed lineage edges.
         "validate_block",
         "block_lineage",
-        "add_block_edge",
         # v3.11.1 — backfill ACL gaps surfaced by the v3.11.0 audit.
         # These tools were registered in v3.8.x/v3.9.0 but never added
         # to the whitelist; the security-hardening commit that enforced
         # ACL didn't catch them. Tests that exercise them have been
         # silently failing on `acl_unknown_tool` since v3.8.4.
         "audit_model_tool",
-        "sign_model_tool",
         "verify_model_tool",
         "compile_truth_walkthrough",
         "recall_with_persona",
@@ -436,12 +451,13 @@ USER_TOOLS = frozenset(
         # v3.2.0 consolidated dispatchers. These are registered in
         # ``mcp.tools.public`` but were never classified, so the
         # unknown-tool branch rejected every call to them — the
-        # consolidated surface was advertised and unreachable. Each of
-        # these routes only to user-scope callees, except ``graph``,
-        # whose sole admin branch (``add_edge``) enforces the admin
-        # capability itself. ``staged_change`` and ``memory_verify``
-        # reach admin capabilities with no such guard and are in
-        # ADMIN_TOOLS instead.
+        # consolidated surface was advertised and unreachable. Their READ
+        # branches are user-scope; every branch that writes is denied at
+        # user scope by WRITE_MODE_GATES below (graph add_edge, core
+        # build/load/unload, compiled_truth add_evidence) — ``graph`` also
+        # enforces its admin branch itself. ``staged_change`` and
+        # ``memory_verify`` have no read branch worth splitting out and are
+        # in ADMIN_TOOLS instead.
         "graph",
         "core",
         "kernels",
@@ -450,6 +466,124 @@ USER_TOOLS = frozenset(
         # store, diff two baselines, apply rules to a fixture, explain one
         # metric. Nothing here writes an evidence node; the three that do
         # are admin-scoped above.
+    }
+)
+
+#: User-scope tools that WRITE, pinned. Each one appends to its own HITL
+#: staging or feedback store and nothing else: a proposal waits for an admin
+#: approve_* call before it reaches the source of truth, and a feedback row is
+#: an input the operator-side calibration reads. This is the only write a
+#: user-scope tool may make; tests/test_acl_user_scope_read_only.py measures
+#: every user tool against it and holds the set as an exact ratchet, so a new
+#: entry is a reviewed decision and not a side effect. Values are the logical
+#: snapshot keys (``<workspace-relative path>`` or ``<db path>::<table>``).
+USER_STAGING_WRITES: dict[str, tuple[str, ...]] = {
+    "observe_signal": ("memory/interaction_signals.jsonl",),
+    "propose_edge": ("memory/knowledge_graph.db::edge_proposals",),
+    "propose_entity_merge": ("memory/knowledge_graph.db::entity_merge_proposals",),
+    "calibration_feedback": (".mind-mem-index/recall.db::calibration_feedback",),
+    "report_outcome": (".mind-mem-index/recall.db::recall_outcome",),
+}
+
+
+@dataclass(frozen=True)
+class WriteMode:
+    """An argument combination of a user-scope tool that writes.
+
+    ``capability`` names what the call reaches -- an admin tool for a
+    consolidated dispatcher branch, otherwise ``tool(argument)`` -- and is
+    what the denial reports, so a client learns which admin tool (or mode)
+    does what it asked.
+    """
+
+    capability: str
+    detail: str
+
+
+def _gate_stale_blocks(args: dict[str, Any]) -> WriteMode | None:
+    if args.get("clear_block_id"):
+        return WriteMode("stale_blocks(clear_block_id)", "clears a staleness flag in the causal graph")
+    return None
+
+
+def _gate_memory_evolution(args: dict[str, Any]) -> WriteMode | None:
+    # Fail closed on anything but the read action: an unknown action gets a
+    # scope error at user scope instead of reaching the body.
+    if args.get("action", "get") != "get":
+        return WriteMode("memory_evolution(action=update)", "rewrites stored block importance")
+    return None
+
+
+def _gate_reindex_dirty(args: dict[str, Any]) -> WriteMode | None:
+    if not args.get("dry_run", False):
+        return WriteMode("reindex_dirty(dry_run=False)", "rewrites dirty corpus blocks and appends evidence")
+    return None
+
+
+def _gate_dream_cycle(args: dict[str, Any]) -> WriteMode | None:
+    # The default mode is served at user scope as a dry run (the body asks
+    # request_has_admin_scope); auto_repair is the mode that mutates.
+    if args.get("auto_repair", False):
+        return WriteMode("dream_cycle(auto_repair=True)", "applies repairs to the workspace")
+    return None
+
+
+_CORE_WRITE_ACTIONS = {"build": "build_core", "load": "load_core", "unload": "unload_core"}
+
+
+def _gate_core(args: dict[str, Any]) -> WriteMode | None:
+    capability = _CORE_WRITE_ACTIONS.get(args.get("action", ""))
+    if capability is not None:
+        return WriteMode(capability, "writes a core bundle or the process-global core registry")
+    return None
+
+
+def _gate_compiled_truth(args: dict[str, Any]) -> WriteMode | None:
+    if args.get("action") == "add_evidence":
+        return WriteMode("compiled_truth_add_evidence", "writes compiled truth and the evidence chain")
+    return None
+
+
+def _gate_graph(args: dict[str, Any]) -> WriteMode | None:
+    # The dispatcher also enforces this itself (enforce_capability_acl);
+    # gating it here as well keeps the one table complete.
+    if args.get("action") == "add_edge":
+        return WriteMode("graph_add_edge", "writes a knowledge-graph edge")
+    return None
+
+
+#: Argument-level ACL for user-scope tools whose READ mode is user-scope and
+#: whose WRITE mode is not. ``mcp_tool_observe`` binds the call's arguments
+#: to the tool signature (defaults applied, so positional and keyword calls
+#: are judged alike) and consults this table before the body runs; a write
+#: mode at non-admin scope gets the same denial envelope as an admin tool.
+#: Kept here, beside the scope sets, so classification lives in one file.
+WRITE_MODE_GATES: dict[str, Callable[[dict[str, Any]], WriteMode | None]] = {
+    "stale_blocks": _gate_stale_blocks,
+    "memory_evolution": _gate_memory_evolution,
+    "reindex_dirty": _gate_reindex_dirty,
+    "dream_cycle": _gate_dream_cycle,
+    "core": _gate_core,
+    "compiled_truth": _gate_compiled_truth,
+    "graph": _gate_graph,
+}
+
+#: MCP resources (``@mcp.resource``) carry a scope too. Every one is a
+#: read-only, admission-filtered view, so all are user-scope; the set exists
+#: so a resource reaches the same gate a tool does (fail-closed ``deny``
+#: sentinel, per-client rate limit, unknown-name rejection) and so a new
+#: resource is classified in the change that registers it. Pinned against the
+#: live registration by tests/test_resource_acl_rate_limit.py.
+USER_RESOURCES = frozenset(
+    {
+        "get_decisions",
+        "get_tasks",
+        "get_entities",
+        "get_signals",
+        "get_contradictions",
+        "get_health",
+        "get_recall",
+        "get_ledger",
     }
 )
 
@@ -492,6 +626,52 @@ def check_tool_acl(tool_name: str, scope: str) -> str | None:
             }
         )
     return None
+
+
+def check_write_mode_acl(tool_name: str, arguments: dict[str, Any], scope: str) -> str | None:
+    """Deny a user-scope tool's WRITE mode at non-admin *scope*.
+
+    Returns None when the call is allowed (admin scope, an ungated tool, or a
+    read mode), else the JSON denial. *arguments* must already be bound to
+    the tool signature with defaults applied.
+    """
+    if scope == "admin":
+        return None
+    gate = WRITE_MODE_GATES.get(tool_name)
+    if gate is None:
+        return None
+    mode = gate(arguments)
+    if mode is None:
+        return None
+    metrics.inc("mcp_acl_denied")
+    _log.warning("acl_denied", tool=tool_name, scope=scope, write_mode=mode.capability)
+    return json.dumps(
+        {
+            "error": f"Permission denied: '{mode.capability}' requires admin scope",
+            "tool": tool_name,
+            "write_mode": mode.detail,
+            "scope": scope,
+            "hint": "Admin scope is controlled via MIND_MEM_SCOPE=admin env var.",
+        }
+    )
+
+
+def request_has_admin_scope() -> bool:
+    """True when the active call may perform an admin-scope write.
+
+    Same resolution as :func:`enforce_capability_acl`: the ``deny``
+    sentinel is never admin, otherwise the token scope, falling back to
+    ``MIND_MEM_SCOPE`` (default ``user``). The documented
+    ``MIND_MEM_ACL_DISABLED`` dev/test override counts as admin, as it does
+    for every admin tool. Never logs: a body that only asks "may I persist?"
+    must not change what it emits when the answer is no.
+    """
+    scope = _get_request_scope()
+    if scope == "deny":
+        return False
+    if os.environ.get("MIND_MEM_ACL_DISABLED", "").lower() in ("1", "true", "yes"):
+        return True
+    return (scope or os.environ.get("MIND_MEM_SCOPE", "user")) == "admin"
 
 
 def enforce_capability_acl(capability: str) -> str | None:

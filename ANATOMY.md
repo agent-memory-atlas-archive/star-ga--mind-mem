@@ -5,8 +5,8 @@
 > Re-generate with: `anatomy .`
 
 **Project:** `mind-mem`
-**Files:** 1695 | **Est. tokens:** ~4,958,091
-**Generated:** 2026-10-09 01:35 UTC
+**Files:** 1697 | **Est. tokens:** ~4,968,600
+**Generated:** 2026-10-09 02:33 UTC
 
 ## Token Budget Guide
 
@@ -83,9 +83,9 @@
 | `src/mind_mem/bench/` | 17 | ~48,632 |
 | `src/mind_mem/compliance/` | 7 | ~15,436 |
 | `src/mind_mem/importers/` | 10 | ~34,469 |
-| `src/mind_mem/mcp/` | 3 | ~6,672 |
-| `src/mind_mem/mcp/infra/` | 8 | ~16,195 |
-| `src/mind_mem/mcp/tools/` | 29 | ~125,497 |
+| `src/mind_mem/mcp/` | 3 | ~7,307 |
+| `src/mind_mem/mcp/infra/` | 8 | ~18,593 |
+| `src/mind_mem/mcp/tools/` | 29 | ~125,750 |
 | `src/mind_mem/skill_opt/` | 11 | ~20,899 |
 | `src/mind_mem/spec/` | 4 | ~6,845 |
 | `src/mind_mem/storage/` | 2 | ~11,712 |
@@ -93,7 +93,7 @@
 | `src/mind_mem/tool_output/` | 3 | ~5,895 |
 | `src/mind_mem/v4/` | 24 | ~96,311 |
 | `src/mind_mem/viewer_static/` | 3 | ~865 |
-| `tests/` | 756 | ~2,214,140 |
+| `tests/` | 758 | ~2,221,363 |
 | `tests/fixtures/` | 7 | ~11,912 |
 | `tests/fixtures/importers/` | 5 | ~1,218 |
 | `tests/fixtures/importers/agent_memory/` | 4 | ~383 |
@@ -913,18 +913,18 @@
 - `mcp_entry.py` (~495 tok, medium) — Thin entry point for the ``mind-mem-mcp`` console script.
 ### `src/mind_mem/mcp/infra/`
 
-- `acl.py` (~6031 tok, huge) — Per-tool ACL — scope enforcement for the MCP surface.
+- `acl.py` (~8036 tok, huge) — Per-tool ACL — scope enforcement for the MCP surface.
 - `config.py` (~1315 tok, large) — ``mind-mem.json`` config loading + configurable limits.
 - `constants.py` (~98 tok, small) — MCP-surface-wide constants shared by the infra submodules.
 - `http_auth.py` (~2032 tok, huge) — HTTP bearer-token authentication helpers for the MCP surface.
 - `__init__.py` (~838 tok, large) — MCP infrastructure compatibility exports, resolved only when requested.
-- `observability.py` (~2497 tok, huge) — Observability + DB-busy helpers for the MCP surface.
+- `observability.py` (~2890 tok, huge) — Observability + DB-busy helpers for the MCP surface.
 - `rate_limit.py` (~1147 tok, large) — Per-client sliding-window rate limiter for the MCP surface.
 - `workspace.py` (~2237 tok, huge) — Workspace resolution + path-safety helpers.
 ### `src/mind_mem/mcp/`
 
 - `__init__.py` (~215 tok, medium) — v3.2.0 §1.2 decomposition namespace — subpackage for MCP server modules.
-- `resources.py` (~3242 tok, huge) — MCP ``@mcp.resource`` declarations.
+- `resources.py` (~3877 tok, huge) — MCP ``@mcp.resource`` declarations.
 ### `src/mind_mem/`
 
 - `mcp_server.py` (~1877 tok, huge) — Mind-Mem MCP Server — public facade (v3.2.0 §1.2 PR-final shim).
@@ -939,12 +939,12 @@
 - `benchmark.py` (~2387 tok, huge) — Benchmark + category-summary MCP tools.
 - `calibration.py` (~2915 tok, huge) — Calibration MCP tools — feedback (quality) + outcome attribution (utility).
 - `chat.py` (~1130 tok, large) — Chat surface — grounded question answering over the workspace.
-- `consolidation.py` (~7500 tok, huge) — Memory-consolidation MCP tools.
+- `consolidation.py` (~7614 tok, huge) — Memory-consolidation MCP tools.
 - `core.py` (~2862 tok, huge) — Context-core MCP tools — ``.mmcore`` bundle lifecycle.
 - `encryption.py` (~2670 tok, huge) — At-rest encryption MCP tools — ``encrypt_file`` / ``decrypt_file``.
 - `frames.py` (~2034 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `governance.py` (~16068 tok, huge) — Governance MCP tools — propose / apply / rollback / scan / contradictions / memory_evolution.
-- `graph.py` (~8747 tok, huge) — Knowledge-graph + causal-graph MCP tools.
+- `graph.py` (~8886 tok, huge) — Knowledge-graph + causal-graph MCP tools.
 - `guardrails.py` (~1835 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `_helpers.py` (~1412 tok, large) — Shared tool-internal helpers — workspace paths + lazy-init singletons.
 - `__init__.py` (~107 tok, small) — Per-domain ``@mcp.tool`` modules (v3.2.0 §1.2 PR-3+).
@@ -1255,6 +1255,7 @@
 - `test_accountability_dashboard.py` (~6883 tok, huge) — RA.5 — the lifecycle-tier dashboard, and the four refusals it inherits.
 - `test_accountability_views.py` (~6320 tok, huge) — RA.2 — precision and waste as derived views, and the four refusals that shape them.
 - `test_acl_tool_coverage.py` (~2384 tok, huge) — ACL coverage invariant for the MCP tool surface.
+- `test_acl_user_scope_read_only.py` (~5329 tok, huge) — No USER-scope MCP tool may write, in any argument combination.
 - `test_active_only_filter.py` (~312 tok, medium) — Tests for active_only recall filter."""
 - `test_adjacent_public_acl.py` (~3611 tok, huge) — ACL controls for public retrieval doors beside the ranked recall tool."""
 - `test_admissibility_unreadable_status.py` (~1104 tok, large) — An unreadable ``Status`` must be withheld on the stale-index path too.
@@ -1385,7 +1386,7 @@
 - `test_context_pack_scripts.py` (~673 tok, large) — Tests for context packing via scripts._recall_context."""
 - `test_contradiction_changed_fact.py` (~1045 tok, large) — A changed fact (Tuesday -> Thursday) is flagged as a contradiction.
 - `test_contradiction_detector.py` (~5871 tok, huge) — Tests for contradiction_detector.py — Contradiction detection at governance gate (#432).
-- `test_core_export_wiring.py` (~4543 tok, huge) — # Copyright 2026 STARGA, Inc.
+- `test_core_export_wiring.py` (~4570 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_core_v140.py` (~2707 tok, huge) — Tests for v1.4.0 core hardening: issues #28, #30, #32, #34."""
 - `test_cron_runner_config_fail_closed.py` (~1159 tok, large) — An unreadable toggle file must mean "run nothing", never "run everything".
 - `test_cron_runner.py` (~4320 tok, huge) — Tests for cron_runner.py — periodic job orchestration, config loading, subprocess dispatch."""
@@ -1585,7 +1586,7 @@
 - `test_mcp_arch_mind_tools.py` (~2320 tok, huge) — Tests for the arch-mind MCP tool wrapper.
 - `test_mcp_audit_verify_chain.py` (~2980 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_mcp_auth_snapshot.py` (~1597 tok, huge) — Request authentication is resolved once at the observed MCP boundary."""
-- `test_mcp_compiled_truth_add_evidence.py` (~3677 tok, huge) — The one compiled-truth tool that WRITES, and the only one nothing tested.
+- `test_mcp_compiled_truth_add_evidence.py` (~3829 tok, huge) — The one compiled-truth tool that WRITES, and the only one nothing tested.
 - `test_mcp_compiled_truth_contradictions.py` (~4713 tok, huge) — ``compiled_truth_contradictions`` — the detective half of the truth pages.
 - `test_mcp_compiled_truth_load.py` (~4697 tok, huge) — The compiled-truth read tool -- registered since v3.2.0, never tested.
 - `test_mcp_content_lifecycle.py` (~3892 tok, huge) — # Copyright 2026 STARGA, Inc.
@@ -1595,11 +1596,11 @@
 - `test_mcp_graph_hitl.py` (~1868 tok, huge) — MCP-surface tests for the HITL typed-edge flow + provenance (v4.4.0 Finding 1)
 - `test_mcp_http_gate_matches_enforcement.py` (~2775 tok, huge) — The MCP HTTP startup gate must agree with what actually enforces auth.
 - `test_mcp_integration.py` (~5530 tok, huge) — MCP transport and auth integration tests (#474).
-- `test_mcp_list_cores.py` (~3407 tok, huge) — ``list_cores`` — the read side of the ``.mmcore`` lifecycle, previously unpinned.
+- `test_mcp_list_cores.py` (~3526 tok, huge) — ``list_cores`` — the read side of the ``.mmcore`` lifecycle, previously unpinned.
 - `test_mcp_list_evidence.py` (~4569 tok, huge) — ``list_evidence`` — the audit family's only *reader* of the evidence chain.
 - `test_mcp_namespace_direct_get.py` (~4840 tok, huge) — Namespace-selected MCP direct reads remain ACL- and admission-bound."""
-- `test_mcp_ontology_load.py` (~4897 tok, huge) — ``ontology_load`` -- the MCP door onto the OWL-lite schema layer.
-- `test_mcp_ontology_validate.py` (~4754 tok, huge) — ``ontology_validate`` — the MCP tool, as distinct from the ontology library.
+- `test_mcp_ontology_load.py` (~5046 tok, huge) — ``ontology_load`` -- the MCP door onto the OWL-lite schema layer.
+- `test_mcp_ontology_validate.py` (~4860 tok, huge) — ``ontology_validate`` — the MCP tool, as distinct from the ontology library.
 - `test_mcp_pipeline.py` (~1495 tok, large) — Tests for the v3.9.0 pipeline-hash MCP tools."""
 - `test_mcp_product_version.py` (~285 tok, medium) — The MCP handshake identifies the product, not its framework dependency."""
 - `test_mcp_quality_preview_matches_enforcement.py` (~1206 tok, large) — # Copyright 2026 STARGA, Inc.
@@ -1609,7 +1610,7 @@
 - `test_mcp_tools.py` (~277 tok, medium) — Tests for MCP server tool definitions."""
 - `test_mcp_tool_surface_v3_2.py` (~2006 tok, huge) — v3.2.0 — consolidated MCP public dispatcher tests."""
 - `test_mcp_traverse_graph.py` (~5735 tok, huge) — ``traverse_graph`` — the causal-graph tool that nothing tested.
-- `test_mcp_unload_core.py` (~3229 tok, huge) — ``unload_core`` — the MCP tool that had no test anywhere.
+- `test_mcp_unload_core.py` (~3434 tok, huge) — ``unload_core`` — the MCP tool that had no test anywhere.
 - `test_mcp_v140.py` (~6007 tok, huge) — Tests for MCP v1.4.0 features — issues #29, #31, #35, #36.
 - `test_mcp_walkthrough_persona.py` (~2313 tok, huge) — Tests for the v3.9.0 MCP walkthrough + persona wrapper tools."""
 - `test_medlow_batch12_regressions.py` (~3396 tok, huge) — Regression tests for the batch-12 medium/low audit findings.
@@ -1660,7 +1661,7 @@
 - `test_network_tls_floor.py` (~3100 tok, huge) — The TLS 1.3 floor holds by construction — roadmap v4.0.0 Group D (RM-2290).
 - `test_niah.py` (~5014 tok, huge) — Needle In A Haystack (NIAH) benchmark for mind-mem recall.
 - `test_no_prior_art_attribution_repo_wide.py` (~2555 tok, huge) — No prior-art identifier may appear in a tracked file, anywhere in the repository.
-- `test_no_silent_success_paths.py` (~3801 tok, huge) — Regressions for paths that used to report success while doing the wrong thing.
+- `test_no_silent_success_paths.py` (~3823 tok, huge) — Regressions for paths that used to report success while doing the wrong thing.
 - `test_no_vacuous_skips.py` (~7101 tok, huge) — A skipped test reads as a pass — so the skip surface itself needs a gate.
 - `test_novel_term_gate.py` (~2202 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_observability.py` (~791 tok, large) — Tests for observability.py — structured logging and metrics."""
@@ -1810,6 +1811,7 @@
 - `test_rerank_ensemble.py` (~1531 tok, huge) — v3.3.0 Tier 4 #9 — reranker ensemble via Borda count.
 - `test_reranker_model_cache.py` (~1909 tok, huge) — Reranker weights load once per process, not once per query.
 - `test_reranking.py` (~246 tok, medium) — Tests for reranking module."""
+- `test_resource_acl_rate_limit.py` (~1114 tok, large) — MCP resources go through the same ACL and rate limiting as tools.
 - `test_resource_ranked_serving.py` (~855 tok, large) — Indexed MCP recall must use the live admitted serving boundary."""
 - `test_rest_admin_gate_api_key_only.py` (~2102 tok, huge) — The REST admin gate must fire in an API-key-only deployment.
 - `test_rest_admin_scope_handoff.py` (~1246 tok, large) — Real REST -> observed-MCP admin scope handoff controls (RA.4).
