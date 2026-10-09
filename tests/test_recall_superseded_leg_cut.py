@@ -223,3 +223,30 @@ def test_cross_encoder_request_is_unchanged_without_dead_candidates(monkeypatch:
     out = backend._maybe_cross_encoder_rerank(QUERY, pool, 2, rerank_depth=10, ce_active=True)
     assert _ids(out) == ["D-3", "D-2"]
     assert asked == [2]
+
+
+def _h(bid: str, score: float, status: str = "active") -> dict:
+    return {"_id": bid, "score": score, "status": status}
+
+
+def test_live_aware_knee_is_the_plain_knee_without_dead_hits() -> None:
+    from mind_mem._recall_core import _knee_cutoff_live_aware, knee_cutoff
+
+    hits = [_h("A", 9.0), _h("B", 8.5), _h("C", 0.2), _h("D", 0.1)]
+    for floor in (1, 2, 3):
+        assert _knee_cutoff_live_aware(hits, min_results=floor, min_score=0.0) == knee_cutoff(hits, min_results=floor, min_score=0.0)
+
+
+def test_live_aware_knee_keeps_a_replacement_behind_a_dead_top_hit() -> None:
+    from mind_mem._recall_core import _knee_cutoff_live_aware
+
+    out = _knee_cutoff_live_aware([_h(OLD, 9.0, "superseded"), _h(NEW, 4.0)], min_results=1, min_score=0.0)
+    assert _ids(out) == [OLD, NEW]
+
+
+def test_live_aware_knee_does_not_admit_live_noise() -> None:
+    """A dead hit the floor kept below live hits must not drag live noise past the knee."""
+    from mind_mem._recall_core import _knee_cutoff_live_aware
+
+    hits = [_h("A", 4.8), _h("C", 4.8), _h("B", 4.0, "deprecated"), _h("NOISE", 0.14)]
+    assert _ids(_knee_cutoff_live_aware(hits, min_results=3, min_score=0.0)) == ["A", "C", "B"]

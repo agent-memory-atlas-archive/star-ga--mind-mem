@@ -1141,6 +1141,25 @@ def _rank_replaced_below_live(hits: list[dict]) -> list[dict]:
     return sorted(hits, key=_is_replaced)
 
 
+def _knee_cutoff_live_aware(results: list[dict], *, min_results: int, min_score: float) -> list[dict]:
+    """``knee_cutoff`` whose decision about LIVE hits is not anchored on a dead hit's score.
+
+    The knee measures every drop against the top score, so a superseded block
+    that out-scores its replacement can push the replacement past the knee
+    (and the ``min_results`` floor is then filled by the dead block alone).
+    The historical knee still decides everything it decided before; on top of
+    it, every live hit the knee keeps when judged among live hits only is kept
+    too. With no dead hit in *results* this is exactly ``knee_cutoff``.
+    """
+    base = knee_cutoff(results, min_results=min_results, min_score=min_score)
+    live = [r for r in results if not _is_replaced(r)]
+    if len(live) == len(results):
+        return base
+    keep = {id(r) for r in base}
+    keep.update(id(r) for r in knee_cutoff(live, min_results=1, min_score=min_score))
+    return [r for r in results if id(r) in keep]
+
+
 def _apply_post_filters(
     hits: list[dict],
     *,
@@ -2732,16 +2751,16 @@ def recall(
     # Re-sort after propagation + hard negative adjustment
     deduped.sort(key=lambda r: (r["score"], r.get("_id", "")), reverse=True)
 
-    # Superseded/revoked hits drop below every live hit BEFORE the knee and
-    # the limit cut: the funnel's own demotion runs on a list this leg has
-    # already narrowed, so a replacement cut here never reaches it. A no-op
-    # (stable sort on a constant key) when no hit carries a dead status.
-    deduped = _rank_replaced_below_live(deduped)
-
     # Stage 2.9: Knee score cutoff — adaptive truncation before context packing
     if recall_cfg.get("knee_cutoff", True) and deduped:
         min_sc = float(recall_cfg.get("min_score", 0.0))
-        deduped = knee_cutoff(deduped, min_results=min(3, limit), min_score=min_sc)
+        deduped = _knee_cutoff_live_aware(deduped, min_results=min(3, limit), min_score=min_sc)
+
+    # Superseded/revoked hits drop below every live hit BEFORE the limit cut:
+    # the funnel's own demotion runs on a list this leg has already narrowed,
+    # so a replacement cut here never reaches it. A no-op (stable sort on a
+    # constant key) when no hit carries a dead status.
+    deduped = _rank_replaced_below_live(deduped)
 
     _stage_counts["knee_cutoff"] = len(deduped)
 
