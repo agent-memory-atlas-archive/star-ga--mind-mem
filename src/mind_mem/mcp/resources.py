@@ -48,16 +48,26 @@ through the seam or write its own file I/O in plain sight of review.
 resource with the canary and holds an exact-equality ratchet on the set
 that leaks, which is empty.
 
-A resource cannot ask who is calling. ``register`` binds these functions
-onto FastMCP directly, with none of the ACL wrapping ``mcp_tool_observe``
-gives a tool, so ``MIND_MEM_SCOPE`` / the admin token never reach here.
-Anything that needs an operator behind it — reviewing what admission
-withheld, above all — belongs on the tool side, which is classified in
-``ADMIN_TOOLS`` / ``USER_TOOLS`` and enforced per call.
+**Every resource goes through the tool gate.** ``register`` used to bind
+these functions onto FastMCP directly, so a resource read sat outside both
+the ACL and the per-client rate limiter (architecture review F14): a client
+could read ``mind-mem://recall/{query}`` -- a full recall -- in a loop with
+no budget, and an introspection failure that fails every TOOL closed still
+served every resource. :func:`_gated` now wraps each registration: one
+auth snapshot per read, the ``deny`` sentinel refuses, the caller's
+rate-limit bucket is charged, and the resource must be classified in
+``acl.USER_RESOURCES`` (an unclassified resource is refused, as an
+unclassified tool is). The module-level functions stay unwrapped so direct
+callers and the admission sweep keep reading them as plain functions.
+
+All eight resources are user-scope reads. Anything that needs an operator
+behind it — reviewing what admission withheld, above all — belongs on the
+tool side, which is classified in ``ADMIN_TOOLS`` / ``USER_TOOLS``.
 """
 
 from __future__ import annotations
 
+import functools
 import json
 import os
 from collections.abc import Callable
@@ -68,6 +78,9 @@ from mind_mem.block_parser import get_active, parse_file
 from mind_mem.observability import get_logger
 from mind_mem.recall import recall as recall_engine
 
+from .infra.acl import USER_RESOURCES, bind_auth_snapshot, check_tool_acl
+from .infra.constants import MCP_SCHEMA_VERSION
+from .infra.rate_limit import _get_client_id, _get_client_rate_limiter
 from .infra.workspace import _validate_path, _workspace
 
 _log = get_logger("mcp_resources")
@@ -277,13 +290,48 @@ def get_ledger() -> str:
     return _blocks_to_json(admitted)
 
 
+def _gated(fn: Callable[..., str]) -> Callable[..., str]:
+    """Run a resource body behind the same ACL + rate limit a tool gets.
+
+    Order mirrors ``mcp_tool_observe``: bind one auth snapshot (so the scope
+    and the rate-limit identity cannot change mid-read), refuse the ``deny``
+    sentinel, charge the caller's bucket, then refuse a resource that is not
+    classified. ``functools.wraps`` keeps the signature, so FastMCP still
+    derives the URI-template parameters from the original function.
+    """
+    name = fn.__name__
+
+    @functools.wraps(fn)
+    def _resource(*args: Any, **kwargs: Any) -> str:
+        with bind_auth_snapshot() as auth:
+            if auth.status == "denied":
+                return check_tool_acl(name, "deny") or json.dumps({"error": "Permission denied"})
+            client_id = _get_client_id()
+            allowed, retry_after = _get_client_rate_limiter(client_id).allow()
+            if not allowed:
+                _log.warning("rate_limit_exceeded", resource=name, client=client_id, retry_after=retry_after)
+                return json.dumps(
+                    {
+                        "error": "Rate limit exceeded. Try again later.",
+                        "retry_after_seconds": round(retry_after, 1),
+                        "_schema_version": MCP_SCHEMA_VERSION,
+                    }
+                )
+            if name not in USER_RESOURCES:
+                _log.warning("acl_unknown_resource", resource=name)
+                return json.dumps({"error": f"Resource '{name}' is not in ACL policy", "_schema_version": "1.0"})
+            return fn(*args, **kwargs)
+
+    return _resource
+
+
 def register(mcp) -> None:
-    """Wire every resource body onto *mcp*. Called once from mcp_server.py."""
-    mcp.resource("mind-mem://decisions")(get_decisions)
-    mcp.resource("mind-mem://tasks")(get_tasks)
-    mcp.resource("mind-mem://entities/{entity_type}")(get_entities)
-    mcp.resource("mind-mem://signals")(get_signals)
-    mcp.resource("mind-mem://contradictions")(get_contradictions)
-    mcp.resource("mind-mem://health")(get_health)
-    mcp.resource("mind-mem://recall/{query}")(get_recall)
-    mcp.resource("mind-mem://ledger")(get_ledger)
+    """Wire every resource body onto *mcp*, behind :func:`_gated`. Called once from mcp_server.py."""
+    mcp.resource("mind-mem://decisions")(_gated(get_decisions))
+    mcp.resource("mind-mem://tasks")(_gated(get_tasks))
+    mcp.resource("mind-mem://entities/{entity_type}")(_gated(get_entities))
+    mcp.resource("mind-mem://signals")(_gated(get_signals))
+    mcp.resource("mind-mem://contradictions")(_gated(get_contradictions))
+    mcp.resource("mind-mem://health")(_gated(get_health))
+    mcp.resource("mind-mem://recall/{query}")(_gated(get_recall))
+    mcp.resource("mind-mem://ledger")(_gated(get_ledger))

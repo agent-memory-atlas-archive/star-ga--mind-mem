@@ -687,16 +687,25 @@ def dream_cycle(
     lookback_days: int = 7,
     stale_days: int = 30,
 ) -> str:
-    """Run the dream cycle — autonomous memory enrichment."""
+    """Run the dream cycle — autonomous memory enrichment.
+
+    At user scope this is a READ: the passes run with ``dry_run=True``, so the
+    findings come back but nothing is persisted (no integrity summary, no
+    signal harvest). Admin scope persists, and only admin may ``auto_repair``
+    (``WRITE_MODE_GATES`` rejects it at user scope before this body runs).
+    """
+    from ..infra.acl import request_has_admin_scope
+
     ws = _workspace()
+    persist = request_has_admin_scope()
 
     try:
         from mind_mem.dream_cycle import run_dream_cycle
 
         report = run_dream_cycle(
             ws,
-            dry_run=False,
-            auto_repair=auto_repair,
+            dry_run=not persist,
+            auto_repair=auto_repair and persist,
             lookback_days=lookback_days,
             stale_days=stale_days,
         )
@@ -717,6 +726,7 @@ def dream_cycle(
         "stale_blocks": len(report.stale_blocks),
         "consolidation_candidates": len(report.consolidation_candidates),
         "total_findings": report.total_findings,
+        "persisted": persist,
     }
 
     if report.entity_proposals:
