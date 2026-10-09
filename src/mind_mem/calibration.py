@@ -45,9 +45,12 @@ Copyright (c) STARGA, Inc.
 
 from __future__ import annotations
 
+import atexit
+import functools
 import hashlib
 import os
 import sqlite3
+import threading
 import time
 from collections.abc import Iterable
 from dataclasses import dataclass
@@ -206,19 +209,108 @@ def make_query_id(query: str) -> str:
 # Calibration Manager
 # ---------------------------------------------------------------------------
 
+# BOUNDED LRU, closed on eviction. Each ConnectionManager pins ~3 descriptors
+# (db, -wal, -shm); an unbounded per-workspace cache exhausts RLIMIT_NOFILE
+# under workspace churn and the collector never reclaims them. The same shape
+# as sqlite_index._conn_managers. A caller still holding an evicted manager is
+# safe: ConnectionManager.close() bumps a generation so the next use reopens.
+def _cache_max_from_env() -> int:
+    try:
+        return max(1, int(os.environ.get("MIND_MEM_CALIBRATION_CONN_CACHE_MAX", "16")))
+    except ValueError:
+        return 16
+
+
+_CONN_MANAGER_CACHE_MAX = _cache_max_from_env()
+
 _conn_managers: dict[str, ConnectionManager] = {}
-_conn_managers_lock = __import__("threading").Lock()
+_conn_managers_lock = threading.Lock()
+
+
+def _close_quietly(mgr: ConnectionManager, path: str) -> None:
+    try:
+        mgr.close()
+    except Exception:  # nosec B110 - eviction/teardown must not be blocked by a dying manager
+        _log.warning("calibration_conn_close_failed", db_path=path)
+
+
+# Managers with an in-flight CalibrationManager call. Closing a sqlite3 handle
+# while a statement runs on it is a use-after-free that SEGFAULTS the
+# interpreter (measured with a thread race on this module), and the raw
+# read connections handed out here carry no lock close() could wait on.
+# So an evicted manager that is mid-call is only RETIRED; the last call to
+# finish closes it.
+_leases: dict[ConnectionManager, int] = {}
+_retired: set[ConnectionManager] = set()
+
+
+def _lease(mgr: ConnectionManager) -> None:
+    with _conn_managers_lock:
+        _leases[mgr] = _leases.get(mgr, 0) + 1
+
+
+def _release(mgr: ConnectionManager) -> None:
+    with _conn_managers_lock:
+        left = _leases.get(mgr, 1) - 1
+        if left > 0:
+            _leases[mgr] = left
+            return
+        _leases.pop(mgr, None)
+        close_now = mgr in _retired
+        _retired.discard(mgr)
+    if close_now:
+        _close_quietly(mgr, mgr.db_path)
+
+
+def _leased(fn: Any) -> Any:
+    """Hold the instance's manager open for the duration of one call."""
+
+    @functools.wraps(fn)
+    def wrapper(self: "CalibrationManager", *args: Any, **kwargs: Any) -> Any:
+        mgr = self._mgr
+        _lease(mgr)
+        try:
+            return fn(self, *args, **kwargs)
+        finally:
+            _release(mgr)
+
+    return wrapper
+
+
+def _close_all_conn_managers() -> None:
+    """Close and drop every cached manager (teardown / atexit)."""
+    with _conn_managers_lock:
+        victims = [(p, m) for p, m in _conn_managers.items() if m not in _leases]
+        for _p, m in _conn_managers.items():
+            if m in _leases:
+                _retired.add(m)
+        _conn_managers.clear()
+    for path, mgr in victims:
+        _close_quietly(mgr, path)
+
+
+atexit.register(_close_all_conn_managers)
 
 
 def _get_conn_manager(workspace: str) -> ConnectionManager:
     """Return a shared ConnectionManager for the workspace DB."""
     path = _db_path(workspace)
     os.makedirs(os.path.dirname(path), exist_ok=True)
+    victims: list[tuple[str, ConnectionManager]] = []
     with _conn_managers_lock:
-        mgr = _conn_managers.get(path)
+        mgr = _conn_managers.pop(path, None)
         if mgr is None:
             mgr = ConnectionManager(path)
-            _conn_managers[path] = mgr
+        _conn_managers[path] = mgr  # most-recently-used goes last
+        while len(_conn_managers) > _CONN_MANAGER_CACHE_MAX:
+            old = next(iter(_conn_managers))
+            victim = _conn_managers.pop(old)
+            if victim in _leases:
+                _retired.add(victim)
+            else:
+                victims.append((old, victim))
+    for old_path, victim in victims:
+        _close_quietly(victim, old_path)
     return mgr
 
 
@@ -253,6 +345,7 @@ class CalibrationManager:
     # Read labels
     # -----------------------------------------------------------------------
 
+    @_leased
     def accepted_ids_by_fingerprint(self, fingerprints: Iterable[str]) -> dict[str, set[str]]:
         """Block ids marked ``accepted`` for each query fingerprint.
 
@@ -284,6 +377,7 @@ class CalibrationManager:
     # Record feedback
     # -----------------------------------------------------------------------
 
+    @_leased
     def record_feedback(
         self,
         query_id: str,
@@ -382,6 +476,7 @@ class CalibrationManager:
     # Outcome attribution — utility, not quality
     # -----------------------------------------------------------------------
 
+    @_leased
     def record_outcome(
         self,
         block_ids: Iterable[str] | None,
@@ -418,18 +513,21 @@ class CalibrationManager:
             project_to_calibration=project_to_calibration,
         )
 
+    @_leased
     def get_outcome_signals(self, block_ids: list[str]) -> dict[str, OutcomeSignal]:
         """Batch per-block utility evidence — unwindowed, clock-free."""
         from .outcome_store import get_outcome_signals
 
         return get_outcome_signals(self._mgr, block_ids)
 
+    @_leased
     def list_outcomes(self, block_id: str = "", task_id: str = "", limit: int = 100) -> list[dict[str, Any]]:
         """Recorded outcomes with full provenance, newest first."""
         from .outcome_store import list_outcomes
 
         return list_outcomes(self._mgr, block_id=block_id, task_id=task_id, limit=limit)
 
+    @_leased
     def get_outcome_stats(self, top_n: int = 20) -> dict[str, Any]:
         """Utility health report — corroborated vs. implicated blocks."""
         from .outcome_store import get_outcome_stats
@@ -461,6 +559,7 @@ class CalibrationManager:
         cutoff = now.timestamp() - (CALIBRATION_WINDOW_DAYS * 86400)
         return datetime.fromtimestamp(cutoff, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
+    @_leased
     def get_block_weight(self, block_id: str, *, now: datetime | None = None) -> float:
         """Compute calibration weight for a single block.
 
@@ -495,6 +594,7 @@ class CalibrationManager:
 
         return _compute_weight(counts["accepted"], counts["rejected"], counts["ignored"])
 
+    @_leased
     def get_block_weights(self, block_ids: list[str], *, now: datetime | None = None) -> dict[str, float]:
         """Compute calibration weights for multiple blocks in one query.
 
@@ -546,6 +646,7 @@ class CalibrationManager:
     # Per-query-type accuracy
     # -----------------------------------------------------------------------
 
+    @_leased
     def get_query_type_accuracy(self) -> dict[str, dict[str, Any]]:
         """Compute per-query-type accuracy rates over the rolling window.
 
@@ -591,6 +692,7 @@ class CalibrationManager:
     # Stats / diagnostics
     # -----------------------------------------------------------------------
 
+    @_leased
     def get_calibration_stats(self, top_n: int = 20) -> dict[str, Any]:
         """Return calibration health report.
 
