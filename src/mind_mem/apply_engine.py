@@ -107,6 +107,8 @@ VALID_TYPES = {"decision", "task", "edit"}
 #: ``error`` loses nothing by ignoring the stage.
 STAGE_OP: Final = "op"
 STAGE_POST_CHECK: Final = "post_check"
+#: The proposal's ``Status: applied`` line could not be written.
+STAGE_STATUS: Final = "status"
 
 
 class ApplyAborted(Exception):
@@ -133,16 +135,18 @@ class ApplyAborted(Exception):
     it — which is why the ``except`` clause sits as tightly around the
     scope as the ``with`` does.
 
-    Two branches raise it, and they are the *only* two paths that undo a
-    committed op: the op-failure branch and the post-check branch. The
-    second is why the post-checks moved inside the scope — see the
-    comment at that call site.
+    Three branches raise it, and they are the *only* paths that undo a
+    committed op: the op-failure branch, the post-check branch, and the
+    status branch (the proposal's ``applied`` status could not be
+    written). The second is why the post-checks moved inside the scope —
+    see the comment at that call site; the third is inside for the same
+    reason.
 
     Attributes:
         step: Index of the op that failed, or ``None`` when the abort was
             not attributable to a single op (the post-check branch).
-        stage: Which phase withdrew the work — :data:`STAGE_OP` or
-            :data:`STAGE_POST_CHECK`. Carried for the transcript and for
+        stage: Which phase withdrew the work — :data:`STAGE_OP`,
+            :data:`STAGE_POST_CHECK` or :data:`STAGE_STATUS`. Carried for the transcript and for
             the tests; the chain records both as ``scope_outcome=error``,
             because "the work did not stand" is one fact, not two.
         message: The message ``apply_proposal`` returns to its caller.
@@ -662,25 +666,57 @@ def _snapshot_target_file(ws, snap_dir):
         return snap_dir
 
 
-@contextlib.contextmanager
-def _live_config_kept(ws):
-    """Put the live, attested config bytes back after the body runs (or fails)."""
-    from .governance_gate import config_path_for
+#: Files a restore must leave exactly as it found them: the config the gate
+#: reads, and the binding that attests it. Restoring either rewinds settings
+#: (not memory) and puts the pair out of step, which is drift.
+_LIVE_GOVERNANCE_FILES = ("mind-mem.json", ".spec_binding.json")
 
-    path = config_path_for(ws)
+
+def _read_live(path):
+    """The bytes at *path*, or ``None`` when it does not exist. Any other error raises."""
     try:
         with open(path, "rb") as handle:
-            live = handle.read()
+            return handle.read()
     except FileNotFoundError:
-        live = None
+        return None
+
+
+@contextlib.contextmanager
+def _live_config_kept(ws, *, fill_missing=False):
+    """Leave the live config and its spec binding exactly as they were, whatever the body restores.
+
+    A restore rewinds MEMORY, never configuration. For each governance file
+    (:data:`_LIVE_GOVERNANCE_FILES`): if it existed, its live bytes are put
+    back; if it did NOT exist, whatever the body landed there is removed —
+    previously an absent live config let the snapshot's copy land, which is
+    the same rewind by another route.
+
+    ``fill_missing`` is for a backup restored into a workspace that has
+    neither file (disaster recovery onto an empty directory): there is no
+    live configuration to protect, so the archive's pair is allowed to land
+    as a consistent pair. With either file live, it has no effect.
+
+    A live file that exists but cannot be read raises here, before the body
+    runs: a restore that cannot preserve the attested config is refused,
+    not performed with the config left to chance.
+    """
+    from .governance_gate import config_path_for
+
+    config = config_path_for(ws)
+    paths = [config, os.path.join(os.path.dirname(config), _LIVE_GOVERNANCE_FILES[1])]
+    live = {path: _read_live(path) for path in paths}
+    keep_absent = not (fill_missing and all(v is None for v in live.values()))
     try:
         yield
     finally:
-        if live is not None:
-            tmp = path + ".restore_tmp"
-            with open(tmp, "wb") as handle:
-                handle.write(live)
-            os.replace(tmp, path)
+        for path, data in live.items():
+            if data is not None:
+                tmp = path + ".restore_tmp"
+                with open(tmp, "wb") as handle:
+                    handle.write(data)
+                os.replace(tmp, path)
+            elif keep_absent and os.path.lexists(path):
+                os.remove(path)
 
 
 def restore_snapshot(ws, snap_dir, *, action=RESTORE_VERB, actor="apply_engine", metadata=None):
@@ -2080,6 +2116,24 @@ def _apply_proposal_locked(ws, proposal, proposal_id, source_file, lock):
                 _mark_proposal_status(source_file, proposal_id, "rolled_back")
                 _record_belief_update(ws, proposal.get("TargetBlock", ""), 0.0, "rollback")
                 raise ApplyAborted(None, "Post-checks failed, rolled back", stage=STAGE_POST_CHECK)
+
+            # 6c. Record the proposal as applied — INSIDE the scope, and
+            # checked. The status line is what stops a second apply
+            # (validate_proposal requires 'staged'), so an apply whose status
+            # write failed used to report success, write an `applied`
+            # receipt, and leave the proposal `staged` for anyone to apply
+            # again. A status that cannot be recorded withdraws the apply,
+            # by raising, like every other withdrawal in this scope.
+            if not _mark_proposal_status(source_file, proposal_id, "applied"):
+                print("\nPROPOSAL STATUS WRITE FAILED — rolling back.")
+                restore_snapshot(ws, snap_dir)
+                _cleanup_orphan_files(ws, pre_apply_files)
+                update_receipt(receipt_path, ["ABORTED: proposal status could not be recorded"], delta, "rolled_back")
+                raise ApplyAborted(
+                    None,
+                    f"Proposal status could not be recorded as applied in {source_file}; rolled back",
+                    stage=STAGE_STATUS,
+                )
     except ApplyAborted as aborted:
         # The rollback, the receipt, the proposal status and the WAL entry were
         # all handled inside the scope; the exception exists to end the scope
@@ -2097,9 +2151,9 @@ def _apply_proposal_locked(ws, proposal, proposal_id, source_file, lock):
     all_touched = set(files_touched) | actually_modified_files
     diff_text = generate_diff_text(ws, snap_dir, list(all_touched))
 
-    # 8. Commit receipt + mark proposal as applied + update last_apply_ts
+    # 8. Commit receipt + update last_apply_ts (the proposal status was
+    # recorded, and checked, inside the scope — step 6c)
     update_receipt(receipt_path, post_report, delta, "applied", diff_text)
-    _mark_proposal_status(source_file, proposal_id, "applied")
     update_last_apply_ts(ws)
     _record_belief_update(ws, proposal.get("TargetBlock", ""), 1.0, "approve_apply")
 
@@ -2250,6 +2304,25 @@ def _proposal_id_from_receipt(receipt_path):
     return None
 
 
+def _receipt_result(receipt_path):
+    """The receipt's current state: its LAST ``Result:`` line, or ``None``.
+
+    :func:`write_receipt` writes ``Result: in_progress`` and every later
+    transition appends another ``Result:`` line, so the last one wins.
+    An unreadable receipt reports ``None``, which no caller treats as
+    ``applied``.
+    """
+    result = None
+    try:
+        with open(receipt_path, "r", encoding="utf-8") as fh:
+            for line in fh:
+                if line.startswith("Result:"):
+                    result = line.split(":", 1)[1].strip()
+    except OSError:
+        return None
+    return result
+
+
 def rollback(ws, receipt_ts, reason="", strict=False):
     """Rollback from a receipt timestamp.
 
@@ -2303,6 +2376,18 @@ def rollback(ws, receipt_ts, reason="", strict=False):
         print(f"WARNING: pre-restore receipt path escaped snapshot dir: {exc}", file=sys.stderr)
         _pre_receipt = None
     rolled_back_proposal = _proposal_id_from_receipt(_pre_receipt) if _pre_receipt is not None else None
+    # Only an APPLIED receipt can be rolled back. Without this, a receipt
+    # already rolled back was restored a second time — rewinding every write
+    # made since — and an in-progress or aborted one was "rolled back" as if
+    # it had landed. The receipt's last Result line is its current state.
+    if _pre_receipt is not None and os.path.isfile(_pre_receipt):
+        receipt_state = _receipt_result(_pre_receipt)
+        if receipt_state != "applied":
+            msg = f"ERROR: refusing rollback of {receipt_ts}: receipt state is {receipt_state!r}, not 'applied'"
+            print(msg)
+            print(msg, file=sys.stderr)
+            _log.warning("rollback_refused_not_applied", receipt_ts=receipt_ts, receipt_state=receipt_state)
+            return False
     restore_snapshot(  # nosec — snap_dir validated by _safe_resolve above
         ws,
         snap_dir,

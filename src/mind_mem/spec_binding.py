@@ -208,14 +208,22 @@ class SpecBindingManager:
         if binding is None:
             return False, "no binding found — call bind() before verify()"
 
-        if not os.path.exists(binding.config_path):
+        # Hash THIS manager's config, never the path recorded at bind time.
+        # The recorded path is absolute, so a copied workspace (backup
+        # unpacked elsewhere, a moved directory) used to attest the SOURCE
+        # workspace's config: an edit to its own mind-mem.json verified
+        # clean, and an edit to an unrelated workspace read as drift here.
+        # The binding sits next to the config it attests (see __init__), so
+        # the config beside it is the only one it can speak for.
+        config_path = self._config_path
+        if not os.path.exists(config_path):
             return (
                 False,
-                f"config file missing: '{binding.config_path}'",
+                f"config file missing: '{config_path}'",
             )
 
         try:
-            current_hash = _compute_config_hash(binding.config_path)
+            current_hash = _compute_config_hash(config_path)
         except (FileNotFoundError, ValueError) as exc:
             return False, f"could not hash config: {exc}"
 
@@ -223,7 +231,7 @@ class SpecBindingManager:
             if binding.attestation_signature is not None:
                 _log.warning(
                     "spec_binding.attestation_unverified",
-                    config_path=binding.config_path,
+                    config_path=config_path,
                     msg="attestation_signature is present but has not been cryptographically verified",
                 )
             return True, "binding valid — config hash matches"
