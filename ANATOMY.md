@@ -5,8 +5,8 @@
 > Re-generate with: `anatomy .`
 
 **Project:** `mind-mem`
-**Files:** 1689 | **Est. tokens:** ~4,938,242
-**Generated:** 2026-10-08 23:34 UTC
+**Files:** 1689 | **Est. tokens:** ~4,938,504
+**Generated:** 2026-10-09 01:23 UTC
 
 ## Token Budget Guide
 
@@ -93,7 +93,7 @@
 | `src/mind_mem/tool_output/` | 3 | ~5,895 |
 | `src/mind_mem/v4/` | 24 | ~96,311 |
 | `src/mind_mem/viewer_static/` | 3 | ~865 |
-| `tests/` | 750 | ~2,197,340 |
+| `tests/` | 750 | ~2,197,602 |
 | `tests/fixtures/` | 7 | ~11,912 |
 | `tests/fixtures/importers/` | 5 | ~1,218 |
 | `tests/fixtures/importers/agent_memory/` | 4 | ~383 |
@@ -1344,7 +1344,7 @@
 - `test_chunk_text.py` (~231 tok, medium) — Tests for text chunking."""
 - `test_ci_green_per_job_gate.py` (~4342 tok, huge) — The CI-green gate must read JOBS, not just the workflow run's conclusion.
 - `test_cli_detector_refusal.py` (~1619 tok, huge) — # Copyright 2026 STARGA, Inc.
-- `test_cli_help_is_harmless.py` (~1776 tok, huge) — # Copyright 2026 STARGA, Inc.
+- `test_cli_help_is_harmless.py` (~1922 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_cli_hint_correctness.py` (~1371 tok, large) — # Copyright 2026 STARGA, Inc.
 - `test_codepoint_sanitize.py` (~3333 tok, huge) — Tests for invisible-Unicode ingest sanitization (security).
 - `test_coding_schemas.py` (~1284 tok, large) — Tests for mind-mem coding-native memory schemas."""
@@ -1534,7 +1534,7 @@
 - `test_ingest_tiers.py` (~4614 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_init_workspace_postgres.py` (~1650 tok, huge) — Postgres regression tests for ``init_workspace`` (audit bug #8).
 - `test_init_workspace.py` (~4105 tok, huge) — Tests for init_workspace — config validation and workspace scaffolding."""
-- `test_injection_framing_e2e.py` (~4777 tok, huge) — # Copyright 2026 STARGA, Inc.
+- `test_injection_framing_e2e.py` (~4893 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_install_script.py` (~750 tok, large) — # pip --user honours PYTHONUSERBASE on every platform; without it a
 - `test_install_unparseable_configs.py` (~2479 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_integration.py` (~1386 tok, large) — Integration test: full mind-mem lifecycle init → capture → scan → recall."""
