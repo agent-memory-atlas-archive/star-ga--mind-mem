@@ -27,6 +27,7 @@ import re
 
 from .block_parser import parse_file
 from .fact_slots import changed_fact
+from .granularity_align import _marked_superseded
 from .observability import get_logger, metrics
 
 _log = get_logger("contradiction_detector")
@@ -321,6 +322,21 @@ def _classify_conflict(proposal_text: str, existing_text: str, similarity: float
 _BLOCK_ID_RE = re.compile(r"\b[A-Z]+-[A-Za-z0-9_.-]+\b")
 
 
+def _store_block(workspace: str, block_id: str) -> dict | None:
+    """The full admitted block from the configured store (store-backed corpora carry no committed files)."""
+    try:
+        from .admissibility import admit_corpus
+        from .block_store_encrypted import get_block_store
+
+        block = get_block_store(workspace).get_by_id(block_id)
+        if not block:
+            return None
+        admitted = admit_corpus([block], workspace=workspace)
+        return admitted[0] if admitted else None
+    except Exception:  # a store that cannot answer leaves the recall hit as the only text
+        return None
+
+
 def _superseded_ids(blocks: list[dict]) -> set[str]:
     """IDs named in any block's Supersedes field (string or list form)."""
     out: set[str] = set()
@@ -328,7 +344,11 @@ def _superseded_ids(blocks: list[dict]) -> set[str]:
         raw = block.get("Supersedes")
         for value in raw if isinstance(raw, list) else [raw]:
             if isinstance(value, str) and value.strip().lower() not in ("", "none", "n/a"):
-                out.update(t.casefold() for t in re.findall(r"[A-Za-z0-9][A-Za-z0-9_.-]*", value) if t.casefold() not in ("none", "n/a"))
+                out.update(
+                    t.casefold()
+                    for t in re.findall(r"[A-Za-z0-9](?:[A-Za-z0-9_.-]*[A-Za-z0-9])?", value)
+                    if t.casefold() not in ("none", "n/a")
+                )
     return out
 
 
@@ -419,7 +439,11 @@ def detect_contradictions(
             if block_id in seen_ids:
                 continue
             seen_ids.add(block_id)
-            if str(block_id).casefold() in replaced_ids:
+            if (
+                str(block_id).casefold() in replaced_ids
+                or _marked_superseded(result)
+                or _marked_superseded(committed_by_id.get(str(block_id), {}))
+            ):
                 continue
             # Superseded, archived or retracted memory is history: a proposal cannot contradict it.
             result_status = str(result.get("status") or result.get("Status") or "active").strip().lower()
@@ -433,7 +457,7 @@ def detect_contradictions(
             similarity = _tfidf_cosine_similarity(proposal_text, existing_text)
             # The recall hit carries a 300-char excerpt; the changed-fact comparison reads the
             # full admitted statement (a store-backed corpus without committed files keeps the hit).
-            full_block = committed_by_id.get(str(block_id), result)
+            full_block = committed_by_id.get(str(block_id)) or _store_block(ws, str(block_id)) or result
             changed = changed_fact(proposal_claim, _statement(full_block, existing_text))
             if similarity < threshold and not (changed and similarity > _CHANGED_FACT_MIN_SIMILARITY):
                 continue
@@ -462,7 +486,7 @@ def detect_contradictions(
             continue
 
         seen_ids.add(block_id)
-        if str(block_id).casefold() in replaced_ids:
+        if str(block_id).casefold() in replaced_ids or _marked_superseded(block):
             continue
         existing_text = _extract_block_text(block)
         if not existing_text.strip():

@@ -628,3 +628,38 @@ def test_supersede_reference_matching_is_case_insensitive(ref: str) -> None:
     b = _blk("D-2" if ref != "1001" else "1002")
     c = {"_id": "D-9", "content": "Something else entirely.", "Status": "active", "Supersedes": ref}
     assert find_merge_candidates([a, b, c]) == []
+
+
+# ----------------------------------------------------------------------------- round 7 battery
+
+_BATTERY = json.loads((Path(__file__).parent / "fixtures" / "fact_slots_changed_cases.json").read_text(encoding="utf-8"))
+
+
+@pytest.mark.parametrize("case", _BATTERY, ids=[c["id"] for c in _BATTERY])
+def test_changed_fact_battery(case: dict) -> None:
+    # Independent blind-review battery: currencies, signs, ranges, units, versions, ids,
+    # noon/midnight, and dates/times in 12 languages. Expectations follow the operator's rulings.
+    assert changed_fact(case["new"], case["old"]) is case["changed"]
+
+
+@pytest.mark.parametrize(
+    "new,old",
+    [
+        ("Deploy 1.2.3 - Alice owns it", "Deploy 1.2.3 - Bob owns it"),
+        ("mind-mem 5.0.4 fixes the recall bug.", "mind-mem 5.0.3 fixes the recall bug."),
+        ("Django 4.2.2 is the LTS release.", "Django 4.2.1 is the LTS release."),
+        ("Bob works at Pazar on Monday.", "Bob works at Mars on Monday."),
+        ("Call May on Thursday.", "Call Mai on Thursday."),
+        ("The backup runs at 00:00.", "The backup runs at midnight."),
+        ("The budget is $5,000.", "The budget is $5000."),
+        ("The deadline is 31.12.2026", "The deadline is 2026-12-31"),
+    ],
+)
+def test_round7_not_changes(new: str, old: str) -> None:
+    assert changed_fact(new, old) is False
+
+
+def test_supersedes_with_trailing_punctuation(tmp_path: Path) -> None:
+    for ref in ("D-1.", "D-1, D-9."):
+        blocks = [_blk("D-1"), _blk("D-2"), {"_id": "D-3", "content": "Other.", "Status": "active", "Supersedes": ref}]
+        assert find_merge_candidates(blocks) == []

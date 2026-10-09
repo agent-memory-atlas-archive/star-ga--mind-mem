@@ -289,6 +289,11 @@ _BOOKKEEPING = frozenset(
         "LastAccess",
         "Sources",
         "sources",
+        # Handled by _marked_superseded: a real successor blocks the merge; an empty one is noise.
+        "SupersededBy",
+        "Superseded_by",
+        "superseded_by",
+        "supersededBy",
         "History",
         "history",
         "Evidence",
@@ -373,7 +378,9 @@ def _superseded_by_reference(blocks: Any) -> set[str]:
             for value in raw if isinstance(raw, list) else [raw]:
                 if isinstance(value, str) and value.strip().lower() not in ("", "none", "n/a"):
                     out.update(
-                        t.casefold() for t in re.findall(r"[A-Za-z0-9][A-Za-z0-9_.-]*", value) if t.casefold() not in ("none", "n/a")
+                        t.casefold()
+                        for t in re.findall(r"[A-Za-z0-9](?:[A-Za-z0-9_.-]*[A-Za-z0-9])?", value)
+                        if t.casefold() not in ("none", "n/a")
                     )
     return out
 
@@ -387,6 +394,8 @@ def _marked_superseded(block: dict[str, Any]) -> bool:
                 return True
             if isinstance(raw, str) and raw.strip().lower() not in ("", "none", "n/a"):
                 return True
+            if raw is not None and not isinstance(raw, (str, list)) and raw not in (0, {}, False):
+                return True  # a store may hold an int or a mapping
     return False
 
 
