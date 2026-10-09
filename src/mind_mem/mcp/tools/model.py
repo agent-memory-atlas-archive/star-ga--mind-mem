@@ -20,6 +20,9 @@ import dataclasses
 import json
 import os
 from pathlib import Path
+from typing import Any
+
+from mind_mem.path_redact import redact_host_paths, supplied_pairs
 
 from ..infra.constants import MCP_SCHEMA_VERSION
 from ..infra.observability import mcp_tool_observe
@@ -130,8 +133,24 @@ def _model_path_allowed(path: str, *, want_file: bool = False) -> bool:
 
 
 def _display_path(path: str) -> str:
-    """The path as the caller supplied it: a bound caller is never shown the resolved host path."""
+    """The path exactly as the caller supplied it: never normalised, expanded or resolved."""
     return path
+
+
+def _echo(text: str, *supplied: str) -> str:
+    """Library-produced *text* with every resolved form of a supplied path put back as the caller spelled it."""
+    return redact_host_paths(text, supplied=supplied_pairs(*supplied))
+
+
+def _echo_obj(obj: Any, *supplied: str) -> Any:
+    """:func:`_echo` over every string leaf of a JSON-shaped value."""
+    if isinstance(obj, str):
+        return _echo(obj, *supplied)
+    if isinstance(obj, dict):
+        return {k: _echo_obj(v, *supplied) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_echo_obj(v, *supplied) for v in obj]
+    return obj
 
 
 @mcp_tool_observe
@@ -187,18 +206,15 @@ def audit_model_tool(
 
         report = audit_model(path, allow_extra_publishers=extra)
     except (FileNotFoundError, NotADirectoryError) as exc:
-        msg = str(exc)
-        if masked:
-            shown = _display_path(path)
-            msg = f"model path not found: {shown}" if isinstance(exc, FileNotFoundError) else f"model path is not a directory: {shown}"
+        shown = _display_path(path)
+        msg = f"model path not found: {shown}" if isinstance(exc, FileNotFoundError) else f"model path is not a directory: {shown}"
         return json.dumps(
             {"_schema_version": MCP_SCHEMA_VERSION, "ok": False, "error": msg},
             indent=2,
         )
 
-    out = report.to_dict()
-    if masked:
-        out["model_path"] = _display_path(path)
+    out = _echo_obj(report.to_dict(), path)
+    out["model_path"] = _display_path(path)
     if not include_manifest:
         out.pop("manifest", None)
     out["_schema_version"] = MCP_SCHEMA_VERSION
@@ -290,7 +306,7 @@ def sign_model_tool(
                 {
                     "_schema_version": MCP_SCHEMA_VERSION,
                     "ok": False,
-                    "error": f"key_file not found: {sk_path}",
+                    "error": f"key_file not found: {key_file}",
                 },
                 indent=2,
             )
@@ -300,7 +316,7 @@ def sign_model_tool(
                 {
                     "_schema_version": MCP_SCHEMA_VERSION,
                     "ok": False,
-                    "error": (f"key_file must be {ED25519_PRIVATE_KEY_BYTES} raw bytes, got {len(sk)} ({sk_path})"),
+                    "error": (f"key_file must be {ED25519_PRIVATE_KEY_BYTES} raw bytes, got {len(sk)} ({key_file})"),
                 },
                 indent=2,
             )
@@ -309,7 +325,7 @@ def sign_model_tool(
         result = sign_model(path, sk, write_sidecars=write_sidecars)
     except (FileNotFoundError, NotADirectoryError, ValueError) as exc:
         return json.dumps(
-            {"_schema_version": MCP_SCHEMA_VERSION, "ok": False, "error": str(exc)},
+            {"_schema_version": MCP_SCHEMA_VERSION, "ok": False, "error": _echo(str(exc), path)},
             indent=2,
         )
 
@@ -328,9 +344,9 @@ def sign_model_tool(
             "signature_hex": result.signature.hex(),
             "public_key_hex": result.public_key.hex(),
             "files_signed": len(result.manifest_text.splitlines()),
-            "manifest_path": str(result.manifest_path) if result.manifest_path else None,
-            "signature_path": str(result.signature_path) if result.signature_path else None,
-            "pubkey_path": str(result.pubkey_path) if result.pubkey_path else None,
+            "manifest_path": _echo(str(result.manifest_path), path) if result.manifest_path else None,
+            "signature_path": _echo(str(result.signature_path), path) if result.signature_path else None,
+            "pubkey_path": _echo(str(result.pubkey_path), path) if result.pubkey_path else None,
         },
         indent=2,
     )
@@ -373,7 +389,7 @@ def verify_model_tool(path: str, pubkey_path: str = "") -> str:
                 {
                     "_schema_version": MCP_SCHEMA_VERSION,
                     "ok": False,
-                    "error": f"pubkey_path not found: {p}",
+                    "error": f"pubkey_path not found: {pubkey_path}",
                 },
                 indent=2,
             )
@@ -383,7 +399,7 @@ def verify_model_tool(path: str, pubkey_path: str = "") -> str:
                 {
                     "_schema_version": MCP_SCHEMA_VERSION,
                     "ok": False,
-                    "error": (f"pubkey_path must be {ED25519_PUBLIC_KEY_BYTES} raw bytes, got {len(pk)} ({p})"),
+                    "error": (f"pubkey_path must be {ED25519_PUBLIC_KEY_BYTES} raw bytes, got {len(pk)} ({pubkey_path})"),
                 },
                 indent=2,
             )
@@ -401,15 +417,14 @@ def verify_model_tool(path: str, pubkey_path: str = "") -> str:
     else:
         try:
             result = verify_model(path, public_key=pk)
-        except NotADirectoryError as exc:
-            msg = f"checkpoint root not a directory: {_display_path(path)}" if masked else str(exc)
+        except NotADirectoryError:
+            msg = f"checkpoint root not a directory: {_display_path(path)}"
             return json.dumps(
                 {"_schema_version": MCP_SCHEMA_VERSION, "ok": False, "error": msg},
                 indent=2,
             )
-        if masked and result.error_detail:
-            resolved = str(Path(path).expanduser().resolve())
-            result = dataclasses.replace(result, error_detail=result.error_detail.replace(resolved, _display_path(path)))
+        if result.error_detail:
+            result = dataclasses.replace(result, error_detail=_echo(result.error_detail, path, pubkey_path))
 
     metrics.inc("mcp_verify_model")
     _log.info(

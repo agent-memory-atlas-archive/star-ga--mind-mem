@@ -547,3 +547,55 @@ def test_block_lineage_denied_root_walks_nothing_a_missing_root_would_not(
     denied = json.loads(call("block_lineage", "eve", block_id="D-ROOT-ACT"))
     assert denied["count"] == 0 and denied["root"] == "D-ROOT-ACT"
     assert edges_seen == [0], "the walk for a denied root must be the walk for a block with no edges"
+
+
+# --- 10. list_evidence: a denied block id does the work a missing id does -------
+
+
+def _spy_evidence_lookup(monkeypatch: pytest.MonkeyPatch) -> list[tuple[str, int]]:
+    """Record ``(looked-up id, records the chain matched)`` for every per-block lookup."""
+    from mind_mem.evidence_objects import EvidenceChain
+
+    calls: list[tuple[str, int]] = []
+    real = EvidenceChain.get_evidence_for_block
+
+    def spy(self: Any, block_id: str) -> Any:
+        found = real(self, block_id)
+        calls.append((block_id, len(found)))
+        return found
+
+    monkeypatch.setattr(EvidenceChain, "get_evidence_for_block", spy)
+    return calls
+
+
+def test_list_evidence_denied_block_does_the_same_work_as_a_missing_one(
+    ws: Path, call: Callable[..., str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    calls = _spy_evidence_lookup(monkeypatch)
+    # positive control: the evidence rows for the root block really exist and an operator reads them
+    ctl = json.loads(call("list_evidence", None, block_id="D-ROOT-ACT"))
+    assert ctl["count"] >= 1 and calls[-1] == ("D-ROOT-ACT", ctl["count"])
+    assert json.loads(call("list_evidence", "eve", block_id="D-SHARED-ACT"))["count"] >= 1  # eve's own block is served
+    calls.clear()
+    denied = call("list_evidence", "eve", block_id="D-ROOT-ACT")
+    denied_work = list(calls)
+    calls.clear()
+    missing = call("list_evidence", "eve", block_id="D-NOPE-ACT")
+    missing_work = list(calls)
+    assert _same_but_for(denied, "D-ROOT-ACT", missing, "D-NOPE-ACT") and json.loads(denied)["count"] == 0
+    # work equivalence: one lookup each, and each matched zero records -- the denied
+    # id never materialises the rows it is then forbidden to show
+    assert len(denied_work) == len(missing_work) == 1
+    assert denied_work[0][1] == missing_work[0][1] == 0, (denied_work, missing_work)
+
+
+def test_list_evidence_work_equivalence_goes_red_without_the_surrogate(
+    ws: Path, call: Callable[..., str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Mutation: filter after the fact (the old behaviour) and the work-equivalence probe must fail."""
+    from mind_mem import read_authz
+
+    calls = _spy_evidence_lookup(monkeypatch)
+    monkeypatch.setattr(read_authz.ReadScope, "allows", lambda self, block_id: True)  # gate off: a denied id is looked up as itself
+    call("list_evidence", "eve", block_id="D-ROOT-ACT")
+    assert calls and calls[-1][1] >= 1, "with the gate disabled the denied id materialises its records, which the probe must see"

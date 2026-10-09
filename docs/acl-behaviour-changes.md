@@ -91,5 +91,13 @@ Everything below applies to a BOUND caller; an unbound caller (stdio / local ope
 ## REST under `--allow-unauthenticated-localhost` with an ACL
 - Decision: REFUSE, matching the stdlib HTTP transport and gRPC. With the loopback opt-in and no authentication, the four REST read endpoints (`/v1/recall`, `/v1/block/{id}`, `/v1/scan`, `/v1/contradictions`) answer `403 {"detail": "namespace ACL is configured; this transport has no per-caller identity and is refused"}` while `mind-mem-acl.json` declares agents or `default_policy: deny`. The flag is not an operator override: a flag that exists to skip authentication cannot also be the thing that decides which namespaces a caller sees, and every other transport already refuses. To read under an ACL, configure a token or API key (it maps to a principal). the REST launcher logs `anonymous_local_reads_refused_under_namespace_acl` at startup in that configuration. Without an ACL file the opt-in is unchanged.
 
+## Host paths in replies (model tools, lint, vault_scan)
+- No user-scope reply carries an absolute host path. A single helper, `mind_mem.path_redact`, does the rewriting: a path the caller supplied comes back exactly as supplied (`~` unexpanded, trailing slash and `//` kept), the workspace is shown by directory name or workspace-relative, and `$HOME` becomes `~`.
+- `verify_model_tool`, `audit_model_tool` and `sign_model_tool` echo `pubkey_path`, `key_file` and the model path in the caller's own spelling in every error and reply (previously the `~`-expanded absolute path, or the resolved checkpoint root, was shown). Sidecar paths in a `sign_model_tool` reply are the supplied directory plus the sidecar name. For `audit_model_tool`, `model_path` is the supplied path for every caller (an unbound caller used to get the resolved path).
+- `lint` returns `workspace` as the workspace directory name, not the absolute path, and the "v4.lint is disabled" answer (which is given before any ACL check) no longer names the workspace path. `lint_autofix` likewise.
+- `vault_scan` answers "vault root not found: <root as supplied>" instead of the resolved path.
+- `list_evidence(block_id=...)`: an unreadable block id is looked up as an id no record carries, so a denied id costs the same work as a missing one (previously the rows were matched and then filtered).
+- Regression: `tests/test_read_surface_host_paths.py` calls every tool in `USER_TOOLS` (read from the registry) and every `mind-mem://` resource, as an unbound and as a shared-only caller, and fails on any absolute workspace path or `$HOME` in a response.
+
 ## New configuration
 - `model_dirs` (list of absolute paths) in `mind-mem.json`: model checkpoint directories that bound callers may audit / verify.

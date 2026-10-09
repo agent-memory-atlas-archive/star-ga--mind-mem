@@ -21,6 +21,8 @@ from __future__ import annotations
 import json
 import os
 
+from mind_mem.path_redact import redact_host_paths, supplied_pairs
+
 from ..infra.observability import mcp_tool_observe
 from ..infra.workspace import _check_workspace, _workspace
 from ._helpers import _change_stream, _kg_path
@@ -211,13 +213,14 @@ def vault_scan(vault_root: str, sync_dirs: str = "") -> str:
     if not _vault_root_readable(vault_root):
         # A vault inside the workspace is corpus: a bound caller reaches only what
         # its namespace ACL grants, and a refusal reads like a vault that is absent.
-        return json.dumps({"error": f"vault root not found: {os.path.realpath(vault_root.strip())}"})
+        return json.dumps({"error": f"vault root not found: {vault_root.strip()}"})
     dirs = [d.strip() for d in sync_dirs.split(",") if d.strip()] or None
     try:
         bridge = VaultBridge(vault_root=vault_root.strip())
         blocks = bridge.scan(sync_dirs=dirs)
     except (FileNotFoundError, ValueError) as exc:
-        return json.dumps({"error": str(exc)})
+        # The caller's own spelling of the root, never the resolved host path.
+        return json.dumps({"error": redact_host_paths(str(exc), supplied=supplied_pairs(vault_root.strip()))})
     return json.dumps(
         {
             "vault_root": vault_root,

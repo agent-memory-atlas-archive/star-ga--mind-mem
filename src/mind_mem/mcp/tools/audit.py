@@ -304,7 +304,11 @@ def list_evidence(
             return denied
 
         if block_id:
-            records = evidence.get_evidence_for_block(block_id)
+            # An unreadable block id looks up a surrogate id that no record
+            # carries, so a denied id costs exactly what a missing one costs
+            # (no matching records to build, then discard).
+            readable = (not scope.restricted) or scope.allows(block_id)
+            records = evidence.get_evidence_for_block(block_id if readable else "\x01-unreadable-block")
         elif action:
             try:
                 ev_action = EvidenceAction(action.upper())
