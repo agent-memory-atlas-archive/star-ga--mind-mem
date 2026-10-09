@@ -232,6 +232,62 @@ def roots_readable(workspace: str, roots: Iterable[object], principal: str | Non
     return True
 
 
+#: Upper bound on files examined when proving a whole directory is readable.
+MAX_ACL_WALK_FILES = 200_000
+
+
+def path_readable(
+    workspace: str,
+    path: str,
+    principal: str | None,
+    *,
+    want_file: bool = False,
+    extra_roots: Iterable[str] = (),
+    outside_ok: bool = False,
+) -> bool:
+    """May *principal* look at filesystem *path* (and, for a directory, everything under it)?
+
+    For tools that take an arbitrary host path (model checkpoints, key files,
+    vault roots). An unbound caller keeps today's behaviour. A bound caller may
+    touch a path only if it is (a) under one of *extra_roots* -- directories an
+    operator designated in configuration, (b) inside the workspace with every
+    file under it readable by the namespace ACL, or (c) outside the workspace
+    when *outside_ok* (the caller already passed an operator allowlist).
+    Anything else is refused, and the caller must answer a refusal exactly as it
+    answers a path that does not exist.
+    """
+    if not is_bound(principal):
+        return True
+    ws = os.path.realpath(workspace)
+    real = os.path.realpath(os.path.expanduser(path))
+    for allowed in extra_roots:
+        allowed = os.path.realpath(allowed)
+        if real == allowed or real.startswith(allowed + os.sep):
+            return True
+    if real != ws and not real.startswith(ws + os.sep):
+        return outside_ok
+    if real == ws:
+        rel = ""
+    else:
+        rel = os.path.relpath(real, ws).replace(os.sep, "/")
+    if os.path.isfile(real):
+        return bool(rel) and source_readable(ws, rel, principal)
+    if want_file:
+        return False
+    if not source_readable(ws, (rel + "/" if rel else "") + ".dir", principal):
+        return False
+    seen = 0
+    for dirpath, _dirs, files in os.walk(real, followlinks=False):
+        for name in files:
+            seen += 1
+            if seen > MAX_ACL_WALK_FILES:
+                return False
+            member = os.path.relpath(os.path.join(dirpath, name), ws).replace(os.sep, "/")
+            if not source_readable(ws, member, principal):
+                return False
+    return True
+
+
 def _other_namespace_roots(workspace: str) -> list[str]:
     """Namespace roots besides the workspace root: shared, declared custom, every agent dir."""
     from .namespace_retrieval import declared_custom_namespaces

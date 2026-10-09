@@ -5,8 +5,8 @@
 > Re-generate with: `anatomy .`
 
 **Project:** `mind-mem`
-**Files:** 1720 | **Est. tokens:** ~5,105,049
-**Generated:** 2026-10-09 10:32 UTC
+**Files:** 1720 | **Est. tokens:** ~5,105,963
+**Generated:** 2026-10-09 10:36 UTC
 
 ## Token Budget Guide
 
@@ -35,7 +35,7 @@
 | `deploy/docker/` | 1 | ~824 |
 | `deploy/edge/` | 2 | ~1,149 |
 | `deploy/grafana/` | 1 | ~1,145 |
-| `docs/` | 96 | ~224,548 |
+| `docs/` | 96 | ~224,576 |
 | `docs/adr/` | 2 | ~521 |
 | `docs/advisories/` | 1 | ~834 |
 | `docs/audit/` | 1 | ~4,973 |
@@ -78,14 +78,14 @@
 | `skills/mind-mem/` | 1 | ~1,671 |
 | `skills/mind-mem/references/` | 6 | ~18,811 |
 | `src/` | 1 | ~280 |
-| `src/mind_mem/` | 244 | ~1,110,188 |
+| `src/mind_mem/` | 244 | ~1,110,719 |
 | `src/mind_mem/api/` | 5 | ~28,784 |
 | `src/mind_mem/bench/` | 17 | ~48,632 |
 | `src/mind_mem/compliance/` | 7 | ~15,436 |
 | `src/mind_mem/importers/` | 10 | ~34,469 |
 | `src/mind_mem/mcp/` | 3 | ~7,718 |
 | `src/mind_mem/mcp/infra/` | 8 | ~20,532 |
-| `src/mind_mem/mcp/tools/` | 29 | ~136,361 |
+| `src/mind_mem/mcp/tools/` | 29 | ~136,360 |
 | `src/mind_mem/skill_opt/` | 11 | ~20,899 |
 | `src/mind_mem/spec/` | 4 | ~6,845 |
 | `src/mind_mem/storage/` | 2 | ~11,712 |
@@ -93,7 +93,7 @@
 | `src/mind_mem/tool_output/` | 3 | ~5,895 |
 | `src/mind_mem/v4/` | 24 | ~96,311 |
 | `src/mind_mem/viewer_static/` | 3 | ~865 |
-| `tests/` | 777 | ~2,297,237 |
+| `tests/` | 777 | ~2,297,593 |
 | `tests/fixtures/` | 8 | ~16,356 |
 | `tests/fixtures/importers/` | 5 | ~1,218 |
 | `tests/fixtures/importers/agent_memory/` | 4 | ~383 |
@@ -283,7 +283,7 @@
 - `Makefile` (~82 tok, small) — .PHONY: up down logs shell status build pull
 ### `docs/`
 
-- `acl-behaviour-changes.md` (~3006 tok, huge) — ACL behaviour changes for namespace-bound callers
+- `acl-behaviour-changes.md` (~3034 tok, huge) — ACL behaviour changes for namespace-bound callers
 ### `docs/adr/`
 
 - `001-zero-dependencies.md` (~316 tok, medium) — ADR-001: Zero External Dependencies in Core
@@ -937,14 +937,14 @@
 - `server.py` (~3215 tok, huge) — FastMCP instance + ``main()`` entry point for the Mind-Mem MCP server.
 ### `src/mind_mem/mcp/tools/`
 
-- `agent.py` (~3001 tok, huge) — Agent-bridge + vault MCP tools.
+- `agent.py` (~3215 tok, huge) — Agent-bridge + vault MCP tools.
 - `arch_mind.py` (~3475 tok, huge) — arch-mind MCP tools — wraps the ``arch-mind`` binary as 7 MCP tools.
 - `audit.py` (~4771 tok, huge) — Audit MCP tools — Merkle proofs, hash chain + evidence chain verification.
 - `benchmark.py` (~2858 tok, huge) — Benchmark + category-summary MCP tools.
 - `calibration.py` (~3083 tok, huge) — Calibration MCP tools — feedback (quality) + outcome attribution (utility).
 - `chat.py` (~1130 tok, large) — Chat surface — grounded question answering over the workspace.
 - `consolidation.py` (~8665 tok, huge) — Memory-consolidation MCP tools.
-- `core.py` (~3153 tok, huge) — Context-core MCP tools — ``.mmcore`` bundle lifecycle.
+- `core.py` (~3203 tok, huge) — Context-core MCP tools — ``.mmcore`` bundle lifecycle.
 - `encryption.py` (~2670 tok, huge) — At-rest encryption MCP tools — ``encrypt_file`` / ``decrypt_file``.
 - `frames.py` (~2195 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `governance.py` (~17653 tok, huge) — Governance MCP tools — propose / apply / rollback / scan / contradictions / memory_evolution.
@@ -957,7 +957,7 @@
 - `lint.py` (~1554 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `memory_ops.py` (~19760 tok, huge) — Memory operations MCP tools — index / lifecycle / health / export.
 - `mic_map.py` (~2436 tok, huge) — MIC/MAP serialization MCP tools — wraps ``mind_mem.mic_map``.
-- `model.py` (~4405 tok, huge) — Model audit / signing MCP tools — wraps ``mind_mem.model_audit``,
+- `model.py` (~4140 tok, huge) — Model audit / signing MCP tools — wraps ``mind_mem.model_audit``,
 - `ontology.py` (~969 tok, large) — Ontology MCP tools — ``ontology_load`` + ``ontology_validate``.
 - `pipeline.py` (~1128 tok, large) — MCP wrapping for pipeline-hash inspection + dirty-block re-extraction.
 - `public.py` (~5590 tok, huge) — # mypy: disable-error-code="no-any-return"
@@ -1010,7 +1010,7 @@
 - `quality_gate.py` (~2691 tok, huge) — Deterministic block quality gate (v3.11.0, Pattern 2).
 - `query_expansion.py` (~5349 tok, huge) — Multi-query expansion for improved recall.
 - `query_planner.py` (~2865 tok, huge) — Query decomposition for multi-hop questions (v3.3.0 Tier 1 #1).
-- `read_authz.py` (~2952 tok, huge) — # Copyright 2026 STARGA, Inc.
+- `read_authz.py` (~3483 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `recall_attestation.py` (~13053 tok, huge) — Per-run recall attestation — runtime evidence of *how* an answer was produced.
 - `recall_cache.py` (~6867 tok, huge) — v3.2.0 — distributed recall result cache (Redis + in-process LRU fallback).
 - `_recall_constants.py` (~3418 tok, huge) — Recall engine constants — search fields, BM25 params, regex patterns, limits."""
@@ -1739,7 +1739,7 @@
 - `test_readme_client_tables.py` (~2499 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_read_surface_acl_enumeration.py` (~4399 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_read_surface_acl.py` (~5475 tok, huge) — # Copyright 2026 STARGA, Inc.
-- `test_read_surface_acl_residual.py` (~6019 tok, huge) — # Copyright 2026 STARGA, Inc.
+- `test_read_surface_acl_residual.py` (~6375 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_read_surface_acl_tools.py` (~9919 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_read_surface_admission.py` (~6897 tok, huge) — Every read surface, swept with a three-status canary.
 - `test_read_surface_classification.py` (~9253 tok, huge) — The registry-wide read-surface classification — the committed table.

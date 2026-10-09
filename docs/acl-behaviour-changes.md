@@ -69,7 +69,7 @@ Everything below applies to a BOUND caller; an unbound caller (stdio / local ope
 - The remaining uses of `namespace access denied` are aggregates and whole-corpus tools (refused for a restricted view) and carry no id.
 
 ## list_cores / core(action=list)
-- A restricted caller sees a loaded core (namespace, version, block/edge counts, content hash) only if every block id in it, and the source block of every edge in it, is one the caller may read. A core made of unreadable blocks is not listed. An unbound caller and a whole-view caller see all cores.
+- A restricted caller sees a loaded core (namespace, version, block/edge counts, content hash) only if every block id in it, and the source block of every edge in it, is one the caller may read. A core made of unreadable blocks is not listed, and neither is an empty core (its name is an arbitrary label and proves nothing about what it was built from). An unbound caller and a whole-view caller see all cores.
 
 ## category_summary `withheld_count`
 - Counts only withheld (quarantined / pending / unresolved) blocks whose source the caller can read. A caller who cannot read the root corpus gets 0 for the root corpus's withheld blocks. When no section of a category is readable the reply is the same `no_categories` answer an absent category gets (the bare category title is no longer returned).

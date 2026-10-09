@@ -85,10 +85,6 @@ def _reject_bad_path(path: str, field: str = "path") -> str | None:
     return None
 
 
-#: Upper bound on files examined when proving a whole directory is readable.
-_MAX_ACL_WALK_FILES = 200_000
-
-
 def _bound_principal() -> tuple[bool, str | None]:
     """``(refuse, principal)``: refuse when the caller cannot be established."""
     from mind_mem.read_authz import CallerUnresolved, caller_principal, is_bound
@@ -116,12 +112,10 @@ def _configured_model_dirs(ws: str) -> tuple[str, ...]:
 def _model_path_allowed(path: str, *, want_file: bool = False) -> bool:
     """May the current caller look at *path* at all?
 
-    An unbound caller (stdio operator) keeps today's behaviour. A bound
-    caller may only touch (a) a directory configured as ``model_dirs`` or
-    (b) a path inside the workspace that its namespace ACL lets it read --
-    for a directory, every file below it. Anything else, including every
-    path outside the workspace, is refused; callers must answer a refusal
-    exactly as they answer a path that does not exist.
+    An unbound caller (stdio operator) keeps today's behaviour. A bound caller
+    may only touch a configured ``model_dirs`` directory or a path inside the
+    workspace its namespace ACL lets it read; see
+    :func:`mind_mem.read_authz.path_readable`. An unresolvable caller is refused.
     """
     refuse, principal = _bound_principal()
     if refuse:
@@ -129,32 +123,10 @@ def _model_path_allowed(path: str, *, want_file: bool = False) -> bool:
     if principal is None:
         return True
     from mind_mem.mcp.infra.workspace import _workspace
-    from mind_mem.read_authz import source_readable
+    from mind_mem.read_authz import path_readable
 
-    ws = os.path.realpath(_workspace())
-    real = os.path.realpath(os.path.expanduser(path))
-    for allowed in _configured_model_dirs(ws):
-        if real == allowed or real.startswith(allowed + os.sep):
-            return True
-    if not real.startswith(ws + os.sep):
-        return False
-    rel = os.path.relpath(real, ws).replace(os.sep, "/")
-    if os.path.isfile(real):
-        return source_readable(ws, rel, principal)
-    if want_file:
-        return False
-    if not source_readable(ws, rel + "/.model", principal):
-        return False
-    seen = 0
-    for dirpath, _dirs, files in os.walk(real, followlinks=False):
-        for name in files:
-            seen += 1
-            if seen > _MAX_ACL_WALK_FILES:
-                return False
-            member = os.path.relpath(os.path.join(dirpath, name), ws).replace(os.sep, "/")
-            if not source_readable(ws, member, principal):
-                return False
-    return True
+    ws = _workspace()
+    return path_readable(ws, path, principal, want_file=want_file, extra_roots=_configured_model_dirs(ws))
 
 
 def _display_path(path: str) -> str:

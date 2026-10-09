@@ -115,6 +115,20 @@ def _vault_root_allowed(vault_root: str) -> tuple[bool, str]:
     return False, (f"vault_root {vault_root!r} is outside MIND_MEM_VAULT_ALLOWLIST")
 
 
+def _vault_root_readable(vault_root: str) -> bool:
+    """May the current caller scan *vault_root* (a path the operator allowlist already admitted)?"""
+    from mind_mem.mcp.infra.workspace import _workspace
+    from mind_mem.read_authz import CallerUnresolved, caller_principal, is_bound, path_readable
+
+    try:
+        principal = caller_principal()
+    except CallerUnresolved:
+        return False
+    if not is_bound(principal):
+        return True
+    return path_readable(_workspace(), vault_root.strip(), principal, outside_ok=True)
+
+
 @mcp_tool_observe
 def agent_inject(query: str, agent: str = "generic", limit: int = 10, scoring_instant: str = "") -> str:
     """Render a context snippet in the target agent's expected format.
@@ -194,6 +208,10 @@ def vault_scan(vault_root: str, sync_dirs: str = "") -> str:
     ok, reason = _vault_root_allowed(vault_root)
     if not ok:
         return json.dumps({"error": reason})
+    if not _vault_root_readable(vault_root):
+        # A vault inside the workspace is corpus: a bound caller reaches only what
+        # its namespace ACL grants, and a refusal reads like a vault that is absent.
+        return json.dumps({"error": f"vault root not found: {os.path.realpath(vault_root.strip())}"})
     dirs = [d.strip() for d in sync_dirs.split(",") if d.strip()] or None
     try:
         bridge = VaultBridge(vault_root=vault_root.strip())

@@ -202,15 +202,17 @@ def list_cores() -> str:
     cores = registry.stats()
     if not scope.whole:
         # A core is a snapshot of block ids and graph edges. A restricted
-        # caller is told about a core (name, counts, hash) only if every id
-        # in it is one it may read; an empty core carries nothing to protect.
+        # caller is told about a core (name, counts, hash) only if it holds
+        # something and every id in it is one the caller may read. An empty
+        # core proves nothing about what it was built from (its name is an
+        # arbitrary operator label), so it is withheld too -- fail closed.
         cores = [row for row in cores if _core_servable(registry.get(row["namespace"]), scope)]
     return json.dumps({"cores": cores, "_schema_version": "1.0"}, indent=2)
 
 
 def _core_servable(core: Any, scope: Any) -> bool:
-    """True when every block and every edge source in *core* is servable to the caller."""
-    if core is None:
+    """True when *core* is non-empty and every block and edge source in it is servable to the caller."""
+    if core is None or not (core.blocks or core.edges):
         return False
     for block in core.blocks:
         if not isinstance(block, dict) or not scope.allows(block.get("_id")):

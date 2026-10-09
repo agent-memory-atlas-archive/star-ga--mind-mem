@@ -115,6 +115,20 @@ def test_verify_model_tool_is_no_oracle_for_checkpoints_or_key_files(ws: Path, c
     assert _same_but_for(d, "DECISIONS.md", m, "NOPE.md"), "a key file in an unreadable namespace must read as absent"
 
 
+def test_vault_scan_inside_the_workspace_obeys_the_namespace_acl(
+    ws: Path, monkeypatch: pytest.MonkeyPatch, call: Callable[..., str]
+) -> None:
+    monkeypatch.setenv("MIND_MEM_VAULT_ALLOWLIST", str(ws))
+    bob, zed = ws / "agents" / "bob", ws / "agents" / "zed"
+    control = call("vault_scan", None, vault_root=str(bob))
+    assert "DECISIONS.md" in control and "zqBOB" in control, "positive control: an operator scans the vault"
+    denied = call("vault_scan", "eve", vault_root=str(bob))
+    missing = call("vault_scan", "eve", vault_root=str(zed))
+    assert "zqBOB" not in denied and "DECISIONS.md" not in denied
+    assert _same_but_for(denied, str(bob), missing, str(zed))
+    assert "zqSHAREDACTIVEcanary" in call("vault_scan", "eve", vault_root=str(ws / "shared")), "eve's own namespace still scans"
+
+
 # --- 2. mind_mem_verify / verify_chain ------------------------------------------
 
 
@@ -281,12 +295,13 @@ def cores(ws: Path, monkeypatch: pytest.MonkeyPatch, call: Callable[..., str]): 
         blocks=[{"_id": "D-BOB-ACT", "content_hash": "h2"}, {"_id": "D-SHARED-ACT", "content_hash": "h1"}],
         edges=[],
     )
+    build_core(f"{d}/empty-1.0.mmcore", namespace="emptycore", version="1.0", blocks=[], edges=[])
     monkeypatch.setenv("MIND_MEM_SCOPE", "admin")
-    for name in ("shared-1.0.mmcore", "bob-1.0.mmcore"):
+    for name in ("shared-1.0.mmcore", "bob-1.0.mmcore", "empty-1.0.mmcore"):
         assert json.loads(call("load_core", None, filename=name))["loaded"] is True
     monkeypatch.setenv("MIND_MEM_SCOPE", "user")
     yield
-    for ns in ("sharedcore", "bobsecretns"):
+    for ns in ("sharedcore", "bobsecretns", "emptycore"):
         _core_registry().unload(ns)
 
 
@@ -294,12 +309,13 @@ def cores(ws: Path, monkeypatch: pytest.MonkeyPatch, call: Callable[..., str]): 
 def test_core_listing_is_filtered_to_cores_the_caller_may_read(cores: None, call: Callable[..., str], via: str) -> None:
     kw = {"action": "list"} if via == "core" else {}
     full = call(via, None, **kw)
-    assert "sharedcore" in full and "bobsecretns" in full  # positive control
+    assert "sharedcore" in full and "bobsecretns" in full and "emptycore" in full  # positive control
     eve = call(via, "eve", **kw)
     assert "sharedcore" in eve, "a core made only of readable blocks stays visible"
-    assert "bobsecretns" not in eve and "D-BOB" not in eve
+    assert "bobsecretns" not in eve and "D-BOB" not in eve and "emptycore" not in eve
     assert eve.count('"namespace"') == 1, "no name, count or hash of the hidden core"
-    assert "bobsecretns" in call(via, "ops", **kw)
+    ops = call(via, "ops", **kw)
+    assert "bobsecretns" in ops and "sharedcore" in ops
 
 
 # --- 7. category_summary withheld_count ----------------------------------------
@@ -461,3 +477,11 @@ def test_mutation_acl_detection_reopens_rest_and_http(ws: Path, monkeypatch: pyt
     monkeypatch.setattr(read_authz, "namespace_acl_configured", lambda workspace: False)
     _, body = H._handle_status(str(ws))
     assert "memory_count" in body
+
+
+def test_mutation_vault_scan_gate(ws: Path, monkeypatch: pytest.MonkeyPatch, call: Callable[..., str]) -> None:
+    from mind_mem.mcp.tools import agent
+
+    monkeypatch.setenv("MIND_MEM_VAULT_ALLOWLIST", str(ws))
+    monkeypatch.setattr(agent, "_vault_root_readable", lambda vault_root: True)
+    assert "zqBOB" in call("vault_scan", "eve", vault_root=str(ws / "agents" / "bob"))
