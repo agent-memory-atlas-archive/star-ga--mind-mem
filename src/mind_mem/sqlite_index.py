@@ -786,16 +786,41 @@ def _compute_block_hash(block: dict) -> str:
 # ---------------------------------------------------------------------------
 
 
+def _as_text(value: object) -> str:
+    """A field value as index text: list items one per line, anything else via str()."""
+    if value is None:
+        return ""
+    if isinstance(value, str):
+        return value
+    if isinstance(value, (list, tuple)):
+        return "\n".join(_as_text(v) for v in value)
+    if isinstance(value, dict):
+        return json.dumps(value, sort_keys=True, default=str)
+    return str(value)
+
+
 def _extract_fts_fields(block: dict) -> dict:
-    """Extract FTS5 column values from a block."""
+    """Extract FTS5 column values from a block.
+
+    Every column is bound as text: a list-valued field (``Statement:\n- a\n- b``)
+    is indexed one item per line instead of failing the whole build.
+    """
+
+    def field(*names: str) -> str:
+        for name in names:
+            text = _as_text(block.get(name))
+            if text:
+                return text
+        return ""
+
     return {
-        "statement": block.get("Statement", ""),
-        "title": block.get("Title", "") or block.get("Name", ""),
-        "name": block.get("Name", ""),
-        "description": block.get("Description", "") or block.get("Summary", ""),
+        "statement": field("Statement"),
+        "title": field("Title", "Name"),
+        "name": field("Name"),
+        "description": field("Description", "Summary"),
         "tags": normalise_tags(block.get("Tags", "") or block.get("Keywords", "")),
-        "context": block.get("Context", "") or block.get("Rationale", ""),
-        "all_text": " ".join(str(block.get(f, "")) for f in SEARCH_FIELDS if block.get(f)),
+        "context": field("Context", "Rationale"),
+        "all_text": " ".join(_as_text(block.get(f)) for f in SEARCH_FIELDS if block.get(f)),
     }
 
 
@@ -1032,7 +1057,7 @@ def _insert_block(
         )
 
     # --- Feature 2: Extract and index atomic fact cards as sub-blocks ---
-    statement = block.get("Statement", "")
+    statement = _as_text(block.get("Statement"))
     if statement and len(statement) > 15:
         block_date = block.get("Date", "")
         try:

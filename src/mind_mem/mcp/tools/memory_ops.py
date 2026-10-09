@@ -1163,7 +1163,8 @@ def get_block(block_id: str, namespace: str = "") -> str:
                 "_schema_version": MCP_SCHEMA_VERSION,
                 "block_id": block_id,
                 "found": True,
-                "block": admitted,
+                # Parser bookkeeping (lines kept for merge identity) is not block content.
+                "block": {k: v for k, v in admitted.items() if k != "_unparsed"},
             },
             indent=2,
             default=str,
