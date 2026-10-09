@@ -32,6 +32,7 @@ from typing import TYPE_CHECKING, Any
 from mind_mem.error_codes import ErrorCode
 from mind_mem.recall import _CONFIG_HASH_UNRESOLVED as _RECALL_CONFIG_HASH_UNRESOLVED
 from mind_mem.recall import recall as recall_engine
+from mind_mem.recall_cache import corpus_stamp as _corpus_stamp
 from mind_mem.recall_cache import retrieval_config_fingerprint
 from mind_mem.retrieval_graph import retrieval_diagnostics as _retrieval_diag
 from mind_mem.scoring_instant import format_scoring_instant, resolve_scoring_instant
@@ -97,6 +98,27 @@ def _resolve_chain_head_resolution(ws: str) -> "IndexAnchorResolution":
         from mind_mem.recall_attestation import IndexAnchorResolution
 
         return IndexAnchorResolution.unresolved(f"{type(exc).__name__}: governed head unresolved")
+
+
+def _anticipation_generation_key(ws: str, index_anchor: str, config: dict | None = None) -> str | None:
+    """The anticipation bundle generation key for *ws*, or ``None`` to bypass.
+
+    The governed-ledger head alone does not move on reindex, delete, compact,
+    lint autofix, lineage / edge writes or an out-of-band edit, so a bundle
+    keyed on it alone kept serving content those writes changed. The same
+    stat-only corpus stamp the recall cache keys on is folded in, so any such
+    write starts a new generation by construction. ``None`` -- a file inside
+    the racy-timestamp window or an unstattable input -- means the state cannot
+    be named and the bundle cache is bypassed both ways (no lookup, no record).
+
+    Every door takes this ONCE, before retrieval, and uses the same value for
+    its lookup and its record: a write that lands mid-request files the answer
+    under the pre-write generation, which no later lookup can reach.
+    """
+    stamp = _corpus_stamp(ws, config)
+    if stamp is None:
+        return None
+    return f"{index_anchor}|corpus:{stamp}"
 
 
 def _anticipation_envelope(
@@ -527,6 +549,13 @@ def _recall_impl_ranked(
         and agent_id is None
     ):
         _anticipation_identity = anticipation_generation_identity(_raw_config, str(MCP_SCHEMA_VERSION))
+    # The bundle generation key: governed head + stat-only corpus stamp, taken
+    # once BEFORE retrieval (see ``_anticipation_generation_key``).
+    _anticipation_key: str | None = None
+    if _anticipation_identity is not None:
+        _anticipation_key = _anticipation_generation_key(ws, _index_anchor, _raw_config)
+        if _anticipation_key is None:
+            _anticipation_identity = None
     # ``format="bundle"`` never takes the local answer. The early return below
     # skips the post-cache stages, and the bundle re-shaping is one of them, so
     # serving here would hand a bundle client the raw blocks envelope with no
@@ -534,14 +563,14 @@ def _recall_impl_ranked(
     # ``tests/test_recall_format_cache_isolation.py`` exists to prevent, arriving
     # through a different door. Falling through costs one round-trip and is
     # always correct, which is the trade this whole module makes everywhere else.
-    if _anticipation_identity is not None and format == "blocks":
+    if _anticipation_identity is not None and _anticipation_key is not None and format == "blocks":
         with bind_request_context(_request_context):
             _anticipated = _anticipation_envelope(
                 ws,
                 query,
                 limit,
                 _raw_config,
-                _index_anchor,
+                _anticipation_key,
                 instant_iso,
                 _anticipation_identity,
             )
@@ -565,13 +594,23 @@ def _recall_impl_ranked(
     # coordinates to the recorder keeps those paths coherent. The context's read counter is
     # diagnostic only; a cache hit need not execute the engine to record a v2 row.
     with bind_request_context(_request_context):
-        if (
+        _cache_on = (
             _anchor_resolution.resolved
             and agent_id is None
             and isinstance(_cache_cfg, dict)
             and _cache_cfg.get("enabled", True)
             and not _trace_on
-        ):
+        )
+        # The second corpus coordinate: a stat-only stamp of the index, the
+        # knowledge graph and every corpus file. The anchor above moves only on
+        # governed writes; reindex, delete, compact, lint autofix, lineage /
+        # edge writes and out-of-band edits move this instead. ``None`` (a
+        # file modified inside the racy-timestamp window, or an unstattable
+        # input) means the state cannot be named, so the request bypasses the
+        # cache rather than risk keying a stale answer. Computed only when the
+        # cache is on, so the off path pays nothing.
+        _stamp = _corpus_stamp(ws, _raw_config) if _cache_on else None
+        if _cache_on and _stamp is not None:
             raw = cached_recall(
                 _inner,
                 query,
@@ -587,6 +626,7 @@ def _recall_impl_ranked(
                 schema_version=str(MCP_SCHEMA_VERSION),
                 filters=_active_filters,
                 agent_id=agent_id,
+                corpus_stamp=_stamp,
             )
         else:
             raw_result = _inner(query, limit=limit, active_only=active_only, backend=backend, **_active_filters)
@@ -648,8 +688,8 @@ def _recall_impl_ranked(
     # because nothing ever told it what a query resolved to). Recorded against
     # the head the answer was computed at, so a write that lands between now
     # and the next lookup retires this bundle rather than aging it out.
-    if _anchor_resolution.resolved and _anticipation_identity is not None and raw:
-        _record_anticipation_bundle(ws, "recall", raw, _index_anchor, _anticipation_identity)
+    if _anchor_resolution.resolved and _anticipation_identity is not None and _anticipation_key is not None and raw:
+        _record_anticipation_bundle(ws, "recall", raw, _anticipation_key, _anticipation_identity)
 
     return raw
 
@@ -1947,6 +1987,14 @@ def prefetch(signals: str, limit: int = 5) -> str:
             index_anchor=_prefetch_anchor,
             scoring_instant=instant_iso,
         )
+        # The bundle generation key, taken BEFORE the fan-out for the same
+        # reason the recall door takes it before retrieval. Only computed when
+        # this door will record, so an opted-out workspace pays no stat.
+        from mind_mem.prefetch import anticipation_enabled as _pf_anticipation_enabled
+
+        _prefetch_bundle_key: str | None = None
+        if bound_agent is None and _prefetch_resolution.resolved and _pf_anticipation_enabled(_prefetch_config):
+            _prefetch_bundle_key = _anticipation_generation_key(ws, _prefetch_anchor, _prefetch_config)
         with bind_request_context(_prefetch_request_context):
             results = prefetch_context(
                 ws,
@@ -1970,7 +2018,12 @@ def prefetch(signals: str, limit: int = 5) -> str:
         # between this point and the attest call and prefetch wrote a RECORDED v2 row mixing them —
         # the worst of the three doors, because v2 carries a context digest making the claim.
         _served_generation = anticipation_generation_identity(_prefetch_config, str(MCP_SCHEMA_VERSION))
-        if bound_agent is None and _prefetch_resolution.resolved and anticipation_enabled(_prefetch_config):
+        if (
+            bound_agent is None
+            and _prefetch_resolution.resolved
+            and _prefetch_bundle_key is not None
+            and anticipation_enabled(_prefetch_config)
+        ):
             _prefetch_identity = anticipation_generation_identity(_prefetch_config, str(MCP_SCHEMA_VERSION))
             if _prefetch_identity is not None:
                 hits = [r for r in results if isinstance(r, dict)]
@@ -1979,7 +2032,7 @@ def prefetch(signals: str, limit: int = 5) -> str:
                         ws,
                         "prefetch",
                         hits,
-                        head=_prefetch_anchor,
+                        head=_prefetch_bundle_key,
                         generation_identity=_prefetch_identity,
                     )
         # This tool is a door: it hands assembled block content back to a

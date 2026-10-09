@@ -5,8 +5,8 @@
 > Re-generate with: `anatomy .`
 
 **Project:** `mind-mem`
-**Files:** 1699 | **Est. tokens:** ~4,979,828
-**Generated:** 2026-10-09 04:12 UTC
+**Files:** 1703 | **Est. tokens:** ~4,992,391
+**Generated:** 2026-10-09 04:13 UTC
 
 ## Token Budget Guide
 
@@ -78,14 +78,14 @@
 | `skills/mind-mem/` | 1 | ~1,671 |
 | `skills/mind-mem/references/` | 6 | ~18,811 |
 | `src/` | 1 | ~280 |
-| `src/mind_mem/` | 242 | ~1,082,469 |
+| `src/mind_mem/` | 242 | ~1,084,340 |
 | `src/mind_mem/api/` | 5 | ~27,259 |
 | `src/mind_mem/bench/` | 17 | ~48,632 |
 | `src/mind_mem/compliance/` | 7 | ~15,436 |
 | `src/mind_mem/importers/` | 10 | ~34,469 |
 | `src/mind_mem/mcp/` | 3 | ~6,672 |
 | `src/mind_mem/mcp/infra/` | 8 | ~16,195 |
-| `src/mind_mem/mcp/tools/` | 29 | ~126,821 |
+| `src/mind_mem/mcp/tools/` | 29 | ~127,587 |
 | `src/mind_mem/skill_opt/` | 11 | ~20,899 |
 | `src/mind_mem/spec/` | 4 | ~6,845 |
 | `src/mind_mem/storage/` | 2 | ~11,712 |
@@ -93,7 +93,7 @@
 | `src/mind_mem/tool_output/` | 3 | ~5,895 |
 | `src/mind_mem/v4/` | 24 | ~96,311 |
 | `src/mind_mem/viewer_static/` | 3 | ~865 |
-| `tests/` | 760 | ~2,225,375 |
+| `tests/` | 764 | ~2,235,301 |
 | `tests/fixtures/` | 7 | ~11,912 |
 | `tests/fixtures/importers/` | 5 | ~1,218 |
 | `tests/fixtures/importers/agent_memory/` | 4 | ~383 |
@@ -958,7 +958,7 @@
 - `pipeline.py` (~916 tok, large) — MCP wrapping for pipeline-hash inspection + dirty-block re-extraction.
 - `public.py` (~5590 tok, huge) — # mypy: disable-error-code="no-any-return"
 - `quality.py` (~1009 tok, large) — MCP wrapping for the v3.11.0 deterministic quality gate.
-- `recall.py` (~23342 tok, huge) — Recall surface — the retrieval core of the MCP API.
+- `recall.py` (~24108 tok, huge) — Recall surface — the retrieval core of the MCP API.
 - `signal.py` (~926 tok, large) — Interaction-signal MCP tools — ``observe_signal`` + ``signal_stats``.
 - `trajectory.py` (~1474 tok, large) — Trajectory-memory MCP tool — case-based recall over past task outcomes.
 - `walkthrough_persona.py` (~1843 tok, huge) — MCP wrapping for v3.9 walkthrough + persona projection.
@@ -1007,7 +1007,7 @@
 - `query_expansion.py` (~5349 tok, huge) — Multi-query expansion for improved recall.
 - `query_planner.py` (~2865 tok, huge) — Query decomposition for multi-hop questions (v3.3.0 Tier 1 #1).
 - `recall_attestation.py` (~13053 tok, huge) — Per-run recall attestation — runtime evidence of *how* an answer was produced.
-- `recall_cache.py` (~4996 tok, huge) — v3.2.0 — distributed recall result cache (Redis + in-process LRU fallback).
+- `recall_cache.py` (~6867 tok, huge) — v3.2.0 — distributed recall result cache (Redis + in-process LRU fallback).
 - `_recall_constants.py` (~3418 tok, huge) — Recall engine constants — search fields, BM25 params, regex patterns, limits."""
 - `_recall_context.py` (~2609 tok, huge) — Recall engine context packing — post-retrieval augmentation rules."""
 - `_recall_detection.py` (~6949 tok, huge) — Recall engine detection — query type classification, text extraction, block utilities."""
@@ -1272,7 +1272,8 @@
 - `test_allow_decompose.py` (~311 tok, medium) — Tests for _allow_decompose recall parameter."""
 - `test_answer_quality_confidence.py` (~761 tok, large) — ``self_consistency`` confidence must be votes over samples REQUESTED.
 - `test_answer_quality.py` (~1288 tok, large) — Tests for the v3.3.0 answer-quality shims."""
-- `test_anticipation_cache.py` (~9753 tok, huge) — The anticipation cache, proven to retire with the ledger head rather than a clock.
+- `test_anticipation_cache_corpus_stamp.py` (~2080 tok, huge) — The anticipation cache never serves an answer a non-governed write changed.
+- `test_anticipation_cache.py` (~10363 tok, huge) — The anticipation cache, proven to retire with the ledger head rather than a clock.
 - `test_api_keys.py` (~2133 tok, huge) — Tests for APIKeyStore in src/mind_mem/api/api_keys.py."""
 - `test_append_only_audit_log.py` (~3895 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_apply_abort_is_recorded.py` (~4908 tok, huge) — # Copyright 2026 STARGA, Inc.
@@ -1718,7 +1719,7 @@
 - `test_ra1_empty_config_backend_binding.py` (~1677 tok, huge) — The captured empty policy must not fall back to a later backend choice."""
 - `test_ra1_engine_ranks_under_captured_context.py` (~1788 tok, huge) — The engine ranks under the CAPTURED config, not the file as it stands when a leg runs.
 - `test_ra1_kernel_cli_serving.py` (~3008 tok, huge) — Acceptance controls for the primary ``mm recall --kernel`` serving door.
-- `test_ra1_public_boundary_binding.py` (~6285 tok, huge) — Public axis/prefetch RA.1 boundaries must retain one request snapshot.
+- `test_ra1_public_boundary_binding.py` (~6755 tok, huge) — Public axis/prefetch RA.1 boundaries must retain one request snapshot.
 - `test_ra1_serving_receipt_binds_engine_config.py` (~3802 tok, huge) — The recorded receipt must bind the config the ENGINE consumed — and the binding must not
 - `test_ra1v2_all_doors_snapshot.py` (~3382 tok, huge) — Every serving door binds ONE snapshot, or says it could not.
 - `test_ra1v2_live_serve_binding.py` (~4335 tok, huge) — The live serve binding: a real serve records a v2 row, and a failed bind is visible.
@@ -1731,13 +1732,16 @@
 - `test_recall_as_of.py` (~1297 tok, large) — Tests for the ``recall(..., as_of=)`` time-travel plumb-through (roadmap Group B).
 - `test_recall_attestation_anchor.py` (~4089 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_recall_attestation_completeness.py` (~3691 tok, huge) — An attestation must distinguish two runs that served different answers.
-- `test_recall_attestation_failure_boundary.py` (~1029 tok, large) — Failure-boundary controls for the post-cache recall attestation rail."""
+- `test_recall_attestation_failure_boundary.py` (~1196 tok, large) — Failure-boundary controls for the post-cache recall attestation rail."""
 - `test_recall_attestation.py` (~5631 tok, huge) — Tests for the per-run recall attestation (recall_attestation.py).
 - `test_recall_attestation_served_backend.py` (~3611 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_recall_attestation_unrequested_leg.py` (~789 tok, large) — An unrequested vector leg must not be attested as degraded.
 - `test_recall_attestation_v2.py` (~8107 tok, huge) — Acceptance gate for the ``RECALL_ATTEST_v2`` preimage.
-- `test_recall_cache_chain_head.py` (~2449 tok, huge) — The recall cache belongs to a corpus state, not to a clock.
+- `test_recall_cache_chain_head.py` (~2914 tok, huge) — The recall cache belongs to a corpus state, not to a clock.
+- `test_recall_cache_corpus_stamp.py` (~2763 tok, huge) — A recall answer is never served from cache after a write that changes it.
 - `test_recall_cache.py` (~1940 tok, huge) — Tests for v3.2.0 distributed recall cache (LRU + Redis)."""
+- `test_recall_cache_vector_path_parity.py` (~1469 tok, large) — The corpus stamp resolves every vector input exactly as its reader does.
+- `test_recall_cache_vector_stamp.py` (~1452 tok, large) — The corpus stamp covers the vector-side retrieval inputs too.
 - `test_recall_cache_workspace_projection.py` (~2052 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_recall_cli_workspace.py` (~2346 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_recall_clock_guard.py` (~5537 tok, huge) — Every leg of the recall scoring path, proven to read no clock.
@@ -1751,10 +1755,10 @@
 - `test_recall_empty_query_types.py` (~322 tok, medium) — Tests for various empty/minimal query types."""
 - `test_recall_empty_workspace.py` (~134 tok, small) — Tests for recall on empty workspaces."""
 - `test_recall_expansion_no_overbroad_synonyms.py` (~811 tok, large) — Regression tests for over-broad synonym entries in _QUERY_EXPANSIONS.
-- `test_recall_explain.py` (~4352 tok, huge) — Tests for the explain=True flag on recall and hybrid_search MCP tools.
+- `test_recall_explain.py` (~4593 tok, huge) — Tests for the explain=True flag on recall and hybrid_search MCP tools.
 - `test_recall_filter_pushdown.py` (~5733 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_recall_filters_reach_the_surface.py` (~1901 tok, huge) — # Copyright 2026 STARGA, Inc.
-- `test_recall_format_cache_isolation.py` (~1682 tok, huge) — ``format`` is not in the recall-cache key, so it must not be applied inside it.
+- `test_recall_format_cache_isolation.py` (~1891 tok, huge) — ``format`` is not in the recall-cache key, so it must not be applied inside it.
 - `test_recall_hot_path_5_0_2.py` (~4348 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_recall_intent_router.py` (~1212 tok, large) — Tests for IntentRouter integration in recall pipeline."""
 - `test_recall_large_workspace.py` (~343 tok, medium) — Tests for recall with large workspaces."""
