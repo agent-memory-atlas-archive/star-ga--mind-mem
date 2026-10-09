@@ -37,6 +37,17 @@ _BENCHMARKS = pathlib.Path(__file__).resolve().parents[1] / "benchmarks"
 if _BENCHMARKS.is_dir() and str(_BENCHMARKS) not in sys.path:
     sys.path.insert(0, str(_BENCHMARKS))
 
+# Child processes must run the code under test. Several tests (and the code
+# they exercise, e.g. cron_runner.run_job) spawn ``python -m mind_mem.<x>``; a
+# child resolves ``mind_mem`` from its own sys.path, which does not include
+# this tree, so it silently ran whatever release was installed in
+# site-packages. Export the source root this process imported, once.
+import mind_mem as _mind_mem_under_test  # noqa: E402
+
+_SRC_UNDER_TEST = str(pathlib.Path(_mind_mem_under_test.__file__).resolve().parents[1])
+if _SRC_UNDER_TEST not in os.environ.get("PYTHONPATH", "").split(os.pathsep):
+    os.environ["PYTHONPATH"] = os.pathsep.join(p for p in (_SRC_UNDER_TEST, os.environ.get("PYTHONPATH", "")) if p)
+
 
 @pytest.fixture(autouse=True)
 def _isolate_mcp_rate_limiter_state() -> Iterator[None]:

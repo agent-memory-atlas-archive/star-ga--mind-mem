@@ -5,8 +5,8 @@
 > Re-generate with: `anatomy .`
 
 **Project:** `mind-mem`
-**Files:** 1695 | **Est. tokens:** ~4,958,091
-**Generated:** 2026-10-09 01:35 UTC
+**Files:** 1695 | **Est. tokens:** ~4,958,357
+**Generated:** 2026-10-09 02:35 UTC
 
 ## Token Budget Guide
 
@@ -93,7 +93,7 @@
 | `src/mind_mem/tool_output/` | 3 | ~5,895 |
 | `src/mind_mem/v4/` | 24 | ~96,311 |
 | `src/mind_mem/viewer_static/` | 3 | ~865 |
-| `tests/` | 756 | ~2,214,140 |
+| `tests/` | 756 | ~2,214,406 |
 | `tests/fixtures/` | 7 | ~11,912 |
 | `tests/fixtures/importers/` | 5 | ~1,218 |
 | `tests/fixtures/importers/agent_memory/` | 4 | ~383 |
@@ -1182,7 +1182,7 @@
 - `world_symbol_probe.py` (~1454 tok, large) — # Copyright 2026 STARGA, Inc.
 ### `tests/`
 
-- `conftest.py` (~4237 tok, huge) — Shared test fixtures.
+- `conftest.py` (~4413 tok, huge) — Shared test fixtures.
 ### `tests/fixtures/`
 
 - `ci_jobs_advisory_red.json` (~2657 tok, huge) — Keys: _provenance, workflow_runs, 90000000001
@@ -1388,7 +1388,7 @@
 - `test_core_export_wiring.py` (~4543 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_core_v140.py` (~2707 tok, huge) — Tests for v1.4.0 core hardening: issues #28, #30, #32, #34."""
 - `test_cron_runner_config_fail_closed.py` (~1159 tok, large) — An unreadable toggle file must mean "run nothing", never "run everything".
-- `test_cron_runner.py` (~4320 tok, huge) — Tests for cron_runner.py — periodic job orchestration, config loading, subprocess dispatch."""
+- `test_cron_runner.py` (~4410 tok, huge) — Tests for cron_runner.py — periodic job orchestration, config loading, subprocess dispatch."""
 - `test_cross_encoder_auto_enable.py` (~1801 tok, huge) — v3.3.0 Tier 2 #6 — cross-encoder rerank auto-enables on ambiguous queries.
 - `test_cross_encoder_model_cache_key.py` (~1012 tok, large) — # Copyright 2026 STARGA, Inc.
 - `test_cross_encoder.py` (~1324 tok, large) — Tests for optional cross-encoder reranker."""
