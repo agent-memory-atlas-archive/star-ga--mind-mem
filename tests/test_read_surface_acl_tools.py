@@ -361,7 +361,11 @@ def test_staged_proposals_are_visible_to_their_proposer_and_to_readers_of_the_ci
     alice = _proposal_ids(call("list_edge_proposals", "alice"))
     assert "secretcomp2" in alice and "eveobj" in alice, "alice may read the root block these cite"
     assert "secretcomp2" not in _proposal_ids(call("list_edge_proposals", "eve"))
-    assert "sharedcomp" not in _proposal_ids(call("list_entity_merge_proposals", "alice")), "another caller's merge is not alice's"
+    # eve's merge derives only from shared blocks and eve's view (shared) is inside alice's: alice may see it,
+    # but never WHO staged it (that is for the proposer and whole views)
+    alice_merges = call("list_entity_merge_proposals", "alice")
+    assert "sharedcomp" in _proposal_ids(alice_merges) and '"proposer"' not in alice_merges
+    assert '"proposer": "eve"' in call("list_entity_merge_proposals", "eve")
     ops = _proposal_ids(call("list_edge_proposals", "ops")) + _proposal_ids(call("list_entity_merge_proposals", "ops"))
     assert "eveobj" in ops and "secretcomp2" in ops and "sharedcomp" in ops  # positive control: the whole view sees everything
 

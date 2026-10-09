@@ -66,10 +66,13 @@ def block_lineage(
     # distance is one the caller could derive from blocks they may read. A root
     # the caller cannot read answers exactly like a root with no edges.
     walkable = (not scope.restricted) or scope.allows(block_id)
+    # An unreadable root walks a surrogate id that carries no edges, so the
+    # work (and latency) of a denied root is that of an edgeless/missing one.
+    walk_root = str(block_id) if walkable else "\x01-unreadable-root"
     try:
         result = _read(
             ws,
-            str(block_id),
+            walk_root,
             max_depth=int(max_depth),
             kind_filter=kind_filter,
             node_cap=int(node_cap),
@@ -78,7 +81,7 @@ def block_lineage(
     except ValueError as exc:
         return json.dumps({"error": str(exc)})
     if not walkable:
-        result = dataclasses.replace(result, edges=[], truncated=False)
+        result = dataclasses.replace(result, root=str(block_id), edges=[], truncated=False)
 
     return json.dumps(result.to_dict(), indent=2)
 

@@ -606,6 +606,18 @@ def _reading_as(request: Request):  # type: ignore[no-untyped-def]
     one unbound case is the explicit loopback opt-in with no bearer at all.
     """
     if getattr(request.state, "mindmem_unauthenticated", None) is True:
+        # The loopback opt-in authenticates nobody, so every request would read
+        # as the unbound workspace-level caller. That is only coherent while no
+        # per-agent namespace ACL exists; once one does, serving the read would
+        # return what the namespace ACL denies. Refuse, as the stdlib HTTP and
+        # gRPC transports do. This is deliberately NOT an operator override:
+        # configure authentication (a token or API key maps to a principal) to
+        # read under an ACL.
+        from mind_mem.mcp.infra.workspace import _workspace
+        from mind_mem.read_authz import WORKSPACE_LEVEL_TRANSPORT_REFUSAL, namespace_acl_configured
+
+        if namespace_acl_configured(_workspace()):
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=WORKSPACE_LEVEL_TRANSPORT_REFUSAL)
         yield None
         return
     agent = getattr(request.state, "mindmem_authenticated_agent", None)
@@ -1095,7 +1107,11 @@ def create_app(
         except APIKeyStoreUnavailable:
             authenticated = False
         if authenticated:
-            body["workspace"] = ws
+            from mind_mem.read_authz import namespace_acl_configured
+
+            # Under a namespace ACL the caller is a namespaced principal, not
+            # an operator: it gets the workspace name, never the host path.
+            body["workspace"] = os.path.basename(os.path.abspath(ws)) if namespace_acl_configured(ws) else ws
             body["workspace_exists"] = os.path.isdir(ws)
         return JSONResponse(body)
 
@@ -1549,6 +1565,16 @@ def run(
         raise ValueError("tls_client_ca requires tls_certfile: mutual TLS is a property of a TLS listener")
 
     local_anonymous_capability = _enforce_fail_closed(host, allow_unauthenticated_localhost)
+    if local_anonymous_capability is not None:
+        from mind_mem.read_authz import namespace_acl_configured
+
+        if namespace_acl_configured(_active_workspace(workspace)):
+            from mind_mem.observability import get_logger as _get_logger
+
+            _get_logger("rest").warning(
+                "anonymous_local_reads_refused_under_namespace_acl",
+                detail="a namespace ACL is configured and no authentication is; reads answer 403. Configure a token or API key.",
+            )
     # N-13: create_app() has no view of the bind, so publish it here.
     os.environ[BIND_HOST_ENV] = host
 

@@ -28,6 +28,8 @@ from __future__ import annotations
 import json
 from typing import Any
 
+from mind_mem.path_redact import workspace_label
+
 from ..infra.constants import MCP_SCHEMA_VERSION
 from ..infra.observability import mcp_tool_observe
 from ..infra.workspace import _check_workspace, _workspace
@@ -39,11 +41,15 @@ __all__ = ["lint", "lint_autofix", "register"]
 
 
 def _disabled_payload(ws: str) -> str:
-    """The one answer both tools give when ``v4.lint`` is off."""
+    """The one answer both tools give when ``v4.lint`` is off.
+
+    It runs before any ACL gate, so it names the workspace only by its
+    directory name, never its absolute host path.
+    """
     return json.dumps(
         {
             "_schema_version": MCP_SCHEMA_VERSION,
-            "workspace": ws,
+            "workspace": workspace_label(ws),
             "error": "v4.lint is disabled",
             "enable": 'mind-mem.json: "v4": { "lint": { "enabled": true } }',
         },
@@ -101,7 +107,7 @@ def lint(rule: str = "") -> str:
     return json.dumps(
         {
             "_schema_version": MCP_SCHEMA_VERSION,
-            "workspace": ws,
+            "workspace": workspace_label(ws),
             "rules": list(selected) if selected else list(RULES),
             "count": len(findings),
             "autofixable": sum(1 for f in findings if f.autofixable),
@@ -155,7 +161,7 @@ def lint_autofix(finding_id: str) -> str:
     return json.dumps(
         {
             "_schema_version": MCP_SCHEMA_VERSION,
-            "workspace": ws,
+            "workspace": workspace_label(ws),
             "finding_id": finding_id,
             "proposal_id": proposal_id,
             "status": "staged",
