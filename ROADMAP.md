@@ -53,10 +53,16 @@ the original reproduction re-run against the fixed tree.
   as a `keep_longer` merge, which would have dropped the Ilona memory. A merge is now never
   proposed when people, day/date, clock time or time zone differ (`fact_slots.py`, used by
   `granularity_align.find_merge_candidates`). Test: `tests/test_granularity_align_discriminators.py`.
-- [x] **A superseded memory still ranked #1 in recall.** Superseded/revoked hits now rank
-  below every live hit in the single post-filter funnel, before the limit cut, so the live
-  replacement keeps its slot and the old one stays recallable as history.
-  Test: `tests/test_recall_superseded_rank.py`.
+- [x] **A superseded memory still ranked #1 in recall.** Every recall leg (scan, SQLite FTS,
+  hybrid) now demotes superseded/revoked hits on its own wide pool before its own limit cut:
+  a dead hit scoring at or above the lowest live hit is re-scored below that live score (the original
+  score is kept in `_replaced_demoted_from`), dead hits do not count against the wide window,
+  the FTS fetch or the rerank caps, and the scan knee keeps its historical cut plus any live
+  hit it keeps when judged among live hits. The post-filter funnel sort remains as a
+  backstop. The live replacement keeps its slot at every limit and the old one stays
+  recallable as history. Tests: `tests/test_recall_superseded_rank.py`,
+  `tests/test_recall_superseded_leg_cut.py`, `tests/test_recall_superseded_wide_pool.py`,
+  `tests/test_recall_replaced_demotion_invariants.py`.
 - [x] **Rolling back a correction also reverted later config changes, then blocked the workspace.**
   Two causes: every restore put back the snapshot's `mind-mem.json`, and
   `SpecBindingManager.get_binding` cached the binding forever (its docstring promised to
@@ -72,7 +78,8 @@ the original reproduction re-run against the fixed tree.
 ### Model — retrained `mind-mem-4b` (1 item, in progress since early October 2026)
 
 - [~] **Retrain `mind-mem-4b` on a newer base model.** In progress on Qwen3.8-4B (full fine-tune);
-  acceptance rule in `train/ACCEPTANCE.md` (every gate and every benchmark at 100%). The published weights are a
+  acceptance rule: every gate and every benchmark at 100% (the rule is kept with the
+  retraining work and lands with it). The published weights are a
   full fine-tune of Qwen3.5-4B built against an earlier tree, so they describe a tool
   surface that has since moved. Several planned features depend on a model trained
   against the current surface. Full fine-tune (not QLoRA), corpus regenerated from a
