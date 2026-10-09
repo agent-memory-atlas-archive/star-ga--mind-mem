@@ -1783,6 +1783,8 @@ def query_index(
                 LIMIT ?""",  # nosec B608 -- same provenance as the parent query above
             (fts_query, *date_params, fetch_k),
         ).fetchall()
+        rows = _with_live_supplement(conn, "blocks_fts", rows, fts_query, weights, fetch_k, date_sql, date_params)
+        fact_rows = _with_live_supplement(conn, "blocks_fts_facts", fact_rows, fts_query, weights, fetch_k, date_sql, date_params)
         rows = (
             list(rows)
             + list(fact_rows)
@@ -1956,7 +1958,10 @@ def query_index(
     # ``return_k``.
     if rerank and len(deduped) > limit:
         rerank_cap = min(len(deduped), 200 if return_k is None else max(200, return_k))
-        deduped = rerank_hits(query, deduped[:rerank_cap], debug=rerank_debug)
+        # Dead-status rows do not count against the cap (see _live_aware_window).
+        from ._recall_core import _live_aware_window
+
+        deduped = rerank_hits(query, _live_aware_window(deduped, rerank_cap), debug=rerank_debug)
 
     # Bound how much of the answer any ONE dialogue may occupy.
     #
@@ -2058,6 +2063,50 @@ def _date_predicate(since: str | None, until: str | None) -> tuple[str, tuple[st
         fragment += " AND b.date <= ?"
         params.append(until)
     return fragment, tuple(params)
+
+
+def _with_live_supplement(
+    conn: sqlite3.Connection,
+    fts_table: str,
+    rows: list[sqlite3.Row],
+    fts_query: str,
+    weights: str,
+    fetch_k: int,
+    date_sql: str,
+    date_params: tuple[str, ...],
+) -> list[sqlite3.Row]:
+    """*rows* plus the live rows a saturated fetch left out because dead rows filled it.
+
+    The FTS fetch is cut at ``fetch_k`` before any demotion can run, so once
+    ``fetch_k`` superseded/revoked rows out-score a live replacement the
+    replacement is never fetched and no later demotion can bring it back.
+    When the fetch came back full AND holds a dead row, a second fetch over
+    live rows only adds every live row a live-only fetch of ``fetch_k`` would
+    have held; rows already present are not repeated. An unsaturated fetch, or
+    one with no dead row, is returned untouched (no extra query runs).
+    """
+    from ._recall_core import _REPLACED_STATUSES
+
+    def _dead(row: sqlite3.Row) -> bool:
+        return str(row["status"] or "").strip().lower() in _REPLACED_STATUSES
+
+    if len(rows) < fetch_k or not any(_dead(r) for r in rows):
+        return rows
+    dead = sorted(_REPLACED_STATUSES)
+    placeholders = ",".join("?" for _ in dead)
+    live_rows = conn.execute(
+        f"""SELECT b.*, f.rank as fts_rank,
+                   -bm25({fts_table}, {weights}) as bm25_score
+            FROM {fts_table} f
+            JOIN blocks b ON b.id = f.block_id
+            WHERE {fts_table} MATCH ?{date_sql}
+              AND LOWER(TRIM(COALESCE(b.status, ''))) NOT IN ({placeholders})
+            ORDER BY bm25_score DESC
+            LIMIT ?""",  # nosec B608 -- fts_table is one of two module constants; weights/date_sql as in query_index; values are bound
+        (fts_query, *date_params, *dead, fetch_k),
+    ).fetchall()
+    seen = {r["id"] for r in rows}
+    return list(rows) + [r for r in live_rows if r["id"] not in seen]
 
 
 def _released_withheld_rows(

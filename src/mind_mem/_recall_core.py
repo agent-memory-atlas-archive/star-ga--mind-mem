@@ -1196,6 +1196,31 @@ def _rank_replaced_below_live(hits: list[dict]) -> list[dict]:
     return live + dead
 
 
+def _live_aware_window(hits: list[dict], k: int) -> list[dict]:
+    """``hits[:k]`` that dead-status hits cannot crowd live hits out of.
+
+    A leg's wide pool is cut at a fixed size before demotion runs, so once
+    ``k`` superseded/revoked hits out-score a live replacement, the cut drops
+    the replacement and no later demotion can bring it back. Every dead hit in
+    the window therefore buys one extra slot for the next live hit beyond it:
+    the window keeps everything ``hits[:k]`` kept, in the original order and
+    with the original scores, plus as many live hits as a live-only window of
+    size ``k`` would have held. With no dead hit in the window, or nothing
+    beyond it, this is exactly ``hits[:k]``.
+    """
+    head = hits[:k]
+    if len(hits) <= k:
+        return head
+    n_dead = sum(1 for h in head if _is_replaced(h))
+    if not n_dead:
+        return head
+    extra = [h for h in hits[k:] if not _is_replaced(h)][:n_dead]
+    if not extra:
+        return head
+    keep = {id(h) for h in extra}
+    return head + [h for h in hits[k:] if id(h) in keep]
+
+
 def _knee_cutoff_live_aware(results: list[dict], *, min_results: int, min_score: float) -> list[dict]:
     """``knee_cutoff`` whose decision about LIVE hits is not anchored on a dead hit's score.
 
@@ -2672,7 +2697,8 @@ def recall(
     # --- v7: Two-stage pipeline — wide BM25 retrieve -> dedup -> rerank -> top-k ---
     # Stage 1: Take wide candidate set (retrieve_wide_k)
     wide_k = max(retrieve_wide_k, limit)  # never retrieve fewer than final limit
-    wide_candidates = results[:wide_k]
+    # Dead-status hits do not count against the window (see _live_aware_window).
+    wide_candidates = _live_aware_window(results, wide_k)
 
     # Deduplicate by (file, line) stable key — prevents near-duplicate slots
     seen_keys = set()
@@ -2708,7 +2734,7 @@ def recall(
     # Stage 2: Deterministic rerank (v7) — cap candidates to prevent latency (#9)
     if rerank and len(deduped) > limit:
         rerank_cap = min(len(deduped), MAX_RERANK_CANDIDATES)
-        deduped = rerank_hits(query, deduped[:rerank_cap], debug=rerank_debug)
+        deduped = rerank_hits(query, _live_aware_window(deduped, rerank_cap), debug=rerank_debug)
 
     # Stage 2.5: Optional cross-encoder neural reranking — capped (#9)
     if ce_config.get("enabled", False):
@@ -2718,7 +2744,7 @@ def recall(
             if CrossEncoderReranker.is_available():
                 ce = CrossEncoderReranker()
                 ce_cap = min(len(deduped), MAX_RERANK_CANDIDATES)
-                ce_input = deduped[:ce_cap]
+                ce_input = _live_aware_window(deduped, ce_cap)
                 for r in ce_input:
                     if "content" not in r:
                         r["content"] = r.get("excerpt", "")

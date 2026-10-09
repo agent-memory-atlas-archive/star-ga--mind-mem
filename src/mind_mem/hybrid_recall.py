@@ -1983,6 +1983,14 @@ class HybridBackend:
             return _demote_replaced(result)[:limit]
         if rerank_depth is None:
             rerank_depth = resolve_rerank_depth(self._config, limit)
+        # Demote BEFORE slicing the reranker's candidates: the fused pool
+        # still ranks dead hits by their own score (the vector leg never
+        # demotes, and RRF then places superseded versions above their
+        # replacement), so a narrow ``rerank_depth`` slice of it can hold
+        # nothing but dead hits and the replacement never reaches the
+        # reranker or its failure fallback. Returns ``result`` itself when
+        # nothing needs demoting.
+        result = _demote_replaced(result)
         candidates = result[:rerank_depth]
         # A reranker returns only its own top-k, so a dead-status candidate it
         # scores high would take a live replacement's slot before any later
