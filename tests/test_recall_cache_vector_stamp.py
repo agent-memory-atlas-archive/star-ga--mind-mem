@@ -103,8 +103,12 @@ class TestTheStampSeesTheVectorInputs:
     def test_malformed_recall_config_is_tolerated(self, tmp_path) -> None:
         ws = _seed(tmp_path, index=True)
         base = corpus_stamp(ws)
-        for cfg in (None, {}, {"recall": "x"}, {"recall": {"index_path": 7, "sqlite_vec_db": ""}}):
+        for cfg in (None, {}, {"recall": "x"}, {"recall": {"sqlite_vec_db": ""}}):
             assert corpus_stamp(ws, cfg) == base
+        # A non-string index_path is not ignored: VectorBackend reads
+        # ``str(index_path)``, so the stamp covers that directory too
+        # (pinned in tests/test_recall_cache_vector_path_parity.py).
+        assert corpus_stamp(ws, {"recall": {"index_path": 7}}) is not None
 
 
 class TestNoStaleAnswerAfterAVectorOnlyWrite:

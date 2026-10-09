@@ -5,8 +5,8 @@
 > Re-generate with: `anatomy .`
 
 **Project:** `mind-mem`
-**Files:** 1698 | **Est. tokens:** ~4,968,756
-**Generated:** 2026-10-09 03:08 UTC
+**Files:** 1699 | **Est. tokens:** ~4,970,654
+**Generated:** 2026-10-09 03:23 UTC
 
 ## Token Budget Guide
 
@@ -78,7 +78,7 @@
 | `skills/mind-mem/` | 1 | ~1,671 |
 | `skills/mind-mem/references/` | 6 | ~18,811 |
 | `src/` | 1 | ~280 |
-| `src/mind_mem/` | 242 | ~1,081,076 |
+| `src/mind_mem/` | 242 | ~1,081,438 |
 | `src/mind_mem/api/` | 5 | ~27,259 |
 | `src/mind_mem/bench/` | 17 | ~48,632 |
 | `src/mind_mem/compliance/` | 7 | ~15,436 |
@@ -93,7 +93,7 @@
 | `src/mind_mem/tool_output/` | 3 | ~5,895 |
 | `src/mind_mem/v4/` | 24 | ~96,311 |
 | `src/mind_mem/viewer_static/` | 3 | ~865 |
-| `tests/` | 759 | ~2,222,530 |
+| `tests/` | 760 | ~2,224,066 |
 | `tests/fixtures/` | 7 | ~11,912 |
 | `tests/fixtures/importers/` | 5 | ~1,218 |
 | `tests/fixtures/importers/agent_memory/` | 4 | ~383 |
@@ -1007,7 +1007,7 @@
 - `query_expansion.py` (~5349 tok, huge) — Multi-query expansion for improved recall.
 - `query_planner.py` (~2865 tok, huge) — Query decomposition for multi-hop questions (v3.3.0 Tier 1 #1).
 - `recall_attestation.py` (~13053 tok, huge) — Per-run recall attestation — runtime evidence of *how* an answer was produced.
-- `recall_cache.py` (~6505 tok, huge) — v3.2.0 — distributed recall result cache (Redis + in-process LRU fallback).
+- `recall_cache.py` (~6867 tok, huge) — v3.2.0 — distributed recall result cache (Redis + in-process LRU fallback).
 - `_recall_constants.py` (~3418 tok, huge) — Recall engine constants — search fields, BM25 params, regex patterns, limits."""
 - `_recall_context.py` (~2609 tok, huge) — Recall engine context packing — post-retrieval augmentation rules."""
 - `_recall_detection.py` (~6949 tok, huge) — Recall engine detection — query type classification, text extraction, block utilities."""
@@ -1738,7 +1738,8 @@
 - `test_recall_cache_chain_head.py` (~2914 tok, huge) — The recall cache belongs to a corpus state, not to a clock.
 - `test_recall_cache_corpus_stamp.py` (~2763 tok, huge) — A recall answer is never served from cache after a write that changes it.
 - `test_recall_cache.py` (~1940 tok, huge) — Tests for v3.2.0 distributed recall cache (LRU + Redis)."""
-- `test_recall_cache_vector_stamp.py` (~1385 tok, large) — The corpus stamp covers the vector-side retrieval inputs too.
+- `test_recall_cache_vector_path_parity.py` (~1469 tok, large) — The corpus stamp resolves every vector input exactly as its reader does.
+- `test_recall_cache_vector_stamp.py` (~1452 tok, large) — The corpus stamp covers the vector-side retrieval inputs too.
 - `test_recall_cache_workspace_projection.py` (~2052 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_recall_cli_workspace.py` (~2346 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_recall_clock_guard.py` (~5537 tok, huge) — Every leg of the recall scoring path, proven to read no clock.

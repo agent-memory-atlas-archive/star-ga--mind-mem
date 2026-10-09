@@ -129,24 +129,39 @@ _STAMP_EXTRA_FILES = (
 _DEFAULT_VECTOR_INDEX_DIR = ".mind-mem-vectors"
 
 
-def _vector_stamp_inputs(config: dict | None) -> tuple[list[str], list[str]]:
-    """Directories and files the vector leg reads, per the ``recall`` config.
+def _vector_stamp_inputs(workspace: str, config: dict | None) -> tuple[list[str], list[str]] | None:
+    """Absolute directories and files the vector leg reads, per the ``recall`` config.
 
-    Pure: no I/O, no logging. Malformed values are ignored (the default
-    directory is always included), matching ``VectorBackend``'s own
-    tolerance of a malformed ``recall`` section.
+    Every path is resolved by the READER's own resolver, never re-joined here:
+    ``recall_vector.local_index_file`` (what ``VectorBackend._get_index_path``
+    and ``rebuild_index`` use) for the index directory, and
+    ``VectorBackend._sqlite_vec_db_path`` for the sqlite-vec database. A
+    relative, absolute, ``~``-prefixed or symlinked ``recall.index_path`` /
+    ``recall.sqlite_vec_db`` therefore names the file recall actually opens.
+    ``index_path`` is coerced with ``str()`` exactly as ``VectorBackend``
+    coerces it. The default directory is always included.
+
+    Pure: no I/O, no logging (``VectorBackend`` is never constructed — its
+    ``__init__`` logs). Returns ``None`` (the caller bypasses the cache) when a
+    configured value is one the reader's resolver itself cannot resolve.
     """
-    dirs = [_DEFAULT_VECTOR_INDEX_DIR]
-    files: list[str] = []
+    import os
+    from types import SimpleNamespace
+
+    from .recall_vector import VectorBackend, local_index_file
+
     recall_cfg = config.get("recall") if isinstance(config, dict) else None
-    if isinstance(recall_cfg, dict):
-        index_path = recall_cfg.get("index_path")
-        if isinstance(index_path, str) and index_path.strip() and index_path not in dirs:
-            dirs.append(index_path)
-        vec_db = recall_cfg.get("sqlite_vec_db")
-        if isinstance(vec_db, str) and vec_db.strip():
-            files.extend((vec_db, f"{vec_db}-wal"))
-    return dirs, files
+    if not isinstance(recall_cfg, dict):
+        recall_cfg = {}
+    try:
+        index_paths = [_DEFAULT_VECTOR_INDEX_DIR]
+        if "index_path" in recall_cfg:
+            index_paths.append(str(recall_cfg["index_path"]))
+        dirs = [os.path.dirname(local_index_file(workspace, ip)) for ip in index_paths]
+        vec_db = VectorBackend._sqlite_vec_db_path(SimpleNamespace(config=recall_cfg), workspace)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return None
+    return list(dict.fromkeys(dirs)), [vec_db, f"{vec_db}-wal"]
 
 
 def corpus_stamp(workspace: str, config: dict | None = None) -> str | None:
@@ -181,48 +196,58 @@ def corpus_stamp(workspace: str, config: dict | None = None) -> str | None:
     now_ns = time.time_ns()
     parts: list[str] = []
 
-    def _add(rel: str) -> bool:
+    def _add(label: str, path: str) -> bool:
         try:
-            st = os.stat(os.path.join(root, *rel.split("/")))
+            st = os.stat(path)
         except FileNotFoundError:
-            parts.append(f"{rel}\x00absent")
+            parts.append(f"{label}\x00absent")
             return True
         except OSError:
             return False
         if st.st_mtime_ns > now_ns - _RACY_WINDOW_NS:
             return False
-        parts.append(f"{rel}\x00{st.st_size}\x00{st.st_mtime_ns}\x00{st.st_ctime_ns}\x00{st.st_ino}")
+        parts.append(f"{label}\x00{st.st_size}\x00{st.st_mtime_ns}\x00{st.st_ctime_ns}\x00{st.st_ino}")
         return True
 
-    def _listing(rel_dir: str) -> list[str] | None:
+    def _listing(label_dir: str, path_dir: str) -> list[tuple[str, str]] | None:
         try:
-            names = sorted(os.listdir(os.path.join(root, *rel_dir.split("/"))))
+            names = sorted(os.listdir(path_dir))
         except (FileNotFoundError, NotADirectoryError):
-            parts.append(f"{rel_dir}/\x00absent")
+            parts.append(f"{label_dir}/\x00absent")
             return []
         except OSError:
             return None
         return [
-            f"{rel_dir}/{name}"
+            (f"{label_dir}/{name}", os.path.join(path_dir, name))
             for name in names
             if name not in _STAMP_EXCLUDED_INDEX_NAMES and not name.endswith(_STAMP_EXCLUDED_INDEX_SUFFIXES)
         ]
 
-    vector_dirs, vector_files = _vector_stamp_inputs(config)
-    rels: list[str] = []
-    for rel_dir in (".mind-mem-index", *vector_dirs):
-        listed = _listing(rel_dir)
+    def _ws(rel: str) -> tuple[str, str]:
+        return rel, os.path.join(root, *rel.split("/"))
+
+    vector_inputs = _vector_stamp_inputs(root, config)
+    if vector_inputs is None:
+        return None
+    vector_dirs, vector_files = vector_inputs
+    # Workspace-relative inputs are labelled by their relative name; vector
+    # inputs by the absolute path their reader resolved (it may lie outside
+    # the workspace, e.g. an absolute ``recall.index_path``).
+    dir_inputs = [_ws(".mind-mem-index"), *((d, d) for d in vector_dirs)]
+    inputs: list[tuple[str, str]] = []
+    for label_dir, path_dir in dir_inputs:
+        listed = _listing(label_dir, path_dir)
         if listed is None:
             return None
-        rels.extend(listed)
-    rels.extend(_STAMP_EXTRA_FILES)
-    rels.extend(vector_files)
+        inputs.extend(listed)
+    inputs.extend(_ws(rel) for rel in _STAMP_EXTRA_FILES)
+    inputs.extend((f, f) for f in vector_files)
     try:
-        rels.extend(rel for _label, rel in discover_corpus_files(root))
+        inputs.extend(_ws(rel) for _label, rel in discover_corpus_files(root))
     except OSError:
         return None
-    for rel in rels:
-        if not _add(rel):
+    for label, path in inputs:
+        if not _add(label, path):
             return None
     return hashlib.sha256("\x01".join(parts).encode("utf-8")).hexdigest()[:32]
 
