@@ -43,7 +43,15 @@ from typing import Any, Callable
 import pytest
 
 from mind_mem.mcp.infra import rate_limit as _rate_limit
-from mind_mem.mcp.infra.acl import ADMIN_TOOLS, USER_STAGING_WRITES, USER_TOOLS, WRITE_MODE_GATES
+from mind_mem.mcp.infra.acl import (
+    ADMIN_TOOLS,
+    STAGING_STORE_READERS,
+    USER_STAGING_WRITES,
+    USER_TOOLS,
+    WRITE_MODE_GATES,
+    cross_client_reader_config_keys,
+    staging_store_token,
+)
 from mind_mem.mcp.infra.workspace import use_workspace
 
 D1 = "D-20260101-001"
@@ -273,7 +281,19 @@ def _diff(before: dict[str, str], after: dict[str, str]) -> set[str]:
 # ---------------------------------------------------------------------------
 
 
-def _build_template(v4_flags: dict[str, Any]) -> Any:
+def _enable_dotted(cfg: dict[str, Any], dotted: str) -> None:
+    """Turn ``a.b.c`` on as ``{"enabled": true}``, keeping nested sections."""
+    node = cfg
+    for part in dotted.split("."):
+        child = node.get(part)
+        if not isinstance(child, dict):
+            child = {}
+            node[part] = child
+        node = child
+    node["enabled"] = True
+
+
+def _build_template(v4_flags: dict[str, Any], config_keys: tuple[str, ...] = ()) -> Any:
     from mind_mem import sqlite_index
     from mind_mem.block_metadata import BlockMetadataManager, block_meta_db_path
     from mind_mem.causal_graph import CausalGraph
@@ -290,6 +310,8 @@ def _build_template(v4_flags: dict[str, Any]) -> Any:
     with open(cfg_path, encoding="utf-8") as handle:
         cfg = json.load(handle)
     cfg.setdefault("v4", {}).update(v4_flags)
+    for dotted in config_keys:
+        _enable_dotted(cfg, dotted)
     with open(cfg_path, "w", encoding="utf-8") as handle:
         json.dump(cfg, handle)
     sqlite_index.build_index(ws)
@@ -339,16 +361,19 @@ def template() -> Any:
 
 @pytest.fixture(scope="module")
 def template_v4_on() -> Any:
-    """The template with EVERY v4 flag on.
+    """The template with EVERY v4 flag and EVERY cross-client reader on.
 
     Flag-gated side writes (a sidecar a default-mode call emits only when its
-    flag is set) are invisible to the base template; measuring the surface
-    with every flag on is what makes the staging pin exact rather than exact
-    only for the default configuration.
+    flag is set) are invisible to the base template, and so is a staged store
+    that a reader serves to other clients only under an opt-in. Both lists are
+    generated from the code -- ``ALL_V4_FLAGS`` and the enabling keys of the
+    serving readers in ``STAGING_STORE_READERS`` (which an AST scan in
+    tests/test_acl_staging_readers.py holds complete) -- so a new flag or a
+    new reader cannot be left out of this measurement.
     """
     from mind_mem.v4.feature_flags import ALL_V4_FLAGS
 
-    yield from _build_template({flag: {"enabled": True} for flag in ALL_V4_FLAGS})
+    yield from _build_template({flag: {"enabled": True} for flag in ALL_V4_FLAGS}, cross_client_reader_config_keys())
 
 
 @pytest.fixture(scope="module")
@@ -599,3 +624,30 @@ def test_each_report_outcome_sidecar_flag_alone_gates_the_default_mode(flag: str
     finally:
         with open(cfg_path, "w", encoding="utf-8") as handle:
             handle.write(original)
+
+
+def _serves_others(name: str) -> bool:
+    return any(
+        reader.role == "serving"
+        for store in USER_STAGING_WRITES[name]
+        for reader in STAGING_STORE_READERS.get(staging_store_token(store), {}).values()
+    )
+
+
+@pytest.mark.parametrize("name", sorted(USER_STAGING_WRITES))
+def test_staging_write_is_admin_while_a_reader_serves_it_to_others(name: str, run_tool_v4_on) -> None:
+    """Under the all-readers-on template a staged store some reader serves to
+    other clients is no longer staging: the user call is denied and writes
+    nothing, the admin call writes the store (positive control)."""
+    if not _serves_others(name):
+        pytest.skip(f"no reader serves {name}'s store to other clients")
+    result, changed, _g = run_tool_v4_on(name, "user", STAGING_ARGS.get(name))
+    assert "requires admin scope" in result, result[:300]
+    assert not (changed - READ_ACCOUNTING), changed
+    result, changed, _g = run_tool_v4_on(name, "admin", STAGING_ARGS.get(name))
+    assert changed & set(USER_STAGING_WRITES[name]), f"{name} at admin wrote nothing visible: {result[:300]}"
+
+
+def test_some_staged_store_has_a_serving_reader() -> None:
+    """The parametrized test above must not skip everything."""
+    assert any(_serves_others(name) for name in USER_STAGING_WRITES)

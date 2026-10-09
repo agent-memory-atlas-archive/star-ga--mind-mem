@@ -477,8 +477,11 @@ USER_TOOLS = frozenset(
 #: staging or feedback store and nothing else: a proposal waits for an admin
 #: approve_* call before it reaches the source of truth, a signal row is an
 #: input the operator-side tuning reads, and a recall_outcome row moves no
-#: served score unless the operator opts the workspace into
-#: ``recall.validity_gate.outcome_attribution``. A store that recall reads by
+#: served score while no reader serves it. Staging holds only while NO reader
+#: of the store changes what other clients are served: ``_gate_staging_readers``
+#: turns the write admin-scope whenever a serving reader in
+#: ``STAGING_STORE_READERS`` is on (``recall_outcome`` under
+#: ``recall.validity_gate.outcome_attribution``). A store that recall reads by
 #: default (calibration_feedback) is NOT staging: its writers are admin. This is the only write a
 #: user-scope tool may make; tests/test_acl_user_scope_read_only.py measures
 #: every user tool against it and holds the set as an exact ratchet, so a new
@@ -490,6 +493,169 @@ USER_STAGING_WRITES: dict[str, tuple[str, ...]] = {
     "propose_entity_merge": ("memory/knowledge_graph.db::entity_merge_proposals",),
     "report_outcome": (".mind-mem-index/recall.db::recall_outcome",),
 }
+
+
+def staging_store_token(store: str) -> str:
+    """The name a staged store goes by in code: its table, else its file stem."""
+    if "::" in store:
+        return store.rsplit("::", 1)[1]
+    return os.path.splitext(os.path.basename(store))[0]
+
+
+@dataclass(frozen=True)
+class StoreReader:
+    """How one function touches a staged store.
+
+    ``role`` is ``plumbing`` (passes rows on; whatever calls it is classified
+    in turn), ``writer`` (the staging append itself), ``report`` (shows rows to
+    the caller and moves nothing), ``derived`` (feeds an artifact that reaches
+    other clients only through a separate admin step), ``approval`` (applies a
+    staged row to shared state; an admin tool) or ``serving`` (changes what
+    OTHER clients are served). A serving reader names the config keys that turn
+    it on -- all of them must be on for it to read -- and while it is on, a
+    user-scope write to its store is an admin write.
+    """
+
+    role: str
+    enabled_by: tuple[str, ...] = ()
+    why: str = ""
+
+
+_P = StoreReader("plumbing")
+_W = StoreReader("writer")
+_R = StoreReader("report")
+
+#: Every function that touches a USER_STAGING_WRITES store, directly or through
+#: plumbing, keyed by ``staging_store_token``. tests/test_acl_staging_readers.py
+#: derives the touching set from the source (AST, transitively) and fails on
+#: any function missing here, so a new reader -- and the config key that turns
+#: it on -- is classified in the change that adds it, and the all-readers-on
+#: template in tests/test_acl_user_scope_read_only.py enables every such key.
+STAGING_STORE_READERS: dict[str, dict[str, StoreReader]] = {
+    "recall_outcome": {
+        "mind_mem.outcome_store.record_outcome": _W,
+        "mind_mem.calibration.CalibrationManager.record_outcome": _W,
+        "mind_mem.outcome_attribution.report_outcome": _W,
+        "mind_mem.mcp.tools.calibration.report_outcome": _W,
+        "mind_mem.outcome_store.get_outcome_signals": _P,
+        "mind_mem.calibration.CalibrationManager.get_outcome_signals": _P,
+        "mind_mem.outcome_attribution.load_outcome_signals": _P,
+        "mind_mem.validity_gate._load_outcome_signals": StoreReader(
+            "serving",
+            ("recall.validity_gate", "recall.validity_gate.outcome_attribution"),
+            "every client's recall reweights its served scores by these outcomes",
+        ),
+        "mind_mem.outcome_store.get_outcome_stats": _R,
+        "mind_mem.outcome_store.list_outcomes": _R,
+        "mind_mem.calibration.CalibrationManager.get_outcome_stats": _R,
+        "mind_mem.calibration.CalibrationManager.list_outcomes": _R,
+        "mind_mem.outcome_attribution.outcome_stats": _R,
+        "mind_mem.accountability_views.credit_rows": _R,
+    },
+    "interaction_signals": {
+        "mind_mem.mcp.tools.signal.observe_signal": _W,
+        "mind_mem.mcp.tools._helpers._signal_store_path": _P,
+        "mind_mem.online_trainer._signal_ledger_path": _P,
+        "mind_mem.online_trainer.run_harvest_job": StoreReader(
+            "derived",
+            why="appends training tuples; weights reach recall only through the governed promotion step",
+        ),
+        "mind_mem.online_trainer.harvest_stats": _R,
+        "mind_mem.mcp.tools.signal.signal_stats": _R,
+        "mind_mem.mcp.tools.memory_ops.index_stats": _R,
+        "mind_mem.mcp.tools.memory_ops._mrr_drift": _R,
+    },
+    "edge_proposals": {
+        "mind_mem.knowledge_graph.KnowledgeGraph.propose_edge": _W,
+        "mind_mem.mcp.tools.graph.propose_edge": _W,
+        "mind_mem.knowledge_graph.KnowledgeGraph.get_edge_proposal": _P,
+        "mind_mem.knowledge_graph.KnowledgeGraph.list_edge_proposals": _R,
+        "mind_mem.knowledge_graph.KnowledgeGraph.approve_edge": StoreReader("approval"),
+        "mind_mem.knowledge_graph.KnowledgeGraph.reject_edge": StoreReader("approval"),
+        "mind_mem.mcp.tools.graph.approve_edge": StoreReader("approval"),
+    },
+    "entity_merge_proposals": {
+        "mind_mem.knowledge_graph.KnowledgeGraph.propose_entity_merge": _W,
+        "mind_mem.knowledge_graph.KnowledgeGraph.get_entity_merge_proposal": _P,
+        "mind_mem.knowledge_graph.KnowledgeGraph.list_entity_merge_proposals": _R,
+        "mind_mem.knowledge_graph.KnowledgeGraph.approve_entity_merge": StoreReader("approval"),
+        "mind_mem.knowledge_graph.KnowledgeGraph.reverse_entity_merge": StoreReader("approval"),
+        "mind_mem.mcp.tools.graph.approve_entity_merge": StoreReader("approval"),
+        "mind_mem.mcp.tools.graph.reverse_entity_merge": StoreReader("approval"),
+    },
+}
+
+
+def cross_client_reader_config_keys() -> tuple[str, ...]:
+    """Every config key that turns on a reader serving a staged store to others."""
+    keys = {k for readers in STAGING_STORE_READERS.values() for r in readers.values() if r.role == "serving" for k in r.enabled_by}
+    return tuple(sorted(keys))
+
+
+#: Parsed workspace configs, keyed on (path, mtime_ns, size): a stat per probe,
+#: never a re-parse, and no log line either way.
+_CONFIG_CACHE: dict[tuple[str, int, int], Any] = {}
+_UNREADABLE = object()
+
+
+def _workspace_config() -> Any:
+    """The workspace ``mind-mem.json`` recall reads; ``{}`` when absent and the
+    ``_UNREADABLE`` sentinel when present but not a JSON object."""
+    from mind_mem.mcp.infra.workspace import _workspace
+
+    path = os.path.join(_workspace(), "mind-mem.json")
+    try:
+        st = os.stat(path)
+    except OSError:
+        return {}
+    key = (path, st.st_mtime_ns, st.st_size)
+    if key not in _CONFIG_CACHE:
+        try:
+            with open(path, encoding="utf-8") as handle:
+                parsed = json.load(handle)
+        except (OSError, ValueError):
+            parsed = _UNREADABLE
+        if not isinstance(parsed, dict):
+            parsed = _UNREADABLE
+        if len(_CONFIG_CACHE) >= 64:
+            _CONFIG_CACHE.clear()
+        _CONFIG_CACHE[key] = parsed
+    return _CONFIG_CACHE[key]
+
+
+def _config_key_on(cfg: Any, dotted: str) -> bool:
+    """True when *dotted* is on: ``true`` or ``{"enabled": <truthy>}``.
+
+    ``v4.*`` keys use the flag resolver itself, so the gate and the flag cannot
+    disagree. An unreadable config is ON: the gate fails closed.
+    """
+    if dotted.startswith("v4."):
+        from mind_mem.v4.feature_flags import is_enabled_quiet
+
+        return is_enabled_quiet(dotted[3:])
+    if cfg is _UNREADABLE:
+        return True
+    node: Any = cfg
+    for part in dotted.split("."):
+        if not isinstance(node, dict):
+            return False
+        node = node.get(part)
+    if isinstance(node, dict):
+        return bool(node.get("enabled", False))
+    return node is True
+
+
+def _gate_staging_readers(tool_name: str) -> WriteMode | None:
+    """Deny a staging write while any reader serves its store to other clients."""
+    stores = USER_STAGING_WRITES.get(tool_name, ())
+    if not stores:
+        return None
+    cfg = _workspace_config()
+    for store in stores:
+        for func, reader in STAGING_STORE_READERS.get(staging_store_token(store), {}).items():
+            if reader.role == "serving" and all(_config_key_on(cfg, k) for k in reader.enabled_by):
+                return WriteMode(f"{tool_name}({reader.enabled_by[-1]})", f"{reader.why} ({func})")
+    return None
 
 
 @dataclass(frozen=True)
@@ -547,8 +713,8 @@ _REPORT_OUTCOME_SIDECAR_FLAGS: dict[str, str] = {
 
 
 def _gate_report_outcome(args: dict[str, Any]) -> WriteMode | None:
-    # The default mode appends to recall_outcome only (pinned staging). The
-    # projection writes calibration_feedback, which recall reads on every
+    # The default mode appends to recall_outcome only (pinned staging, judged
+    # by its readers in _gate_staging_readers). The projection writes calibration_feedback, which recall reads on every
     # query and which therefore reweights every client's served scores.
     if args.get("project_to_calibration", False):
         return WriteMode(
@@ -666,6 +832,19 @@ def check_tool_acl(tool_name: str, scope: str) -> str | None:
     return None
 
 
+#: Every tool whose call is judged by ``write_mode_of``: the argument gates
+#: plus the staging writers, whose write turns admin while a serving reader of
+#: their store is on.
+WRITE_GATED_TOOLS = frozenset(WRITE_MODE_GATES) | frozenset(USER_STAGING_WRITES)
+
+
+def write_mode_of(tool_name: str, arguments: dict[str, Any]) -> WriteMode | None:
+    """The cross-client write this call would make, or None for a read/staging."""
+    gate = WRITE_MODE_GATES.get(tool_name)
+    mode = gate(arguments) if gate is not None else None
+    return mode if mode is not None else _gate_staging_readers(tool_name)
+
+
 def check_write_mode_acl(tool_name: str, arguments: dict[str, Any], scope: str) -> str | None:
     """Deny a user-scope tool's WRITE mode at non-admin *scope*.
 
@@ -675,10 +854,7 @@ def check_write_mode_acl(tool_name: str, arguments: dict[str, Any], scope: str) 
     """
     if scope == "admin":
         return None
-    gate = WRITE_MODE_GATES.get(tool_name)
-    if gate is None:
-        return None
-    mode = gate(arguments)
+    mode = write_mode_of(tool_name, arguments)
     if mode is None:
         return None
     metrics.inc("mcp_acl_denied")

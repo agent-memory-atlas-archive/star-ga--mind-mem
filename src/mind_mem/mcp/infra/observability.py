@@ -31,11 +31,12 @@ from mind_mem.observability import get_logger, log_context_active, metrics
 from .acl import (
     ADMIN_TOOLS,
     USER_TOOLS,
-    WRITE_MODE_GATES,
+    WRITE_GATED_TOOLS,
     _get_request_scope,
     bind_auth_snapshot,
     check_tool_acl,
     check_write_mode_acl,
+    write_mode_of,
 )
 from .constants import MCP_SCHEMA_VERSION
 from .rate_limit import _get_client_id, _get_client_rate_limiter
@@ -167,7 +168,7 @@ def mcp_tool_observe(fn):
         # are bound to the signature (defaults applied) so a positional and a
         # keyword call are judged alike. A call that does not bind will raise
         # TypeError in ``fn`` before any body runs, so it needs no verdict.
-        if tool_name in WRITE_MODE_GATES:
+        if tool_name in WRITE_GATED_TOOLS:
             if _signature is None:  # pragma: no cover - a gated tool is a plain def
                 return json.dumps({"error": f"Tool '{tool_name}' write-mode gate cannot inspect its arguments"})
             try:
@@ -177,7 +178,7 @@ def mcp_tool_observe(fn):
             if bound is not None:
                 bound.apply_defaults()
                 if acl_disabled:
-                    gate = WRITE_MODE_GATES[tool_name](dict(bound.arguments))
+                    gate = write_mode_of(tool_name, dict(bound.arguments))
                     if gate is not None:
                         _log.warning(
                             "acl_bypassed_via_env",
