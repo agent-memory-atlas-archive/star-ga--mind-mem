@@ -210,6 +210,7 @@ def make_query_id(query: str) -> str:
 # Calibration Manager
 # ---------------------------------------------------------------------------
 
+
 # BOUNDED LRU, closed on eviction. Each ConnectionManager pins ~3 descriptors
 # (db, -wal, -shm); an unbounded per-workspace cache exhausts RLIMIT_NOFILE
 # under workspace churn and the collector never reclaims them. The same shape

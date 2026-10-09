@@ -5,8 +5,8 @@
 > Re-generate with: `anatomy .`
 
 **Project:** `mind-mem`
-**Files:** 1721 | **Est. tokens:** ~5,101,187
-**Generated:** 2026-10-09 11:59 UTC
+**Files:** 1732 | **Est. tokens:** ~5,114,992
+**Generated:** 2026-10-09 12:16 UTC
 
 ## Token Budget Guide
 
@@ -26,7 +26,7 @@
 | `.agents/skills/mind-mem-development/` | 1 | ~456 |
 | `.arch-mind/` | 7 | ~5,887 |
 | `audits/` | 5 | ~24,039 |
-| `benchmarks/` | 66 | ~182,143 |
+| `benchmarks/` | 66 | ~182,487 |
 | `benchmarks/repro/` | 1 | ~689 |
 | `benchmarks/repro/niah/` | 4 | ~2,557 |
 | `benchmarks/repro/niah-smoke/` | 5 | ~4,684 |
@@ -78,7 +78,7 @@
 | `skills/mind-mem/` | 1 | ~1,671 |
 | `skills/mind-mem/references/` | 6 | ~18,811 |
 | `src/` | 1 | ~280 |
-| `src/mind_mem/` | 245 | ~1,113,697 |
+| `src/mind_mem/` | 247 | ~1,120,273 |
 | `src/mind_mem/api/` | 5 | ~28,329 |
 | `src/mind_mem/bench/` | 17 | ~48,632 |
 | `src/mind_mem/compliance/` | 7 | ~15,436 |
@@ -93,7 +93,7 @@
 | `src/mind_mem/tool_output/` | 3 | ~5,895 |
 | `src/mind_mem/v4/` | 24 | ~96,311 |
 | `src/mind_mem/viewer_static/` | 3 | ~865 |
-| `tests/` | 778 | ~2,296,614 |
+| `tests/` | 787 | ~2,303,499 |
 | `tests/fixtures/` | 8 | ~16,356 |
 | `tests/fixtures/importers/` | 5 | ~1,218 |
 | `tests/fixtures/importers/agent_memory/` | 4 | ~383 |
@@ -201,8 +201,8 @@
 - `integrity_benchmark.py` (~2833 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `lme_ablation_report.py` (~1300 tok, large) — # Copyright 2026 STARGA, Inc.
 - `local_stack_audit.py` (~1822 tok, huge) — Single-shot audit of the local mind-mem stack before a bench run.
-- `locomo_harness.py` (~4147 tok, huge) — LoCoMo Benchmark Harness for mind-mem Recall Engine.
-- `locomo_judge.py` (~17207 tok, huge) — LoCoMo LLM-as-Judge Evaluation for Mind-Mem.
+- `locomo_harness.py` (~4319 tok, huge) — LoCoMo Benchmark Harness for mind-mem Recall Engine.
+- `locomo_judge.py` (~17379 tok, huge) — LoCoMo LLM-as-Judge Evaluation for Mind-Mem.
 - `locomo_suite.py` (~4797 tok, huge) — # Relocated out of the wheel in 5.0.0: this is a benchmark entry-point
 - `locomo_v3.3.0_benchmark_config.json` (~450 tok, medium) — Keys: _comment, version, recall, cache, cross_encoder
 - `longmemeval_apples.py` (~1674 tok, huge) — LongMemEval-S apples-to-apples harness (mind-mem hybrid BM25+vector).
@@ -747,6 +747,7 @@
 - `alerting.py` (~2738 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `alert_urls.py` (~1873 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `anchoring.py` (~4266 tok, huge) — # Copyright 2026 STARGA, Inc.
+- `answer_facts.py` (~3635 tok, huge) — Deterministic facts computed from the evidence before the answerer sees it.
 - `answer_quality.py` (~3059 tok, huge) — Answer-quality layer: verification + self-consistency + per-category spec.
 ### `src/mind_mem/api/`
 
@@ -797,7 +798,7 @@
 - `block_store.py` (~18362 tok, huge) — BlockStore abstraction — decouples block access from storage format.
 - `bootstrap_corpus.py` (~4094 tok, huge) — mind-mem Bootstrap Corpus — one-time backfill from existing knowledge sources.
 - `boundary_witness.py` (~3878 tok, huge) — # Copyright 2026 STARGA, Inc.
-- `calibration.py` (~7954 tok, huge) — Calibration feedback loop — track retrieval quality and adjust block ranking.
+- `calibration.py` (~7955 tok, huge) — Calibration feedback loop — track retrieval quality and adjust block ranking.
 - `capture.py` (~5607 tok, huge) — mind-mem Auto-Capture Engine with Structured Extraction. Zero external deps.
 - `category_distiller.py` (~6359 tok, huge) — mind-mem Category Distiller — auto-generates thematic summary files from memory blocks.
 - `causal_graph.py` (~4689 tok, huge) — mind-mem Temporal Causal Graph — directed dependency tracking with staleness.
@@ -807,7 +808,7 @@
 - `chat_citations.py` (~2480 tok, huge) — Citation extraction + validation for the conversational chat layer.
 - `chat_cli.py` (~1135 tok, large) — ``mind-mem-chat`` — ask a workspace a question, get cited answers.
 - `chat_generators.py` (~2047 tok, huge) — Pluggable answer generators for the conversational chat layer.
-- `chat_memory.py` (~10205 tok, huge) — Conversational chat layer — grounded answers with ``[[block_id]]`` citations.
+- `chat_memory.py` (~10891 tok, huge) — Conversational chat layer — grounded answers with ``[[block_id]]`` citations.
 - `check_version.py` (~1189 tok, large) — Version consistency checker for mind-mem.
 - `client_config_io.py` (~1088 tok, large) — # Copyright 2026 STARGA, Inc.
 - `closed_slots.py` (~6827 tok, huge) — Closed, versioned fact slots on the governed Markdown store.
@@ -839,7 +840,7 @@
 - `core_export.py` (~8336 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `corpus_registry.py` (~5767 tok, huge) — Central corpus path registry for mind-mem.
 - `cron_runner.py` (~3583 tok, huge) — mind-mem Cron Runner — single entry point for all periodic jobs. Zero external deps.
-- `cross_encoder_reranker.py` (~1463 tok, large) — mind-mem Optional Cross-Encoder Reranker.
+- `cross_encoder_reranker.py` (~1613 tok, huge) — mind-mem Optional Cross-Encoder Reranker.
 - `cross_ledger.py` (~7869 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `daemon.py` (~3623 tok, huge) — Background daemon — `mm daemon` (v3.9.0 candidate).
 - `data_marking.py` (~1133 tok, large) — # Copyright 2026 STARGA, Inc.
@@ -1050,6 +1051,7 @@
 - `semantic_capability.py` (~219 tok, medium) — Explicit capability boundary for semantic answer verification.
 - `served_ledger.py` (~13315 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `session_boost.py` (~1511 tok, huge) — Session-boundary preservation for recall (v3.3.0 Tier 2 #5).
+- `session_expansion.py` (~2104 tok, huge) — Session expansion: answer from whole conversation sessions instead of isolated turns.
 - `session_summarizer.py` (~3852 tok, huge) — mind-mem Session Summarizer. Zero external deps.
 - `skill_bundle.py` (~1083 tok, large) — # Copyright 2026 STARGA, Inc.
 ### `src/mind_mem/skill_opt/`
@@ -1277,6 +1279,7 @@
 - `test_alert_url_allowlist.py` (~1925 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_alignment_tar_extraction.py` (~1083 tok, large) — The docs-alignment authority unpacks a ``git archive`` tarball; prove it
 - `test_allow_decompose.py` (~311 tok, medium) — Tests for _allow_decompose recall parameter."""
+- `test_answer_facts.py` (~2504 tok, huge) — Computed evidence facts: resolved event dates, deltas, neighbours and choice options.
 - `test_answer_quality_confidence.py` (~761 tok, large) — ``self_consistency`` confidence must be votes over samples REQUESTED.
 - `test_answer_quality.py` (~1288 tok, large) — Tests for the v3.3.0 answer-quality shims."""
 - `test_anticipation_cache_corpus_stamp.py` (~2080 tok, huge) — The anticipation cache never serves an answer a non-governed write changed.
@@ -1349,6 +1352,8 @@
 - `test_chain_transaction_capability.py` (~1204 tok, large) — # Copyright 2026 STARGA, Inc.
 - `test_chain_truncation.py` (~5069 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_change_stream_backpressure.py` (~956 tok, large) — The change stream's backpressure counters, and the drain that gives
+- `test_chat_computed_facts.py` (~671 tok, large) — chat_with_memory(computed_facts=True) puts code-computed dates/options in the prompt; off is byte-identical."""
+- `test_chat_session_expansion.py` (~516 tok, large) — chat_with_memory(session_expansion_chars=N) answers from whole admitted sessions; 0 leaves it unchanged."""
 - `test_chat_with_memory.py` (~7563 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_check_version_gate.py` (~475 tok, medium) — Regression tests for the version-consistency gate.
 - `test_check_version.py` (~271 tok, medium) — Tests for version consistency checker."""
@@ -1402,6 +1407,7 @@
 - `test_cron_runner_config_fail_closed.py` (~1159 tok, large) — An unreadable toggle file must mean "run nothing", never "run everything".
 - `test_cron_runner.py` (~4410 tok, huge) — Tests for cron_runner.py — periodic job orchestration, config loading, subprocess dispatch."""
 - `test_cross_encoder_auto_enable.py` (~1801 tok, huge) — v3.3.0 Tier 2 #6 — cross-encoder rerank auto-enables on ambiguous queries.
+- `test_cross_encoder_configured_model.py` (~631 tok, large) — The single-model cross-encoder honours ``cross_encoder.model`` / ``cross_encoder.device``.
 - `test_cross_encoder_model_cache_key.py` (~1012 tok, large) — # Copyright 2026 STARGA, Inc.
 - `test_cross_encoder.py` (~1324 tok, large) — Tests for optional cross-encoder reranker."""
 - `test_daemon.py` (~1895 tok, huge) — Tests for the v3.9 background daemon (`mm daemon`)."""
@@ -1583,6 +1589,7 @@
 - `test_llm_extractor.py` (~1842 tok, huge) — Tests for the optional LLM entity/fact extractor module."""
 - `test_llm_noise_profile.py` (~2359 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_llm_noise_profile_wiring.py` (~7834 tok, huge) — # Copyright 2026 STARGA, Inc.
+- `test_locomo_bench_ingest.py` (~542 tok, large) — LoCoMo benchmark ingestion: shared-image descriptions are part of a turn; evidence budget scales with top_k."""
 - `test_locomo_suite.py` (~2743 tok, huge) — Tests for the LoCoMo recall harness (self-asserting adapters).
 - `test_longmemeval_full_run.py` (~1696 tok, huge) — The full-run driver must score the same pool the canonical harness does.
 - `test_m2_custom_namespace_direct_get.py` (~2095 tok, huge) — M2: direct reads and recall for explicitly declared custom roots."""
@@ -1865,6 +1872,7 @@
 - `test_roadmap_hygiene.py` (~3996 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_roadmap_ticks_gate.py` (~2742 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_rollback_restores_memory_only.py` (~893 tok, large) — Rolling back a correction restores memory, never the configuration.
+- `test_rrf_fuse_metadata_union.py` (~456 tok, medium) — RRF fusion keeps every leg's metadata, not only the dict it picked.
 - `test_runpod_release_bundle.py` (~3422 tok, huge) — Offline closure tests for the RunPod training/evaluation release bundle."""
 - `test_schema_version.py` (~2454 tok, huge) — Tests for schema_version.py — zero external deps (stdlib unittest)."""
 - `test_scope_outcome_is_truthful.py` (~6877 tok, huge) — # Copyright 2026 STARGA, Inc.
@@ -1887,6 +1895,8 @@
 - `test_served_ledger.py` (~12124 tok, huge) — RA.1 — the served-set ledger: proof of what was served, joinable to outcome.
 - `test_served_ledger_v2_compat.py` (~1724 tok, huge) — Reader-only compatibility controls for mixed v1/v2 served ledgers.
 - `test_session_boost.py` (~1488 tok, large) — v3.3.0 Tier 2 #5 — session-boundary preservation via recall-side boost.
+- `test_session_expansion_order.py` (~479 tok, medium) — Chosen sessions come out in session order, not in the corpus's alphabetical key order.
+- `test_session_expansion.py` (~742 tok, large) — Session expansion returns whole admitted sessions, ranked by hits then session BM25, within a budget."""
 - `test_session_summarizer_door.py` (~3747 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_session_summarizer.py` (~3976 tok, huge) — Comprehensive tests for mind_mem/session_summarizer.py.
 - `test_sharded_pg.py` (~4415 tok, huge) — v4.0 prep — sharded Postgres routing tests (mock underlying stores)."""
@@ -1925,6 +1935,7 @@
 - `test_task_frames.py` (~7349 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_telemetry.py` (~2829 tok, huge) — Tests for src/mind_mem/telemetry.py.
 - `test_temporal_decay_scoring.py` (~863 tok, large) — v3.3.0 Tier 1 #3 — half-life decay on block ``Created``/``Date`` field.
+- `test_temporal_filter_empty_fallback.py` (~344 tok, medium) — A temporal hard-filter window that excludes every candidate falls back to the unfiltered ranking."""
 - `test_temporal.py` (~223 tok, medium) — Tests for temporal filtering module."""
 - `test_tenant_audit.py` (~2833 tok, huge) — v4.0 prep — per-tenant audit chain façade."""
 - `test_tenant_kms.py` (~1916 tok, huge) — v4.0 prep — per-tenant KMS envelope encryption."""

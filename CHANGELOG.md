@@ -33,6 +33,37 @@ All notable changes to MIND-Mem are documented in this file.
   result is `skipped` with a `reason` and the stanza to paste by hand.
   Every change to an existing config takes a timestamped
   `.bak-mind-mem-*` copy first and is written atomically.
+- Computed evidence facts (`mind_mem.answer_facts`, opt-in `chat_with_memory(computed_facts=True)`):
+  event dates resolved in code (explicit dates; today / yesterday / N days ago / last <weekday>
+  against the block date), a sorted timeline, elapsed days / weeks (days // 7) / calendar months
+  for "ago" questions, a table of pairwise day gaps for "between" questions, name links between
+  blocks for two-step questions, and the offered options of a choice question verbatim. A choice
+  answer that names none of the options is regenerated once with that constraint. Off by default;
+  off is byte-identical.
+- Session expansion (`mind_mem.session_expansion`, opt-in `chat_with_memory(session_expansion_chars=N)`):
+  answer from the whole sessions the hits belong to, plus other sessions ranked by whole-session
+  BM25, within a character budget, from the admitted corpus only. Off by default.
+
+### Fixed
+
+- The temporal hard filter no longer empties recall: when the resolved window ("last month")
+  excludes every candidate, the unfiltered ranking is kept. Blocks are dated by when they were
+  recorded, so an event mentioned later used to become unanswerable ("no record").
+- Hybrid fusion no longer erases a leg's metadata: the fused hit is still a copy of the
+  freshest leg's dict, but fields only another leg returned (the lexical leg's `speaker`,
+  `DiaID`, `tags`) are now kept, so evidence packers render the speaker and source id of
+  every fused hit.
+- The single-model cross-encoder (hybrid post-fusion and the recall core) now loads the
+  configured `cross_encoder.model` / `cross_encoder.device`; it previously always loaded
+  the default MiniLM cross-encoder whatever was configured.
+
+### Benchmarks
+
+- LoCoMo workspaces include what a turn shared: the image description is stored with the
+  turn text as `[shared image: ...]`.
+- The LoCoMo evidence budget scales with `top_k` (500 characters per block, never below the
+  historical 6,000; `MIND_MEM_EVIDENCE_MAX_CHARS` overrides), so raising `top_k` no longer
+  silently drops retrieved blocks from the prompt.
 
 ## [5.0.4] - 2026-09-15
 
