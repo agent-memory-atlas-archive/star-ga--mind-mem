@@ -127,6 +127,48 @@ def test_record_is_idempotent_and_first_write_wins(tmp_path: Any) -> None:
     assert row == ("act", "2026-10-09")
 
 
+def test_a_replayed_prediction_is_detected_by_a_read_and_takes_no_write_connection(tmp_path: Any, monkeypatch: pytest.MonkeyPatch) -> None:
+    """``recall.db`` is part of the recall cache's corpus stamp, so replaying a
+    recorded (run, use) must not even open a write transaction on it."""
+    from mind_mem.abstention_store import insert_prediction, record_prediction
+    from mind_mem.calibration import _get_conn_manager
+    from mind_mem.recall_abstention import assess
+
+    ws = make_workspace(str(tmp_path))
+    verdict = assess([{"_id": "a", "score": 9.0}, {"_id": "b", "score": 1.0}], intended_use="answer")
+    assert record_prediction(ws, "c" * 64, verdict, "2026-10-09") is True
+    mgr = _get_conn_manager(ws)
+
+    def boom(*_a: Any, **_k: Any) -> Any:
+        raise AssertionError("took the write connection")
+
+    monkeypatch.setattr(mgr, "get_write_connection", boom)
+    assert insert_prediction(mgr, "c" * 64, verdict, "2026-10-09") is False
+    # Positive control: a genuinely new run DOES need the write connection.
+    with pytest.raises(AssertionError, match="write connection"):
+        insert_prediction(mgr, "d" * 64, verdict, "2026-10-09")
+
+
+def test_concurrent_recording_is_exactly_once(tmp_path: Any) -> None:
+    """Eight threads racing to record the same (run, use) write one row and
+    exactly one of them is told it won; eight distinct runs write eight."""
+    from concurrent.futures import ThreadPoolExecutor
+
+    from mind_mem.abstention_store import abstention_stats, record_prediction
+    from mind_mem.recall_abstention import assess
+
+    ws = make_workspace(str(tmp_path))
+    verdict = assess([{"_id": "a", "score": 9.0}, {"_id": "b", "score": 1.0}], intended_use="answer")
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        same = list(pool.map(lambda _i: record_prediction(ws, "e" * 64, verdict, "2026-10-09"), range(8)))
+    assert same.count(True) == 1 and same.count(False) == 7
+    assert abstention_stats(ws)["predictions"] == 1
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        distinct = list(pool.map(lambda i: record_prediction(ws, f"{i:064x}", verdict, "2026-10-09"), range(1, 9)))
+    assert all(distinct)
+    assert abstention_stats(ws)["predictions"] == 9
+
+
 @pytest.mark.parametrize(
     ("run_id", "patch"),
     [

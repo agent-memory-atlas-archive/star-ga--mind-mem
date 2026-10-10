@@ -285,6 +285,11 @@ def _merged_thresholds(bands: Mapping[Any, Any], warnings: list[str]) -> dict[st
     return merged
 
 
+def _section_enabled(section: Any) -> bool:
+    """The one definition of "opted in": a mapping carrying a literal ``enabled: true``."""
+    return isinstance(section, Mapping) and section.get("enabled") is True
+
+
 def resolve_policy(recall_cfg: Mapping[str, Any] | None) -> AbstentionPolicy:
     """Resolve ``recall.abstention`` from the (already loaded) recall config.
 
@@ -321,7 +326,7 @@ def resolve_policy(recall_cfg: Mapping[str, Any] | None) -> AbstentionPolicy:
                 thresholds = MappingProxyType(merged)
             else:
                 warnings.append("abstention.bands rejected; using the shipped defaults for every use")
-    return AbstentionPolicy(section.get("enabled") is True, default_use, thresholds, tuple(warnings))
+    return AbstentionPolicy(_section_enabled(section), default_use, thresholds, tuple(warnings))
 
 
 #: The policy for a caller that supplies none. Resolved once at import.
@@ -346,8 +351,7 @@ def abstention_requested(recall_cfg: Any, intended_use: Any) -> bool:
         return True
     if not isinstance(recall_cfg, Mapping):
         return False
-    section = recall_cfg.get("abstention")
-    return isinstance(section, Mapping) and section.get("enabled") is True
+    return _section_enabled(recall_cfg.get("abstention"))
 
 
 # --- the verdict -------------------------------------------------------------

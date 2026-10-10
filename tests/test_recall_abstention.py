@@ -402,8 +402,11 @@ def test_default_use_can_be_configured() -> None:
         # a governed write looser than a summary: the one ordering the item forbids
         {"abstention": {"bands": {"governed_write": {"act": 0.1, "caution": 0.05}}}},
         {"abstention": {"bands": {"summary": {"act": 0.95}}}},
-        # caution above act
-        {"abstention": {"bands": {"answer": {"act": 0.3, "caution": 0.6}}}},
+        # caution above act -- chosen so the monotonic-use rule is NOT also violated
+        # (0.72/0.80 are both >= the answer edges), i.e. this case isolates the
+        # caution<=act check instead of passing because a different check fires
+        {"abstention": {"bands": {"governed_write": {"act": 0.72, "caution": 0.8}}}},
+        {"abstention": {"bands": {"summary": {"act": 0.2, "caution": 0.3}}}},
         # out of range / wrong type
         {"abstention": {"bands": {"answer": {"act": 1.5}}}},
         {"abstention": {"bands": {"answer": {"act": -0.1}}}},
