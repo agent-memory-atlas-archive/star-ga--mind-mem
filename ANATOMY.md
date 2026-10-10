@@ -5,8 +5,8 @@
 > Re-generate with: `anatomy .`
 
 **Project:** `mind-mem`
-**Files:** 1755 | **Est. tokens:** ~5,191,124
-**Generated:** 2026-10-10 05:39 UTC
+**Files:** 1755 | **Est. tokens:** ~5,192,274
+**Generated:** 2026-10-10 05:51 UTC
 
 ## Token Budget Guide
 
@@ -78,7 +78,7 @@
 | `skills/mind-mem/` | 1 | ~1,765 |
 | `skills/mind-mem/references/` | 6 | ~19,499 |
 | `src/` | 1 | ~280 |
-| `src/mind_mem/` | 257 | ~1,147,025 |
+| `src/mind_mem/` | 257 | ~1,147,062 |
 | `src/mind_mem/api/` | 5 | ~28,982 |
 | `src/mind_mem/bench/` | 17 | ~48,632 |
 | `src/mind_mem/compliance/` | 7 | ~15,436 |
@@ -93,7 +93,7 @@
 | `src/mind_mem/tool_output/` | 3 | ~5,895 |
 | `src/mind_mem/v4/` | 24 | ~96,311 |
 | `src/mind_mem/viewer_static/` | 3 | ~865 |
-| `tests/` | 799 | ~2,352,295 |
+| `tests/` | 799 | ~2,353,408 |
 | `tests/fixtures/` | 8 | ~16,356 |
 | `tests/fixtures/importers/` | 5 | ~1,218 |
 | `tests/fixtures/importers/agent_memory/` | 4 | ~383 |
@@ -1021,7 +1021,7 @@
 - `query_expansion.py` (~5349 tok, huge) — Multi-query expansion for improved recall.
 - `query_planner.py` (~2865 tok, huge) — Query decomposition for multi-hop questions (v3.3.0 Tier 1 #1).
 - `read_authz.py` (~3483 tok, huge) — # Copyright 2026 STARGA, Inc.
-- `recall_abstention.py` (~4536 tok, huge) — # Copyright 2026 STARGA, Inc.
+- `recall_abstention.py` (~4573 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `recall_attestation.py` (~13053 tok, huge) — Per-run recall attestation — runtime evidence of *how* an answer was produced.
 - `recall_cache.py` (~6867 tok, huge) — v3.2.0 — distributed recall result cache (Redis + in-process LRU fallback).
 - `_recall_constants.py` (~3480 tok, huge) — Recall engine constants — search fields, BM25 params, regex patterns, limits."""
@@ -1275,7 +1275,7 @@
 - `test_abstention_classifier.py` (~3963 tok, huge) — Tests for the adversarial abstention classifier."""
 - `test_abstention_doors.py` (~2315 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_abstention_separation.py` (~2347 tok, huge) — # Copyright 2026 STARGA, Inc.
-- `test_abstention_store.py` (~4685 tok, huge) — # Copyright 2026 STARGA, Inc.
+- `test_abstention_store.py` (~5632 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_accountability_dashboard.py` (~6883 tok, huge) — RA.5 — the lifecycle-tier dashboard, and the four refusals it inherits.
 - `test_accountability_views.py` (~6320 tok, huge) — RA.2 — precision and waste as derived views, and the four refusals that shape them.
 - `test_acl_staging_readers.py` (~5568 tok, huge) — A user-scope staging write is allowed only while no reader serves it to others.
@@ -1772,7 +1772,7 @@
 - `test_read_surface_host_paths.py` (~4180 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_read_surface_paths.py` (~4260 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_read_surface_resources.py` (~7373 tok, huge) — # Copyright 2026 STARGA, Inc.
-- `test_recall_abstention.py` (~5265 tok, huge) — # Copyright 2026 STARGA, Inc.
+- `test_recall_abstention.py` (~5431 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_recall_abstention_wiring.py` (~5731 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_recall_admissibility.py` (~8772 tok, huge) — Acceptance gate for recall admissibility — the servability allow-list.
 - `test_recall_as_of.py` (~1297 tok, large) — Tests for the ``recall(..., as_of=)`` time-travel plumb-through (roadmap Group B).

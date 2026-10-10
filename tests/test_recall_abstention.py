@@ -137,11 +137,18 @@ def test_all_zero_scores_carry_no_evidence() -> None:
     [float("nan"), float("inf"), float("-inf"), None, "9.9", True, False, object(), [1.0]],
 )
 def test_unusable_scores_are_dropped_not_counted(junk: Any) -> None:
-    """A score that is not a finite real number is not a candidate."""
-    assert separation_statistic([6.0, 2.0, junk]) == separation_statistic([6.0, 2.0])
-    # Positive control: the survivors really do produce a non-trivial value, so
-    # the equality above is not two zeros agreeing with each other.
-    assert separation_statistic([6.0, 2.0]) == pytest.approx(0.6667, abs=1e-4)
+    """A score that is not a finite real number is not a candidate.
+
+    The base set is small on purpose (0.5, 0.2): ``True`` would count as 1.0 and
+    ``"9.9"`` as 9.9, and either would take the top slot and move the statistic,
+    so a junk value that is wrongly admitted cannot hide behind a larger score.
+    """
+    base = separation_statistic([0.5, 0.2])
+    assert base == pytest.approx(0.6, abs=1e-4)  # positive control: a real, non-trivial value
+    assert separation_statistic([0.5, 0.2, junk]) == base
+    # ...and it is not counted as a candidate either (``nan`` cannot move the
+    # statistic, so the count is the only thing that catches it).
+    assert assess(_hits(0.5, 0.2, junk), intended_use=USE_ANSWER)["candidates"] == 2
 
 
 def test_negative_scores_clamp_to_zero_rather_than_inflating() -> None:

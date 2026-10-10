@@ -169,6 +169,40 @@ def test_concurrent_recording_is_exactly_once(tmp_path: Any) -> None:
     assert abstention_stats(ws)["predictions"] == 9
 
 
+def test_a_lost_race_cannot_overwrite_the_recorded_prediction(tmp_path: Any, monkeypatch: pytest.MonkeyPatch) -> None:
+    """The existence check is a READ and so can lose a race. When it does, the
+    INSERT's own conflict clause is what keeps the first prediction -- simulated
+    deterministically by making the read miss a row that is really there."""
+    from mind_mem.abstention_store import insert_prediction, record_prediction
+    from mind_mem.calibration import _get_conn_manager
+    from mind_mem.recall_abstention import assess
+
+    ws = make_workspace(str(tmp_path))
+    strong = assess([{"_id": "a", "score": 9.0}, {"_id": "b", "score": 1.0}], intended_use="answer")
+    weak = assess([{"_id": "a", "score": 5.0}, {"_id": "b", "score": 4.9}], intended_use="answer")
+    assert record_prediction(ws, "f" * 64, strong, "2026-10-09") is True
+    mgr = _get_conn_manager(ws)
+
+    class _MissesTheRow:
+        def execute(self, *_a: Any, **_k: Any) -> Any:
+            class _Empty:
+                def fetchone(self) -> None:
+                    return None
+
+            return _Empty()
+
+    monkeypatch.setattr(mgr, "get_read_connection", lambda: _MissesTheRow())
+    assert insert_prediction(mgr, "f" * 64, weak, "2026-10-10") is False
+    monkeypatch.undo()
+    conn = sqlite3.connect(f"{ws}/.mind-mem-index/recall.db")
+    try:
+        assert conn.execute("SELECT band, separation, recorded_at FROM recall_abstention").fetchall() == [
+            ("act", strong["separation"], "2026-10-09")
+        ]
+    finally:
+        conn.close()
+
+
 @pytest.mark.parametrize(
     ("run_id", "patch"),
     [
