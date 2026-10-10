@@ -5,8 +5,8 @@
 > Re-generate with: `anatomy .`
 
 **Project:** `mind-mem`
-**Files:** 1755 | **Est. tokens:** ~5,192,274
-**Generated:** 2026-10-10 05:51 UTC
+**Files:** 1755 | **Est. tokens:** ~5,192,376
+**Generated:** 2026-10-10 06:10 UTC
 
 ## Token Budget Guide
 
@@ -93,7 +93,7 @@
 | `src/mind_mem/tool_output/` | 3 | ~5,895 |
 | `src/mind_mem/v4/` | 24 | ~96,311 |
 | `src/mind_mem/viewer_static/` | 3 | ~865 |
-| `tests/` | 799 | ~2,353,408 |
+| `tests/` | 799 | ~2,353,510 |
 | `tests/fixtures/` | 8 | ~16,356 |
 | `tests/fixtures/importers/` | 5 | ~1,218 |
 | `tests/fixtures/importers/agent_memory/` | 4 | ~383 |
@@ -1768,7 +1768,7 @@
 - `test_read_surface_acl_residual.py` (~7691 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_read_surface_acl_tools.py` (~9919 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_read_surface_admission.py` (~6897 tok, huge) — Every read surface, swept with a three-status canary.
-- `test_read_surface_classification.py` (~9253 tok, huge) — The registry-wide read-surface classification — the committed table.
+- `test_read_surface_classification.py` (~9355 tok, huge) — The registry-wide read-surface classification — the committed table.
 - `test_read_surface_host_paths.py` (~4180 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_read_surface_paths.py` (~4260 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_read_surface_resources.py` (~7373 tok, huge) — # Copyright 2026 STARGA, Inc.
