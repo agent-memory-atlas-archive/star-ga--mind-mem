@@ -28,6 +28,43 @@ import time
 from collections.abc import Callable, Iterator
 from typing import Any
 
+#: Modules whose structured loggers a capture-fixture test would otherwise create.
+_SERVING_STACK = (
+    "mind_mem.mm_cli",
+    "mind_mem.mcp_server",
+    "mind_mem.mcp.tools.recall",
+    "mind_mem.recall",
+    "mind_mem.hybrid_recall",
+    "mind_mem.http_transport",
+    "mind_mem.recall_attestation",
+    "mind_mem.recall_cache",
+    "mind_mem.retrieval_trace",
+    "mind_mem.vector_inertness",
+    "mind_mem.ffi",
+    "mind_mem.abstention_store",
+    "mind_mem.abstention_eval",
+)
+
+
+def preload_serving_stack() -> None:
+    """Import the serving stack at collection time, before any ``capsys`` swaps stderr.
+
+    Every mind-mem structured logger binds a handler to whatever ``sys.stderr``
+    is when its module is first imported. Under ``capsys`` that is a per-test
+    buffer closed when the test ends, and every later test in the same process
+    that re-points the handlers (``test_v4_logging_context_wiring``) then dies
+    with ``ValueError: I/O operation on closed file`` -- which of two runs fails
+    depends only on which test a worker happened to receive first. A test module
+    that drives the CLI under ``capsys`` calls this at import so the loggers are
+    created against the session's stderr instead.
+    """
+    import importlib
+
+    for name in _SERVING_STACK:
+        with contextlib.suppress(ImportError):  # best effort: ``ffi`` is optional
+            importlib.import_module(name)
+
+
 GENERIC = (
     "team policy process review weekly update owner decision status plan "
     "release change risk budget customer support quality standard approval schedule"

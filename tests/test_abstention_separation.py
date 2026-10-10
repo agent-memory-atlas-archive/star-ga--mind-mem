@@ -29,7 +29,9 @@ from typing import Any
 import pytest
 
 from mind_mem.abstention_eval import auc, evaluate, load_labelled
-from tests._abstention_fixture import make_workspace, queries
+from tests._abstention_fixture import make_workspace, preload_serving_stack, queries
+
+preload_serving_stack()  # before any capsys test can bind a logger to a per-test stream
 
 
 @pytest.fixture(scope="module")
