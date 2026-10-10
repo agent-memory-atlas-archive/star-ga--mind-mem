@@ -17,6 +17,7 @@ The sections below this index cover the frequently-used verbs in depth.
 | Command | What it does |
 | --- | --- |
 | `mm recall` | Search memory and print JSON results. |
+| `mm abstention-eval` | Measure whether computed abstention separates present from absent answers on this workspace. |
 | `mm context` | Recall + token-budget pack into a context snippet (JSON). |
 | `mm inject` | Render a context snippet in the format a specific agent expects. |
 | `mm resume` | Print the resume brief for the active task frame, with dead-end warnings. |
@@ -145,6 +146,7 @@ mm recall "authentication strategy" --limit 5 --active-only
 | `--limit N` | 10 | Maximum results |
 | `--active-only` | off | Restrict to active blocks |
 | `--kernel NAME` | off | Route through a v4 cognitive-kernel strategy instead of plain recall (5.0.1) |
+| `--intended-use USE` | off | Print the hits plus an `abstention` verdict (`act` / `proceed_with_caution` / `do_not_act`) for `summary`, `answer` or `governed_write`; see [computed abstention](computed-abstention.md) |
 
 `--kernel` takes one of `default`, `surprise_weighted`, `lineage_first`,
 `contradicts_first`, `graph_walk` and requires
@@ -167,6 +169,35 @@ not be recorded. The projection reports `final_included_ids` and any dropped
 IDs. It does not seal packed context or rendered agent text, and it makes no
 additional claim for custom or vector execution. Without the flag, `mm recall`
 continues to print its existing JSON list.
+
+With `--intended-use USE` the output becomes an object — `query`, `count`,
+`results`, `abstention`, `attestation` — instead of the bare list, and the verdict
+is recorded against the run so `report_outcome` can score it. The default output is
+unchanged, and the workspace-wide `recall.abstention.enabled` switch deliberately
+does not apply here (a script parsing the list must never see its shape change by
+configuration). The flag is exclusive with `--receipt-envelope` and `--kernel`.
+
+```bash
+mm recall "authentication strategy" --intended-use governed_write
+```
+
+### `mm abstention-eval --labelled FILE`
+
+Run the falsification experiment for [computed abstention](computed-abstention.md)
+on this workspace: serve labelled present/absent queries through `mm recall`'s door
+and report whether the separation statistic tells them apart.
+
+```bash
+mm abstention-eval --labelled queries.jsonl --intended-use answer
+```
+
+`queries.jsonl` holds one `{"query": "...", "present": true|false}` object per line.
+The report carries the AUC, the per-class distribution, the rate at which the bands
+would `act` on an absent answer, and a `verdict`: `separates`, `weak`, `no_signal`
+or `insufficient`. Exit status is `0` normally, `3` for `no_signal` (so a script can
+gate on it) and `2` for unreadable input. Flags: `--limit N` (10), `--intended-use
+USE`, `--scoring-instant YYYY-MM-DD` (pin the recency layer for a reproducible run).
+The run writes nothing to the served-set ledger.
 
 ### `mm context <query>`
 

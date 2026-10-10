@@ -282,6 +282,11 @@ def outcome_stats(block_id: str = "", task_id: str = "", top_n: int = 20) -> str
     With no arguments this returns the utility health report: totals, the
     blocks corroborated by successful outcomes, and the blocks most
     implicated in failures (with their deterministic utility factor).
+    Once a computed-abstention verdict has been recorded (a ``recall`` made
+    with ``intended_use``), the report also carries an ``abstention`` section
+    that scores those predictions against the outcomes reported for their
+    runs: per-band success rates, whether the abstention discriminates, and
+    whether failures are piling up while it never fires.
     Passing ``block_id`` or ``task_id`` instead lists the individual
     outcome records, with full provenance, for that block or task.
 

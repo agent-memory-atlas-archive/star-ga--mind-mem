@@ -78,6 +78,12 @@ READ_ACCOUNTING = frozenset(
         ".mind-mem-ledger/served.jsonl",
         ".mind-mem-index/recall.db::retrieval_log",
         ".mind-mem-index/recall.db::co_retrieval",
+        # The computed-abstention prediction a recall WITH a stated intended use
+        # records so report_outcome can score it later. A record that a read was
+        # served, keyed by the run's content-derived identity; the table has no
+        # reader on the ranking path (tests/test_abstention_store.py poisons it
+        # and shows recall unchanged). Created by the first prediction only.
+        ".mind-mem-index/recall.db::recall_abstention",
         ".mind-mem-index/recall.db::sqlite_sequence",
         ".mind-mem/block_meta.db::block_meta",
         # The 9-type intent router's adaptive confidence weights, updated by
@@ -168,7 +174,9 @@ def _probe_args(ext: str) -> dict[str, dict[str, Any]]:
         "prefetch": dict(signals="frost"),
         "project_profile": {},
         "propagate_staleness": dict(seed_block_ids=D1),
-        "recall": dict(query="frost"),
+        # The most write-shaped recall: a stated intended use is what makes it record
+        # a prediction (the only write a recall can add to its read accounting).
+        "recall": dict(query="frost", intended_use="governed_write"),
         "recall_with_axis": dict(query="frost"),
         "recall_with_guardrails": dict(query="frost"),
         "recall_with_persona": dict(query="frost"),

@@ -220,7 +220,10 @@ def validate_intended_use(value: Any) -> str | None:
             return None
         if cleaned in INTENDED_USES:
             return cleaned
-    raise ValueError(f"intended_use must be one of {list(INTENDED_USES)}, got {value!r}")
+    # Echo a bounded excerpt: the value is caller-supplied and the message is
+    # returned to the caller and logged.
+    shown = value if isinstance(value, str) else type(value).__name__
+    raise ValueError(f"intended_use must be one of {list(INTENDED_USES)}, got {shown[:40]!r}")
 
 
 # --- policy ------------------------------------------------------------------

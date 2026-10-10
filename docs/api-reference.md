@@ -296,7 +296,7 @@ All 107 registered tools, generated from the live registry. `[param]` is optiona
 | `graph_add_edge` | admin | `graph` | `subject`, `predicate`, `object`, `source_block_id`, `[confidence]` | Record a typed relationship in the knowledge graph — DIRECT admin write. |
 | `graph_query` | user | `graph` | `entity`, `[depth]`, `[predicate]`, `[direction]`, `[limit]`, `[resolve_same_as]` | N-hop traversal from *entity*. |
 | `graph_stats` | user | `graph` | - | Aggregated knowledge-graph stats for the active workspace. |
-| `hybrid_search` | user | `recall` | `query`, `[limit]`, `[active_only]`, `[explain]`, `[scoring_instant]` | Hybrid BM25+Vector recall with RRF fusion. |
+| `hybrid_search` | user | `recall` | `query`, `[limit]`, `[active_only]`, `[explain]`, `[scoring_instant]`, `[intended_use]` | Hybrid BM25+Vector recall with RRF fusion. |
 | `index_stats` | user | `memory_ops` | - | Block counts, index staleness, vector coverage, and MIND kernel status. |
 | `intent_classify` | user | `recall` | `query` | Show the routing strategy for a query. |
 | `kernels` | user | `public` | `[action]`, `[name]` | Unified .mind kernel read surface. |
@@ -329,7 +329,7 @@ All 107 registered tools, generated from the live registry. `[param]` is optiona
 | `propose_entity_merge` | user | `graph` | `winner_id`, `loser_id`, `rationale` | Stage an explicit winner/loser ``SAME_AS`` proposal (user-scope). |
 | `propose_slot_update` | admin | `governance` | `namespace`, `slot`, `value`, `rationale`, `[actor_id]`, `[actor_role]`, `[session_id]`, `[tool_id]`, `[purpose]` | Stage a closed-slot update for review by ``approve_apply``. |
 | `propose_update` | admin | `governance` | `block_type`, `statement`, `[rationale]`, `[tags]`, `[confidence]`, `[actor_id]`, `[actor_role]`, `[session_id]`, `[tool_id]`, `[purpose]`, `[content_source]`, `[supersedes]` | Propose a new decision or task. |
-| `recall` | user | `public` | `query`, `[mode]`, `[limit]`, `[active_only]`, `[backend]`, `[block_id]`, `[axes]`, `[weights]`, `[max_tokens]`, `[signals]`, `[scoring_instant]`, `[explain]`, `[since]`, `[until]`, `[lifecycle]`, `[event_id]`, `[min_maturity]` | Unified retrieval entry point. |
+| `recall` | user | `public` | `query`, `[mode]`, `[limit]`, `[active_only]`, `[backend]`, `[block_id]`, `[axes]`, `[weights]`, `[max_tokens]`, `[signals]`, `[scoring_instant]`, `[explain]`, `[since]`, `[until]`, `[lifecycle]`, `[event_id]`, `[min_maturity]`, `[intended_use]` | Unified retrieval entry point. |
 | `recall_with_axis` | user | `recall` | `query`, `[axes]`, `[weights]`, `[limit]`, `[active_only]`, `[adversarial]`, `[allow_rotation]`, `[scoring_instant]` | Axis-aware recall under the Observer-Dependent Cognition model. |
 | `recall_with_guardrails` | user | `guardrails` | `query`, `[tool]`, `[command]`, `[intent]`, `[paths]`, `[limit]`, `[active_only]` | Recall *query*, with the constraints for this context surfaced first. |
 | `recall_with_persona` | user | `walkthrough_persona` | `query`, `[persona]`, `[limit]`, `[active_only]`, `[scoring_instant]` | Recall memories and project the result list through *persona*. |

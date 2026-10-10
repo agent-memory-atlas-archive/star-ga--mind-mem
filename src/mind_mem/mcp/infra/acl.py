@@ -564,6 +564,16 @@ STAGING_STORE_READERS: dict[str, dict[str, StoreReader]] = {
         "mind_mem.calibration.CalibrationManager.list_outcomes": _R,
         "mind_mem.outcome_attribution.outcome_stats": _R,
         "mind_mem.accountability_views.credit_rows": _R,
+        # Computed abstention is scored by joining its recorded predictions to
+        # these outcomes. Every function below hands the caller AGGREGATE counts
+        # (per band / use / basis: success, failure, neutral) -- no block id, no
+        # text -- and moves nothing; recall never reads either side of the join.
+        "mind_mem.abstention_store.stats_from_manager": _R,
+        "mind_mem.abstention_store.abstention_stats": _R,
+        "mind_mem.calibration.CalibrationManager.get_abstention_stats": _R,
+        "mind_mem.calibration.CalibrationManager.get_calibration_stats": _R,
+        "mind_mem.mcp.tools.calibration.calibration_stats": _R,
+        "mind_mem.outcome_store._abstention_section": _P,
     },
     "interaction_signals": {
         "mind_mem.mcp.tools.signal.observe_signal": _W,

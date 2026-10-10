@@ -5,8 +5,8 @@
 > Re-generate with: `anatomy .`
 
 **Project:** `mind-mem`
-**Files:** 1748 | **Est. tokens:** ~5,186,366
-**Generated:** 2026-10-10 04:32 UTC
+**Files:** 1755 | **Est. tokens:** ~5,191,124
+**Generated:** 2026-10-10 05:39 UTC
 
 ## Token Budget Guide
 
@@ -35,7 +35,7 @@
 | `deploy/docker/` | 1 | ~824 |
 | `deploy/edge/` | 2 | ~1,149 |
 | `deploy/grafana/` | 1 | ~1,145 |
-| `docs/` | 96 | ~236,130 |
+| `docs/` | 97 | ~239,406 |
 | `docs/adr/` | 2 | ~521 |
 | `docs/advisories/` | 1 | ~834 |
 | `docs/audit/` | 1 | ~4,973 |
@@ -62,30 +62,30 @@
 | `lib/` | 1 | ~2,451 |
 | `mind/` | 27 | ~9,634 |
 | `.roo/` | 1 | ~22 |
-| `scripts/` | 24 | ~83,416 |
+| `scripts/` | 24 | ~83,439 |
 | `sdk/go/` | 11 | ~9,920 |
 | `sdk/go/testdata/contract/` | 6 | ~675 |
 | `sdk/js/` | 6 | ~4,864 |
 | `sdk/js/src/` | 5 | ~3,113 |
 | `sdk/js/test/` | 2 | ~3,654 |
 | `sdk/release/` | 3 | ~4,717 |
-| `sdk/spec/` | 3 | ~6,848 |
+| `sdk/spec/` | 3 | ~6,984 |
 | `sdk/spec/fixtures/` | 7 | ~926 |
 | `security/` | 5 | ~24,696 |
 | `skills/apply-proposal/` | 1 | ~345 |
 | `skills/integrity-scan/` | 1 | ~376 |
 | `skills/memory-recall/` | 1 | ~549 |
-| `skills/mind-mem/` | 1 | ~1,671 |
-| `skills/mind-mem/references/` | 6 | ~19,194 |
+| `skills/mind-mem/` | 1 | ~1,765 |
+| `skills/mind-mem/references/` | 6 | ~19,499 |
 | `src/` | 1 | ~280 |
-| `src/mind_mem/` | 255 | ~1,139,744 |
-| `src/mind_mem/api/` | 5 | ~28,784 |
+| `src/mind_mem/` | 257 | ~1,147,025 |
+| `src/mind_mem/api/` | 5 | ~28,982 |
 | `src/mind_mem/bench/` | 17 | ~48,632 |
 | `src/mind_mem/compliance/` | 7 | ~15,436 |
 | `src/mind_mem/importers/` | 10 | ~34,469 |
 | `src/mind_mem/mcp/` | 3 | ~7,718 |
-| `src/mind_mem/mcp/infra/` | 8 | ~20,532 |
-| `src/mind_mem/mcp/tools/` | 29 | ~136,803 |
+| `src/mind_mem/mcp/infra/` | 8 | ~20,711 |
+| `src/mind_mem/mcp/tools/` | 28 | ~112,899 |
 | `src/mind_mem/skill_opt/` | 11 | ~20,899 |
 | `src/mind_mem/spec/` | 4 | ~6,845 |
 | `src/mind_mem/storage/` | 2 | ~11,712 |
@@ -93,7 +93,7 @@
 | `src/mind_mem/tool_output/` | 3 | ~5,895 |
 | `src/mind_mem/v4/` | 24 | ~96,311 |
 | `src/mind_mem/viewer_static/` | 3 | ~865 |
-| `tests/` | 794 | ~2,335,125 |
+| `tests/` | 799 | ~2,352,295 |
 | `tests/fixtures/` | 8 | ~16,356 |
 | `tests/fixtures/importers/` | 5 | ~1,218 |
 | `tests/fixtures/importers/agent_memory/` | 4 | ~383 |
@@ -296,7 +296,7 @@
 - `agent-comm.md` (~1251 tok, large) — Agent-to-agent messaging (`mm send` / `mm inbox`)
 - `AGENTIC-MEMORY-SOTA.md` (~1675 tok, huge) — mind-mem → SOTA Agentic Memory (v4.5.0+ design brief)
 - `agent-memory-protocol.md` (~700 tok, large) — Agent Memory Protocol — canonical system-prompt snippet
-- `api-reference.md` (~7751 tok, huge) — API Reference
+- `api-reference.md` (~7760 tok, huge) — API Reference
 - `append-only-audit-logs.md` (~1626 tok, huge) — Append-Only Audit Logs — Operator Runbook
 - `architecture.md` (~3506 tok, huge) — Architecture
 ### `docs/audit/`
@@ -391,11 +391,12 @@
 - `ci-workflows.md` (~861 tok, large) — CI Workflows
 - `claude-desktop-setup.md` (~807 tok, large) — Claude Desktop Setup Guide
 - `client-integrations.md` (~14943 tok, huge) — Client Integrations
-- `cli-reference.md` (~8456 tok, huge) — CLI Reference
+- `cli-reference.md` (~8910 tok, huge) — CLI Reference
 - `companion-tools.md` (~1111 tok, large) — Companion Tools
 - `comparison.md` (~599 tok, large) — Comparison with Alternatives
 - `competitive-analysis-persistent-memory-2026.md` (~4089 tok, huge) — Comprehensive Competitive Analysis: Persistent Memory Systems for AI Coding Agents (2025–2026)
-- `configuration.md` (~18323 tok, huge) — Configuration Reference
+- `computed-abstention.md` (~2322 tok, huge) — Computed abstention
+- `configuration.md` (~18751 tok, huge) — Configuration Reference
 - `content-lifecycle.md` (~1035 tok, large) — Content-category lifetimes
 ### `docs/decisions/`
 
@@ -472,7 +473,7 @@
 - `quickstart.md` (~644 tok, large) — MIND-Mem Quickstart
 - `recompaction.md` (~3132 tok, huge) — Iterative Re-Compression Engine (Recompaction)
 - `red-team-audit.md` (~1164 tok, large) — Behavioral Audit — Operator Runbook
-- `rest-api.md` (~1650 tok, huge) — MIND-Mem REST API
+- `rest-api.md` (~1713 tok, huge) — MIND-Mem REST API
 - `review-architecture-v3.2.0.md` (~1919 tok, huge) — Architecture Review — MIND-Mem v3.2.0 (Release Candidate)
 - `review-database-v3.2.0.md` (~3171 tok, huge) — Database Review — PostgresBlockStore v3.2.0
 - `review-docs-v3.2.0.md` (~1957 tok, huge) — Documentation Review — MIND-Mem v3.2.0
@@ -637,7 +638,7 @@
 - `check_tool_surface.py` (~4151 tok, huge) — Reachability, applied to the MCP tool surface.
 - `count_mcp_tools.py` (~6315 tok, huge) — Count registered MCP tools and assert the count matches CLAUDE.md.
 - `docs-alignment-hook.sh` (~454 tok, medium) — docs-alignment-hook.sh — Git pre-commit step to refresh derived doc counts.
-- `gen_skill_cli_reference.py` (~2954 tok, huge) — # Copyright 2026 STARGA, Inc.
+- `gen_skill_cli_reference.py` (~2977 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `pre-commit-hook.sh` (~489 tok, medium) — STARGA author guard (chained first: a wrong-identity commit must never be created).
 - `pre-push-hook.sh` (~460 tok, medium) — pre-push-hook.sh — the last LOCAL gate before an identity becomes public.
 - `reachability_baseline.txt` (~366 tok, medium) — api.grpc_server  # waiting: a named client integration that requires gRPC (strea
@@ -706,7 +707,7 @@
 - `scan.json` (~64 tok, small) — Keys: _schema_version, backend, checks
 ### `sdk/spec/`
 
-- `openapi.json` (~5045 tok, huge) — Keys: components, info, openapi, paths
+- `openapi.json` (~5181 tok, huge) — Keys: components, info, openapi, paths
 - `README.md` (~968 tok, large) — API specifications
 ### `security/`
 
@@ -726,7 +727,7 @@
 - `SKILL.md` (~549 tok, large) — /recall — Memory Search
 ### `skills/mind-mem/references/`
 
-- `cli.md` (~13562 tok, huge) — `mm` command reference
+- `cli.md` (~13867 tok, huge) — `mm` command reference
 - `configuration.md` (~1375 tok, large) — Configuration
 - `faq.md` (~884 tok, large) — FAQ
 - `install.md` (~1365 tok, large) — Installing mind-mem
@@ -734,13 +735,15 @@
 - `troubleshooting.md` (~1278 tok, large) — Troubleshooting
 ### `skills/mind-mem/`
 
-- `SKILL.md` (~1671 tok, huge) — mind-mem — CLI user manual
+- `SKILL.md` (~1765 tok, huge) — mind-mem — CLI user manual
 ### `src/`
 
 - `mcp_server.py` (~280 tok, medium) — Wheel-level compatibility module for `mind_mem.mcp_server`.
 ### `src/mind_mem/`
 
 - `abstention_classifier.py` (~3315 tok, huge) — Deterministic adversarial abstention classifier for Mind-Mem.
+- `abstention_eval.py` (~2621 tok, huge) — # Copyright 2026 STARGA, Inc.
+- `abstention_store.py` (~3978 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `accountability_dashboard.py` (~6670 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `accountability_views.py` (~10307 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `admissibility.py` (~6855 tok, huge) — What recall is allowed to serve — the servability allow-list.
@@ -758,7 +761,7 @@
 - `auth.py` (~4581 tok, huge) — OIDC/SSO authentication for the mind-mem REST API.
 - `grpc_server.py` (~4235 tok, huge) — gRPC wire protocol for mind-mem (v4.0 prep).
 - `__init__.py` (~20 tok, tiny)
-- `rest.py` (~17231 tok, huge) — REST API layer for mind-mem (v3.2.0, v3.2.1 hardening).
+- `rest.py` (~17429 tok, huge) — REST API layer for mind-mem (v3.2.0, v3.2.1 hardening).
 ### `src/mind_mem/`
 
 - `append_only.py` (~3657 tok, huge) — # Copyright 2026 STARGA, Inc.
@@ -801,7 +804,7 @@
 - `block_store.py` (~18362 tok, huge) — BlockStore abstraction — decouples block access from storage format.
 - `bootstrap_corpus.py` (~4094 tok, huge) — mind-mem Bootstrap Corpus — one-time backfill from existing knowledge sources.
 - `boundary_witness.py` (~3878 tok, huge) — # Copyright 2026 STARGA, Inc.
-- `calibration.py` (~7955 tok, huge) — Calibration feedback loop — track retrieval quality and adjust block ranking.
+- `calibration.py` (~8306 tok, huge) — Calibration feedback loop — track retrieval quality and adjust block ranking.
 - `capture.py` (~5607 tok, huge) — mind-mem Auto-Capture Engine with Structured Extraction. Zero external deps.
 - `category_distiller.py` (~6359 tok, huge) — mind-mem Category Distiller — auto-generates thematic summary files from memory blocks.
 - `causal_graph.py` (~4689 tok, huge) — mind-mem Temporal Causal Graph — directed dependency tracking with staleness.
@@ -924,7 +927,7 @@
 - `mcp_entry.py` (~495 tok, medium) — Thin entry point for the ``mind-mem-mcp`` console script.
 ### `src/mind_mem/mcp/infra/`
 
-- `acl.py` (~9971 tok, huge) — Per-tool ACL — scope enforcement for the MCP surface.
+- `acl.py` (~10150 tok, huge) — Per-tool ACL — scope enforcement for the MCP surface.
 - `config.py` (~1315 tok, large) — ``mind-mem.json`` config loading + configurable limits.
 - `constants.py` (~98 tok, small) — MCP-surface-wide constants shared by the infra submodules.
 - `http_auth.py` (~2032 tok, huge) — HTTP bearer-token authentication helpers for the MCP surface.
@@ -948,7 +951,7 @@
 - `arch_mind.py` (~3475 tok, huge) — arch-mind MCP tools — wraps the ``arch-mind`` binary as 7 MCP tools.
 - `audit.py` (~4853 tok, huge) — Audit MCP tools — Merkle proofs, hash chain + evidence chain verification.
 - `benchmark.py` (~2858 tok, huge) — Benchmark + category-summary MCP tools.
-- `calibration.py` (~3083 tok, huge) — Calibration MCP tools — feedback (quality) + outcome attribution (utility).
+- `calibration.py` (~3174 tok, huge) — Calibration MCP tools — feedback (quality) + outcome attribution (utility).
 - `chat.py` (~1130 tok, large) — Chat surface — grounded question answering over the workspace.
 - `consolidation.py` (~8665 tok, huge) — Memory-consolidation MCP tools.
 - `core.py` (~3203 tok, huge) — Context-core MCP tools — ``.mmcore`` bundle lifecycle.
@@ -967,9 +970,8 @@
 - `model.py` (~4291 tok, huge) — Model audit / signing MCP tools — wraps ``mind_mem.model_audit``,
 - `ontology.py` (~969 tok, large) — Ontology MCP tools — ``ontology_load`` + ``ontology_validate``.
 - `pipeline.py` (~1128 tok, large) — MCP wrapping for pipeline-hash inspection + dirty-block re-extraction.
-- `public.py` (~5590 tok, huge) — # mypy: disable-error-code="no-any-return"
+- `public.py` (~5863 tok, huge) — # mypy: disable-error-code="no-any-return"
 - `quality.py` (~1102 tok, large) — MCP wrapping for the v3.11.0 deterministic quality gate.
-- `recall.py` (~24268 tok, huge) — Recall surface — the retrieval core of the MCP API.
 - `signal.py` (~926 tok, large) — Interaction-signal MCP tools — ``observe_signal`` + ``signal_stats``.
 - `trajectory.py` (~1576 tok, huge) — Trajectory-memory MCP tool — case-based recall over past task outcomes.
 - `walkthrough_persona.py` (~1843 tok, huge) — MCP wrapping for v3.9 walkthrough + persona projection.
@@ -1001,7 +1003,7 @@
 - `ontology.py` (~3933 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `opencode_config.py` (~1873 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `outcome_attribution.py` (~4513 tok, huge) — Outcome attribution — did the recalled memory actually *help*?
-- `outcome_store.py` (~4752 tok, huge) — Outcome-attribution persistence over the calibration store.
+- `outcome_store.py` (~4973 tok, huge) — Outcome-attribution persistence over the calibration store.
 - `path_redact.py` (~842 tok, large) — # Copyright 2026 STARGA, Inc.
 - `payload_admission.py` (~3614 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `personas.py` (~1256 tok, large) — Persona-aware recall projection (v3.9.0 candidate).
@@ -1019,10 +1021,10 @@
 - `query_expansion.py` (~5349 tok, huge) — Multi-query expansion for improved recall.
 - `query_planner.py` (~2865 tok, huge) — Query decomposition for multi-hop questions (v3.3.0 Tier 1 #1).
 - `read_authz.py` (~3483 tok, huge) — # Copyright 2026 STARGA, Inc.
-- `recall_abstention.py` (~4488 tok, huge) — # Copyright 2026 STARGA, Inc.
+- `recall_abstention.py` (~4536 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `recall_attestation.py` (~13053 tok, huge) — Per-run recall attestation — runtime evidence of *how* an answer was produced.
 - `recall_cache.py` (~6867 tok, huge) — v3.2.0 — distributed recall result cache (Redis + in-process LRU fallback).
-- `_recall_constants.py` (~3418 tok, huge) — Recall engine constants — search fields, BM25 params, regex patterns, limits."""
+- `_recall_constants.py` (~3480 tok, huge) — Recall engine constants — search fields, BM25 params, regex patterns, limits."""
 - `_recall_context.py` (~2609 tok, huge) — Recall engine context packing — post-retrieval augmentation rules."""
 - `_recall_detection.py` (~6949 tok, huge) — Recall engine detection — query type classification, text extraction, block utilities."""
 - `recall_digests.py` (~2101 tok, huge) — Canonical digests the recall attestation commits to.
@@ -1198,6 +1200,7 @@
 - `world_symbol_probe.py` (~1454 tok, large) — # Copyright 2026 STARGA, Inc.
 ### `tests/`
 
+- `_abstention_fixture.py` (~1782 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `conftest.py` (~4592 tok, huge) — Shared test fixtures.
 ### `tests/fixtures/`
 
@@ -1270,11 +1273,14 @@
 - `_supersede_scenarios.py` (~1708 tok, huge) — Workspaces and recall legs shared by the supersede-chain and index-namespace tests.
 - `test_ab_report_unstated_comparability.py` (~1031 tok, large) — An unstated comparability field is not agreement.
 - `test_abstention_classifier.py` (~3963 tok, huge) — Tests for the adversarial abstention classifier."""
+- `test_abstention_doors.py` (~2315 tok, huge) — # Copyright 2026 STARGA, Inc.
+- `test_abstention_separation.py` (~2347 tok, huge) — # Copyright 2026 STARGA, Inc.
+- `test_abstention_store.py` (~4685 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_accountability_dashboard.py` (~6883 tok, huge) — RA.5 — the lifecycle-tier dashboard, and the four refusals it inherits.
 - `test_accountability_views.py` (~6320 tok, huge) — RA.2 — precision and waste as derived views, and the four refusals that shape them.
 - `test_acl_staging_readers.py` (~5568 tok, huge) — A user-scope staging write is allowed only while no reader serves it to others.
 - `test_acl_tool_coverage.py` (~2384 tok, huge) — ACL coverage invariant for the MCP tool surface.
-- `test_acl_user_scope_read_only.py` (~7270 tok, huge) — No USER-scope MCP tool may write, in any argument combination.
+- `test_acl_user_scope_read_only.py` (~7433 tok, huge) — No USER-scope MCP tool may write, in any argument combination.
 - `test_active_only_filter.py` (~312 tok, medium) — Tests for active_only recall filter."""
 - `test_adjacent_public_acl.py` (~3611 tok, huge) — ACL controls for public retrieval doors beside the ranked recall tool."""
 - `test_admissibility_unreadable_status.py` (~1104 tok, large) — An unreadable ``Status`` must be withheld on the stale-index path too.
@@ -1462,7 +1468,7 @@
 - `test_event_fanout.py` (~1153 tok, large) — v4.0 prep — governance event fan-out."""
 - `test_event_fanout_wiring.py` (~7068 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_event_id_filter.py` (~1779 tok, huge) — Unit tests for the event_id recall post-filter.
-- `test_every_serving_surface_attests.py` (~10802 tok, huge) — Every door proves what it served — not one of them.
+- `test_every_serving_surface_attests.py` (~10902 tok, huge) — Every door proves what it served — not one of them.
 - `test_evidence_bundle.py` (~1562 tok, huge) — v3.3.0 Tier 3 #7 — structured evidence bundle.
 - `test_evidence_chain_fork_refusal.py` (~2849 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_evidence_chain_recovery.py` (~9797 tok, huge) — # Copyright 2026 STARGA, Inc.
@@ -1766,7 +1772,8 @@
 - `test_read_surface_host_paths.py` (~4180 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_read_surface_paths.py` (~4260 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_read_surface_resources.py` (~7373 tok, huge) — # Copyright 2026 STARGA, Inc.
-- `test_recall_abstention.py` (~5218 tok, huge) — # Copyright 2026 STARGA, Inc.
+- `test_recall_abstention.py` (~5265 tok, huge) — # Copyright 2026 STARGA, Inc.
+- `test_recall_abstention_wiring.py` (~5731 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_recall_admissibility.py` (~8772 tok, huge) — Acceptance gate for recall admissibility — the servability allow-list.
 - `test_recall_as_of.py` (~1297 tok, large) — Tests for the ``recall(..., as_of=)`` time-travel plumb-through (roadmap Group B).
 - `test_recall_attestation_anchor.py` (~4089 tok, huge) — # Copyright 2026 STARGA, Inc.

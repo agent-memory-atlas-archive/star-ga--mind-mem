@@ -493,6 +493,28 @@ class CalibrationManager:
         return get_outcome_stats(self._mgr, top_n=top_n)
 
     # -----------------------------------------------------------------------
+    # Abstention predictions -- scored against the outcomes above
+    # -----------------------------------------------------------------------
+
+    @_leased
+    def record_abstention(self, run_id: str, assessment: Any, recorded_at: str) -> bool:
+        """Record the abstention verdict shown for a run. Idempotent.
+
+        See :func:`mind_mem.abstention_store.insert_prediction`. Sidecar table
+        in this same store; nothing recall reads.
+        """
+        from .abstention_store import insert_prediction
+
+        return insert_prediction(self._mgr, run_id, assessment, recorded_at)
+
+    @_leased
+    def get_abstention_stats(self) -> dict[str, Any]:
+        """How well abstention predicted the outcomes reported against its runs."""
+        from .abstention_store import stats_from_manager
+
+        return stats_from_manager(self._mgr)
+
+    # -----------------------------------------------------------------------
     # Compute calibration weights
     # -----------------------------------------------------------------------
 
@@ -787,6 +809,16 @@ class CalibrationManager:
         llm_reliability = reliability_report(self._workspace)
         if llm_reliability is not None:
             stats["llm_reliability"] = llm_reliability
+
+        # How well computed abstention predicted the outcomes reported against
+        # its runs. Same shape of guarantee as the key above: ``None`` (no verdict
+        # ever recorded) leaves the key absent, so a workspace that never asked
+        # for one gets the report it always got.
+        from .outcome_store import _abstention_section
+
+        abstention = _abstention_section(self._mgr)
+        if abstention is not None:
+            stats["abstention"] = abstention
 
         return stats
 

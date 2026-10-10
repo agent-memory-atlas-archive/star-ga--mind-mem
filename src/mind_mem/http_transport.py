@@ -900,6 +900,17 @@ def _handle_query(workspace: str, body: dict[str, Any]) -> tuple[int, dict[str, 
     persona = body.get("persona")
     if persona is not None and not isinstance(persona, str):
         return (400, {"error": "persona must be a string"})
+    # Computed abstention is opt-in PER REQUEST on this route. The workspace-wide
+    # ``recall.abstention.enabled`` switch applies to the envelope doors (MCP /
+    # REST / gRPC) where the config is already in hand; honouring it here would
+    # cost a config stat on every request that never asked, and this route's
+    # payload is a fixed shape clients already parse.
+    from .recall_abstention import validate_intended_use
+
+    try:
+        intended_use = validate_intended_use(body.get("intended_use"))
+    except ValueError as exc:
+        return (400, {"error": str(exc)})
 
     from .namespaces import InvalidAgentIdError
     from .personas import PERSONAS, PersonaError, apply_persona
@@ -953,7 +964,35 @@ def _handle_query(workspace: str, body: dict[str, Any]) -> tuple[int, dict[str, 
     }
     if persona is not None:
         payload["persona"] = persona
+    if intended_use is not None:
+        _attach_abstention(payload, workspace, results, intended_use)
     return (200, payload)
+
+
+def _attach_abstention(payload: dict[str, Any], workspace: str, results: Any, intended_use: str) -> None:
+    """Add the verdict for the SERVED (unprojected) *results* to a ``/query`` payload.
+
+    Computed from the engine's list, not the persona projection: a persona
+    rewrites per-hit fields and may drop the score the statistic reads. A
+    verdict that cannot be produced is reported in ``warnings`` and never fails
+    the query.
+    """
+    try:
+        from ._recall_core import _get_config
+        from .abstention_store import judge_served
+
+        config = _get_config(workspace)
+        section = config.get("recall") if isinstance(config, dict) else None
+        verdict, config_warnings, problem = judge_served(workspace, results, intended_use=intended_use, recall_cfg=section)
+    except Exception as exc:  # noqa: BLE001 -- the answer was computed; serve it
+        _log.warning("query_abstention_failed", extra={"error": str(exc)})
+        payload["warnings"] = [*payload.get("warnings", []), "Abstention verdict unavailable."]
+        return
+    payload["abstention"] = verdict
+    if config_warnings:
+        payload["config_warnings"] = list(config_warnings)
+    if problem:
+        payload["warnings"] = [*payload.get("warnings", []), problem]
 
 
 @_refuse_under_namespace_acl

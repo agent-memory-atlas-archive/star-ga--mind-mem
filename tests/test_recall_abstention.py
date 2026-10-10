@@ -496,6 +496,12 @@ def test_validate_intended_use() -> None:
             assert use in str(err.value)
 
 
+def test_validation_error_echoes_a_bounded_excerpt() -> None:
+    with pytest.raises(ValueError) as err:
+        validate_intended_use("x" * 5000)
+    assert len(str(err.value)) < 300
+
+
 def test_deterministic_across_repeats() -> None:
     rng = random.Random(5)
     hits = _hits(*[rng.random() * 20 for _ in range(30)])

@@ -6,6 +6,39 @@ All notable changes to MIND-Mem are documented in this file.
 
 ### Added
 
+- Computed abstention (`mind_mem.recall_abstention`, `docs/computed-abstention.md`).
+  `recall` returned ranked candidates and left "is any of this a clear match?" to the
+  caller, so "five blocks, none a clear match" and "five blocks, the first clearly right"
+  were both a list of five. The served set now yields a first-class `abstention` field:
+  one scale-free statistic for the SET (`separation = (top - runner_up) / top`, a lone hit
+  is a neutral 0.5, an exact tie is 0.0), and one of three bands -- `act` /
+  `proceed_with_caution` / `do_not_act` -- whose thresholds scale with `intended_use`
+  (`summary` < `answer` < `governed_write`; a policy that makes a stricter use looser is
+  rejected). Ask for it with `intended_use` on the MCP `recall` / `hybrid_search` tools,
+  REST `POST /v1/recall`, `mm recall --intended-use USE` or the stdlib `POST /query` body,
+  or opt a whole workspace in with `recall.abstention.enabled`. Off by default and
+  invisible when off: the response is byte-identical and nothing is read, written or
+  logged. Derived post-cache, so the recall cache never stores a verdict for the wrong
+  use; it never changes the results, their order or their scores. No model, network call,
+  clock or randomness. The shipped thresholds are provisional.
+- Abstention is a prediction the existing calibration loop scores (`mind_mem.abstention_store`).
+  A returned verdict is recorded in a sibling table of `recall.db` against the run identity
+  the response already publishes (`attestation.query_id`); `report_outcome` then joins it,
+  and `outcome_stats` gains an `abstention` section (only once a verdict was recorded) with
+  per-band success rates, a `discriminating` / `not_discriminating` / `inverted` /
+  `insufficient_evidence` verdict, a `silent` flag for failures accumulating while the
+  abstention never fires, and strata by use and score basis. One reporter is one vote per
+  (run, verdict); the scoring is pure arithmetic over stored counts. The table is created by
+  the first prediction, a replayed (run, use) is detected by a read (`recall.db` is part of
+  the cache's corpus stamp), and nothing recall does reads it.
+- `mm abstention-eval --labelled FILE`: the falsification condition as a command. Serves
+  labelled present/absent queries through `mm recall`'s door and reports the AUC of the
+  statistic, per-class distributions, how often the bands would act on an absent answer,
+  and a verdict (`separates` / `weak` / `no_signal` -> exit 3 / `insufficient`). On the
+  shipped fixture the statistic separates on the FTS-indexed path (AUC 0.92) and does not on
+  the unindexed full-scan fallback (AUC 0.48); the fixture is not evidence about any real
+  workspace.
+
 - OpenCode support (1.x and 2.x): `mm detect` recognizes OpenCode and
   `mm install-all --agent opencode` registers the mind-mem MCP server in
   `~/.config/opencode/opencode.json` and adds the Memory Protocol to the

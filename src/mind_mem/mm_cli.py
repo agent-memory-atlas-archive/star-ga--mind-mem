@@ -220,6 +220,61 @@ def _cmd_kernel_recall(args: argparse.Namespace) -> int:
     return 0
 
 
+def _print_recall_with_abstention(args: argparse.Namespace, results: Any) -> int:
+    """``mm recall --intended-use USE`` -- the ranked hits plus the abstention verdict.
+
+    Opt-in per invocation because the default output is a bare JSON list a
+    script may already parse; asking for a verdict changes the shape, so the
+    shape change is the caller's explicit choice. The workspace-wide
+    ``recall.abstention.enabled`` switch deliberately does not apply here.
+    """
+    from mind_mem._recall_core import _get_config
+    from mind_mem.abstention_store import judge_served
+
+    ws = _workspace()
+    config = _get_config(ws)
+    section = config.get("recall") if isinstance(config, dict) else None
+    verdict, config_warnings, problem = judge_served(ws, results, intended_use=args.intended_use, recall_cfg=section)
+    payload: dict[str, Any] = {
+        "query": args.query,
+        "count": len(results),
+        "results": list(results),
+        "abstention": verdict,
+        "attestation": getattr(results, "attestation", None),
+    }
+    if config_warnings:
+        payload["config_warnings"] = list(config_warnings)
+    if problem:
+        payload["warnings"] = [problem]
+    print(json.dumps(payload, indent=2, default=str))
+    return 0
+
+
+def _cmd_abstention_eval(args: argparse.Namespace) -> int:
+    """``mm abstention-eval --labelled FILE`` -- run the falsification experiment.
+
+    Exit 0 when the statistic separates (or the sample is too small to say),
+    3 when it does NOT -- so a script can gate on "computed abstention carries
+    signal for this workspace" -- and 2 for unreadable input.
+    """
+    from mind_mem.abstention_eval import evaluate, load_labelled
+
+    try:
+        labelled = load_labelled(args.labelled)
+        report = evaluate(
+            _workspace(),
+            labelled,
+            limit=args.limit,
+            intended_use=args.intended_use,
+            scoring_instant=args.scoring_instant,
+        )
+    except ValueError as exc:
+        print(f"mm abstention-eval: {exc}", file=sys.stderr)
+        return 2
+    print(json.dumps(report, indent=2, default=str))
+    return 3 if report["verdict"] == "no_signal" else 0
+
+
 def _cmd_recall(args: argparse.Namespace) -> int:
     # v4 cognitive kernels are opt-in per invocation: with no --kernel the
     # path below is byte-for-byte what it was, and no feature flag is read.
@@ -236,6 +291,8 @@ def _cmd_recall(args: argparse.Namespace) -> int:
         since=getattr(args, "since", None),
         until=getattr(args, "until", None),
     )
+    if getattr(args, "intended_use", None):
+        return _print_recall_with_abstention(args, results)
     if getattr(args, "receipt_envelope", False):
         print(
             json.dumps(
@@ -4677,7 +4734,29 @@ def build_parser() -> argparse.ArgumentParser:
             "mind-mem.json. Omit for unchanged v3 recall."
         ),
     )
+    p_recall_output.add_argument(
+        "--intended-use",
+        choices=["summary", "answer", "governed_write"],
+        default=None,
+        help=(
+            "Print the ranked hits plus an 'abstention' verdict (act / proceed_with_caution / "
+            "do_not_act) for what the answer will be used for; a governed write needs more "
+            "separation than a summary. Changes the output from a bare list to an object. "
+            "The verdict is recorded so report_outcome can score it."
+        ),
+    )
     p_recall.set_defaults(func=_cmd_recall)
+
+    # abstention-eval
+    p_abst = sub.add_parser(
+        "abstention-eval",
+        help="Measure whether computed abstention separates present from absent answers on this workspace.",
+    )
+    p_abst.add_argument("--labelled", required=True, help='JSONL file of {"query": str, "present": bool} rows.')
+    p_abst.add_argument("--limit", type=int, default=10)
+    p_abst.add_argument("--intended-use", choices=["summary", "answer", "governed_write"], default=None)
+    p_abst.add_argument("--scoring-instant", default=None, help="UTC date (YYYY-MM-DD) to pin the recency layer for a reproducible run.")
+    p_abst.set_defaults(func=_cmd_abstention_eval)
 
     # context
     p_ctx = sub.add_parser(

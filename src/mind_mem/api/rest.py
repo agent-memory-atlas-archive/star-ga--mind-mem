@@ -751,6 +751,16 @@ class RecallRequest(BaseModel):
             "attestation recorded to replay it. Empty means today in UTC."
         ),
     )
+    intended_use: str = Field(
+        "",
+        max_length=32,
+        description=(
+            "What the answer will be used for: summary | answer | governed_write. When set, the response carries "
+            "a first-class 'abstention' verdict (act / proceed_with_caution / do_not_act) whose band scales with the "
+            "use -- a governed write needs more separation than a summary. Empty means no verdict unless the "
+            "workspace opted in with recall.abstention.enabled."
+        ),
+    )
 
     @field_validator("backend")
     @classmethod
@@ -758,6 +768,13 @@ class RecallRequest(BaseModel):
         if v not in _BACKEND_CHOICES:
             raise ValueError(f"backend must be one of {_BACKEND_CHOICES}")
         return v
+
+    @field_validator("intended_use")
+    @classmethod
+    def _validate_intended_use(cls, v: str) -> str:
+        from mind_mem.recall_abstention import validate_intended_use
+
+        return validate_intended_use(v) or ""
 
 
 class ProposeUpdateRequest(BaseModel):
@@ -1160,6 +1177,7 @@ def create_app(
                 active_only=body.active_only,
                 backend=body.backend,
                 scoring_instant=body.scoring_instant or None,
+                intended_use=body.intended_use or None,
             )
         return _parse_tool_json(raw)
 
