@@ -5,8 +5,8 @@
 > Re-generate with: `anatomy .`
 
 **Project:** `mind-mem`
-**Files:** 1755 | **Est. tokens:** ~5,192,376
-**Generated:** 2026-10-10 06:10 UTC
+**Files:** 1755 | **Est. tokens:** ~5,192,768
+**Generated:** 2026-10-10 07:02 UTC
 
 ## Token Budget Guide
 
@@ -93,7 +93,7 @@
 | `src/mind_mem/tool_output/` | 3 | ~5,895 |
 | `src/mind_mem/v4/` | 24 | ~96,311 |
 | `src/mind_mem/viewer_static/` | 3 | ~865 |
-| `tests/` | 799 | ~2,353,510 |
+| `tests/` | 799 | ~2,353,902 |
 | `tests/fixtures/` | 8 | ~16,356 |
 | `tests/fixtures/importers/` | 5 | ~1,218 |
 | `tests/fixtures/importers/agent_memory/` | 4 | ~383 |
@@ -1273,7 +1273,7 @@
 - `_supersede_scenarios.py` (~1708 tok, huge) — Workspaces and recall legs shared by the supersede-chain and index-namespace tests.
 - `test_ab_report_unstated_comparability.py` (~1031 tok, large) — An unstated comparability field is not agreement.
 - `test_abstention_classifier.py` (~3963 tok, huge) — Tests for the adversarial abstention classifier."""
-- `test_abstention_doors.py` (~2315 tok, huge) — # Copyright 2026 STARGA, Inc.
+- `test_abstention_doors.py` (~2707 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_abstention_separation.py` (~2347 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_abstention_store.py` (~5632 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_accountability_dashboard.py` (~6883 tok, huge) — RA.5 — the lifecycle-tier dashboard, and the four refusals it inherits.

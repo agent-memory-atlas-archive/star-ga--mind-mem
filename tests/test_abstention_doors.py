@@ -174,6 +174,36 @@ def test_stdlib_query_route_ignores_the_workspace_flag_without_a_request(tmp_pat
 
 
 # ---------------------------------------------------------------------------
+# gRPC (grpcio-free handler)
+# ---------------------------------------------------------------------------
+
+
+def test_grpc_recall_honours_only_the_workspace_switch(tmp_path: Any, monkeypatch: pytest.MonkeyPatch) -> None:
+    """gRPC has no ``intended_use`` field in its message schema, so the workspace
+    switch is the only way a verdict reaches it. Off, the payload is the one it
+    always was; on, it carries the configured default use's verdict."""
+    from mind_mem.api.grpc_server import RecallRequest, handle_recall
+
+    off = make_workspace(str(tmp_path / "off"))
+    on = make_workspace(str(tmp_path / "on"), config={"abstention": {"enabled": True, "default_use": "governed_write"}})
+    request = RecallRequest(query=_present_query(), limit=5)
+
+    monkeypatch.setenv("MIND_MEM_WORKSPACE", off)
+    monkeypatch.setenv("MIND_MEM_CONFIG", os.path.join(off, "mind-mem.json"))
+    plain = json.loads(handle_recall(request).payload)
+    assert plain["results"], "positive control: the door served hits"
+    assert "abstention" not in plain
+
+    monkeypatch.setenv("MIND_MEM_WORKSPACE", on)
+    monkeypatch.setenv("MIND_MEM_CONFIG", os.path.join(on, "mind-mem.json"))
+    asked = json.loads(handle_recall(request).payload)
+    assert asked["abstention"]["intended_use"] == "governed_write"
+    assert [h["_id"] for h in asked["results"]] == [h["_id"] for h in plain["results"]]
+    assert _rows(on), "the verdict is recorded so report_outcome can score it"
+    assert not _rows(off)
+
+
+# ---------------------------------------------------------------------------
 # FastAPI REST
 # ---------------------------------------------------------------------------
 
