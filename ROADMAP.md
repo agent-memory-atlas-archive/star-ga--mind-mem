@@ -5915,3 +5915,50 @@ quality loss this format brings at or below 1 bit.
 
 Proposed. Runs after the 4B model reaches its gates; needs a GPU training
 budget, which is a separate go decision.
+
+## Looped mixture-of-experts as a third 2B option (2026-10-14, Proposed)
+
+Recent research gives a scaling law for looped models, which run the same
+layers several times instead of stacking new ones. With plain dense layers
+the extra loops stop helping quickly. With a mixture of experts, each loop can
+send a token to different experts, so repeated passes keep adding something;
+a 5-loop model matched a conventional model with about twice the total
+parameters. The gain shows up on reasoning tasks and barely at all on
+knowledge tests.
+
+### Why it fits a memory model
+
+The knowledge caveat works in our favour. A memory model does not need to
+store facts in its weights: they sit in the governed store and come back
+through retrieval. Its parameters only have to reason over what retrieval
+hands it, which is the case where looping helps. A small looped model trades
+extra compute for fewer parameters, which suits the RTX 3080-class and
+on-device targets.
+
+### Trial
+
+- Add a looped MoE arm to the 2B comparison, next to ternary and the sub-1-bit
+  sign factorization above. Same teacher, data and token budget for all arms.
+- Match on stored size, and report compute per token separately: a 5-loop
+  model still does about 5 passes of work per token, so it saves memory, not
+  serving cost.
+- Score on the existing harness gates (95/95 strict), with the retrieval-heavy
+  and multi-hop slices reported on their own.
+- Expert routing is deterministic (see the `mind-inference` roadmap item on
+  pinned expert routing), so outputs stay byte-identical across substrates.
+
+### Falsification condition
+
+Dropped if it does not beat the dense 2B arm at matched stored size on the
+harness gates, or if its gain is confined to slices the 2B model does not
+serve.
+
+### Out of scope
+
+The 4B model keeps its current plan.
+
+### Status
+
+Proposed. Results so far are from a published summary, not reproduced. Runs
+with the rest of the 2B comparison after the 4B model reaches its gates; the
+GPU training budget is a separate go decision.
