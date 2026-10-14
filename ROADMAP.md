@@ -5823,3 +5823,62 @@ if a two-machine round trip ever applies a chunk without a review step.
 Proposed. §1–§3 are small and do not change the model-facing surface beyond adding
 optional fields; §5–§6 change tool schemas and must be settled before the 4B
 model's final training round, not after.
+
+## Training data: answer-only loss, per-fact weighting, and small decision gates (2026-10-14, Proposed)
+
+Recent research on building training samples from long agent runs makes one point that
+applies to our model training directly: only the text the model itself writes should
+carry loss. Our current scripts do not do that.
+
+### 1. Answer-only loss (fix before the next 4B training run)
+
+Both training scripts compute loss over the whole sequence. `train/qlora_local_3080.py`
+flattens each chat into one `text` field, and `train/train_qlora.py` passes chats to the
+trainer without assistant-only loss. Every row therefore spends loss on the system prompt
+and the user question, not just the answer.
+
+- Mask everything except assistant tokens. Use the trainer's assistant-only loss if the
+  base model's chat template marks the assistant spans; otherwise mask in our own collator.
+- Gate: print one batch and check that the number of trainable tokens equals the number of
+  assistant tokens. Positive control: a known system-prompt token must carry label `-100`.
+
+### 2. Weight per source fact, not per row
+
+Each tool appears in about five reworded variants, and the addendum is deliberately copied
+several times. Weight each row by `1 / (variants of its source fact)`, so heavily reworded
+tools do not dominate by accident. Deliberate upweighting stays, but as an explicit weight
+recorded in the corpus manifest, not as duplicated rows.
+
+### 3. Branching sessions, trained once (when multi-turn traces enter the corpus)
+
+The corpus today is short single questions, so this does not apply yet. When agent traces
+with retries or context compaction are added: merge each session into a prefix tree, train
+a shared prefix once, keep at most about five paths per session, and give each session equal
+weight however much it branched.
+
+### 4. "Could not assess" is not "scored zero"
+
+For incomplete or timed-out evaluation items, record an unassessable result separately from
+a real zero. Unassessable items are excluded from both training targets and scores, never
+silently counted as failures.
+
+### 5. Small decision gates as small tabular models
+
+Gates such as recall abstention ("should recall hold back on this answer?") work on a
+handful of numeric features. Try a tuned gradient-boosted tree first and a pretrained
+tabular model second, both behind the existing calibration item. The fitted gate carries
+an evidence record: hash of the training table, hash of the fitted weights, and the
+harness score at fit time.
+
+### Falsification condition
+
+§1 is wrong if the answer-only model scores below the full-sequence model on the strict
+95/95 harness at the same data and steps. §2 is wrong if per-fact weighting lowers any
+per-tool score on the harness. §5 is not worth keeping if the fitted gate does not beat the
+current fixed threshold on held-out abstention cases.
+
+### Status
+
+Proposed. §1 lands before the 4B model's next training run, and that run must pass the
+strict 95/95 harness again before it counts. §2 goes with §1. §3–§5 wait for the data they
+need.
