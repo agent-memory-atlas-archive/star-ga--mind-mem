@@ -5882,3 +5882,36 @@ current fixed threshold on held-out abstention cases.
 Proposed. §1 lands before the 4B model's next training run, and that run must pass the
 strict 95/95 harness again before it counts. §2 goes with §1. §3–§5 wait for the data they
 need.
+
+## Sub-1-bit low-rank sign factorization vs ternary for the 2B model (2026-10-14, Proposed)
+
+Recent research stores each weight matrix as two low-rank factors with +1/-1
+entries plus short scale vectors and a binary residual pass, at about 0.1 to
+1 bit per weight. It is a direct competitor to the ternary ({-1, 0, +1})
+format planned for the 2B model, and the choice should be made on our gates,
+not on the paper's.
+
+### Trial
+
+- Train both formats from the same teacher, data and token budget, at matched
+  storage (~1-1.6 bits per weight). Quantization-aware training with
+  distillation in both cases.
+- Score on the existing harness gates (95/95 strict), not on perplexity.
+- Inference runs on the `mind-inference` sign-matrix kernel, so the
+  comparison also checks cross-substrate byte-identity of the outputs.
+
+### Falsification condition
+
+Ternary stays the 2B format if the sign-factorized model scores below it on
+any harness gate at matched storage. Published results show newer base models
+lose far more quality at 1 bit than older ones, so this is a real risk.
+
+### Out of scope
+
+The 4B model keeps its current plan. Its strict gates leave no room for the
+quality loss this format brings at or below 1 bit.
+
+### Status
+
+Proposed. Runs after the 4B model reaches its gates; needs a GPU training
+budget, which is a separate go decision.
