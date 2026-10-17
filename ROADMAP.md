@@ -5962,3 +5962,63 @@ The 4B model keeps its current plan.
 Proposed. Results so far are from a published summary, not reproduced. Runs
 with the rest of the 2B comparison after the 4B model reaches its gates; the
 GPU training budget is a separate go decision.
+
+## Benchmark: inherited memory across agent generations (2026-10-16, Proposed)
+
+Recent research on long-horizon agent tasks finds that one long agent run tends to
+fixate on its first approach, and that restarting with a fresh agent that inherits
+the workspace plus a short note of what was tried and what failed recovers much of
+that loss. That handoff note is memory, and it is exactly the kind of memory that
+goes wrong quietly: a stale "this failed" entry steers every later generation away
+from the right fix, and two generations can record contradicting conclusions.
+
+This benchmark measures whether mind-mem makes that handoff better than a plain
+note, and publishes only measured numbers.
+
+### Setup
+
+- A fixed suite of long tasks. Each task is run by successive fresh agents
+  (generation 1, 2, 3, ...), each with a clean context and a fixed per-generation
+  budget. The workspace carries over between generations in every arm.
+- **Arm A (no memory):** each generation starts from the workspace alone.
+- **Arm B (plain note):** each generation also inherits a plain-text note written
+  by the previous one, with no governance.
+- **Arm C (mind-mem):** each generation writes its tried / failed / hypothesis /
+  next-idea findings through `propose_update`, and the next generation reads them
+  back through recall. Failed attempts carry their evidence, and contradictions
+  between generations go through the normal contradiction handling.
+- Same model, same tasks, same per-generation budget and same number of
+  generations in every arm.
+
+### What is reported
+
+- **Success rate per generation**: the fraction of tasks solved by generation N,
+  per arm, so the curve shows whether inherited memory compounds or saturates.
+- **Cost**: tokens and wall-clock per solved task, including the cost of writing
+  and reading memory in Arm C.
+- **Contradiction handling**: how many contradictions between generations were
+  detected, how many were resolved, and how many stale "failed" entries were
+  correctly superseded when a later generation found the fix. Planted
+  contradictions give a known-answer check.
+- **Repeated dead ends**: how often a generation re-tries an approach that an
+  earlier generation already recorded as failed.
+
+### Gates
+
+- Only measured numbers are published. Every reported figure links to the run
+  manifest (task set, budgets, seeds, version) so it can be reproduced.
+- Arm C is claimed as an improvement only if it beats both Arm A and Arm B on
+  success rate at equal total budget, with the memory overhead counted in that
+  budget.
+- Planted contradictions must be detected; a run that misses one is reported as
+  a failure of the contradiction gate, not averaged away.
+
+### Falsification condition
+
+Dropped as a claim if Arm C does not beat the plain-note arm at equal budget, or
+if governed notes reduce repeated dead ends without improving the success rate.
+
+### Status
+
+Proposed. Nothing run yet. Needs the long-task suite and the multi-generation
+harness first; no numbers will be stated until a full run exists.
