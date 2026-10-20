@@ -6022,3 +6022,75 @@ if governed notes reduce repeated dead ends without improving the success rate.
 
 Proposed. Nothing run yet. Needs the long-task suite and the multi-generation
 harness first; no numbers will be stated until a full run exists.
+
+## Benchmark: memory on a codebase that inherits its own past (2026-10-19, Proposed)
+
+A companion to "Benchmark: inherited memory across agent generations" (2026-10-16).
+That entry hands work from one fresh agent to the next. This one keeps one agent on
+one codebase while each task depends on the agent's own earlier work, which is how
+memory is used in long coding sessions.
+
+Recent research built an external benchmark of this shape: real open-source
+repositories turned into streams of dependent milestones, each built on the agent's
+own earlier code rather than on a correct copy. Its published results: top agents
+score above 80% when every milestone starts from a correct base and under 40% when
+they inherit their own work. New features keep landing at a steady rate. What levels
+off is keeping old behaviour working: regressions pile up and later milestones run
+on a damaged codebase. Reading and searching also surge after every context
+compaction, as the agent rebuilds what it already knew. These are the source's
+claims, not ours; the source is not named in this public file.
+
+Both failure points are memory problems: what the agent knew before a compaction,
+and which earlier change broke which test. MIND-Mem claims to help with exactly
+these, so this is where the claim should be measured.
+
+### 1. A paired run on the external benchmark
+
+- One repository first; the full set only if the first shows a signal.
+- **Arm A:** the agent as shipped. **Arm B:** the same agent with the MIND-Mem MCP
+  server attached and the standard instructions (recall before acting,
+  `propose_update` after learning). Same model, same budget, at least 3 seeds per
+  arm.
+- Report the benchmark's two halves separately: features completed, and existing
+  tests kept passing. Memory should mostly move the second. A gain only in the first
+  is a different claim and is reported as such.
+- Cost, as the source publishes it: about $500 for one full evaluation with a
+  frontier model, and roughly $12 to $115 per repository depending on the model.
+  Paired, seeded runs multiply that, so the pilot runs on subscription quota or
+  needs a budget decision.
+
+### 2. Re-orientation cost after compaction
+
+Count the read and search calls in a fixed window after each compaction, per arm. If
+memory works, that surge shrinks. `resume_brief` and `prefetch` are the surfaces
+under test. The metric comes from the same transcripts as §1, so it costs nothing
+extra.
+
+### 3. Carried beliefs must stay checkable
+
+The same research shows the other side of carrying things forward: one early wrong
+change keeps breaking later work. A memory that carries a wrong belief forward does
+the same. In these runs, log every recalled block with its run step, and count
+recalled blocks that describe a file the agent has since changed, and how often they
+were still served afterwards. The target is that the existing staleness and
+contradiction paths stop serving such a block before the agent acts on it again.
+
+### What is NOT taken
+
+- No code from the benchmark or its pipeline. It runs as an external harness,
+  unmodified, and its licence is checked before use.
+- No competitor numbers. Other memory products already report results on this
+  benchmark; those are self-reported and are not quoted.
+- No training data. The benchmark data stays out of the 4B model's training set,
+  otherwise the run measures memorisation.
+
+### Falsification condition
+
+Dropped as a claim if, beyond seed spread, the MIND-Mem arm does not keep more
+existing tests passing than Arm A, or if the read-and-search surge after compaction
+does not shrink.
+
+### Status
+
+Proposed. Nothing run yet. Needs the benchmark harness with an MCP attach point, and
+quota or a budget decision for the paired, seeded runs.
