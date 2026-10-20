@@ -6094,3 +6094,55 @@ does not shrink.
 
 Proposed. Nothing run yet. Needs the benchmark harness with an MCP attach point, and
 quota or a budget decision for the paired, seeded runs.
+
+## Verdict-labelled lessons and a benchmark leak scan (2026-10-19, Proposed)
+
+Recent research on agents that improve their own setup on unseen, ungraded tasks kept a
+shared library of lessons across tasks and measured it: removing the library cost 1.8
+to 3.1 points. What kept that library honest is a format, and the format fits MIND-Mem
+directly. The same work found one run fetching its own task's grading rubric unprompted,
+which is the failure a memory benchmark must rule out. Ideas only; no code adopted, and
+the source is not named in this public file.
+
+### 1. Every lesson carries a verdict
+
+A lesson is stored only with one verdict on the change it describes:
+
+- **helped**, **hurt**, **no observed effect**, or **confounded**.
+- **Confounded** is required whenever more than one thing changed at once, or a single
+  run is the only support. An invented attribution misleads every later reader; a
+  confounded row is still a useful record.
+
+### 2. At most one lesson per task, in a fixed shape
+
+The reflection after a task writes at most one lesson, as **situation / lesson /
+evidence / confidence**, or writes nothing. The evidence field names the run step or
+block that supports it. Writes still go through `propose_update`, so the existing
+review and contradiction checks apply unchanged.
+
+### 3. Lessons are re-checked on use
+
+A task reads only lessons from earlier tasks, and a fact taken from a lesson is
+re-checked against the current state before the agent acts on it. A lesson the current
+state contradicts is marked stale through the existing staleness path and is not served
+again until reviewed. This is the same rule as §3 of "Benchmark: memory on a codebase
+that inherits its own past": carried beliefs must stay checkable.
+
+### 4. Leak scan before every benchmark run
+
+Before a benchmark run starts, scan everything the system under test can read (the
+memory store, the workspace, the assembled context) for gold answers, answer-key and
+grader paths. On a hit the run refuses to start; the scan is never loosened to let it
+proceed. The scan result, with a hash of what was scanned, is stored with the run, so a
+published score carries proof that no answer key was reachable.
+
+### Falsification condition
+
+§1 to §3 are dropped if, on the paired runs of the two benchmark entries above,
+verdict-labelled lessons do not beat free-form lessons beyond seed spread. §4 costs one
+scan per run and stays unless it raises false alarms on clean benchmark data.
+
+### Status
+
+Proposed. Nothing built. §4 is a precondition for publishing any further benchmark
+number.
