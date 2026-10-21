@@ -47,8 +47,17 @@ def test_direct_roots_keep_the_pinned_versions() -> None:
 
 
 def test_lock_contains_marker_branches_for_supported_python_profiles() -> None:
+    # Exact versions move with every deliberate relock and are enforced by the CI
+    # drift check; this test pins the marker branches the lock must keep.
     text = LOCK.read_text(encoding="utf-8")
-    assert "numpy==2.2.6 ; python_full_version < '3.11'" in text
-    assert "numpy==2.4.6 ; python_full_version == '3.11.*'" in text
-    assert "numpy==2.5.3 ; python_full_version >= '3.12'" in text
-    assert "triton==3.8.0 ; python_full_version < '3.15' and sys_platform == 'linux'" in text
+    for marker in (
+        r"python_full_version < '3\.11'",
+        r"python_full_version == '3\.11\.\*'",
+        r"python_full_version >= '3\.12'",
+    ):
+        assert re.search(rf"^numpy==[0-9][^ ;]* ; {marker} \\$", text, re.MULTILINE), marker
+    assert re.search(
+        r"^triton==[0-9][^ ;]* ; python_full_version < '3\.15' and sys_platform == 'linux' \\$",
+        text,
+        re.MULTILINE,
+    )

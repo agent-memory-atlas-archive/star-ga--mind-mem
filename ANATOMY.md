@@ -5,8 +5,8 @@
 > Re-generate with: `anatomy .`
 
 **Project:** `mind-mem`
-**Files:** 1686 | **Est. tokens:** ~4,914,448
-**Generated:** 2026-10-21 08:37 UTC
+**Files:** 1686 | **Est. tokens:** ~4,914,517
+**Generated:** 2026-10-21 09:41 UTC
 
 ## Token Budget Guide
 
@@ -93,7 +93,7 @@
 | `src/mind_mem/tool_output/` | 3 | ~5,895 |
 | `src/mind_mem/v4/` | 24 | ~96,311 |
 | `src/mind_mem/viewer_static/` | 3 | ~865 |
-| `tests/` | 747 | ~2,196,848 |
+| `tests/` | 747 | ~2,196,917 |
 | `tests/fixtures/` | 7 | ~11,912 |
 | `tests/fixtures/importers/` | 5 | ~1,218 |
 | `tests/fixtures/importers/agent_memory/` | 4 | ~383 |
@@ -1674,7 +1674,7 @@
 - `test_ontology_predicate_constraints.py` (~2315 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_ontology.py` (~2306 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_opencode_install.py` (~2947 tok, huge) — # Copyright 2026 STARGA, Inc.
-- `test_optional_requirements_lock.py` (~504 tok, large) — Checks for the reproducible optional dependency lock."""
+- `test_optional_requirements_lock.py` (~573 tok, large) — Checks for the reproducible optional dependency lock."""
 - `test_outcome_attribution_bounds.py` (~3311 tok, huge) — Abuse bounds for outcome attribution — one reporter, one vote.
 - `test_outcome_attribution.py` (~4120 tok, huge) — Regression gate for outcome attribution — did the memory actually help?
 - `test_paired_scorecard_gate.py` (~6587 tok, huge) — # Copyright 2026 STARGA, Inc.
