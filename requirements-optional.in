@@ -5,7 +5,7 @@
 # CI re-resolves with this cutoff and requires an exact match, so the lock is
 # reproducible and an upstream release of a transitive package cannot turn the
 # drift check red. Bump it deliberately when relocking.
-# exclude-newer: 2026-09-24T01:51:04Z
+# exclude-newer: 2026-10-21T00:00:00Z
 onnxruntime==1.24.3
 tokenizers==0.23.2
 sentence-transformers==6.0.1
