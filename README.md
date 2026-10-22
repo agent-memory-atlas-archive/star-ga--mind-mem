@@ -281,62 +281,62 @@ Scheduled background enrichment: scans recent memory for missing cross-reference
 
 Cells were checked against each project's public source or, where the engine is closed (Supermemory's engine, Graphlit), its official docs, in October 2026. Several retrieval legs exist in other projects only behind an optional backend; see the Full Feature Matrix below.
 
-**Columns:** **MM** MIND-Mem · **M0** [Mem0](https://github.com/mem0ai/mem0) · **SM** [Supermemory](https://supermemory.ai) · **CM** [claude-mem](https://github.com/thedotmack/claude-mem) · **Le** [Letta](https://www.letta.com) · **Zep** [Zep](https://www.getzep.com) · **LM** [LangMem](https://github.com/langchain-ai/langmem) · **Co** [Cognee](https://www.cognee.ai) · **GL** [Graphlit](https://www.graphlit.com) · **CW** [ClawMem](https://github.com/yoloshii/ClawMem) · **MU** [MemU](https://github.com/NevaMind-AI/memU) · **En** [Engram](https://github.com/Gentleman-Programming/engram) · **BM** [Basic Memory](https://github.com/basicmachines-co/basic-memory)  
+**Columns:** **MM** MIND-Mem · **M0** [Mem0](https://github.com/mem0ai/mem0) · **SM** [Supermemory](https://supermemory.ai) · **CM** [claude-mem](https://github.com/thedotmack/claude-mem) · **Le** [Letta](https://www.letta.com) · **Zep** [Zep](https://www.getzep.com) · **LM** [LangMem](https://github.com/langchain-ai/langmem) · **Co** [Cognee](https://www.cognee.ai) · **GL** [Graphlit](https://www.graphlit.com) · **CW** [ClawMem](https://github.com/yoloshii/ClawMem) · **MU** [MemU](https://github.com/NevaMind-AI/memU) · **En** [Engram](https://github.com/Gentleman-Programming/engram) · **BM** [Basic Memory](https://github.com/basicmachines-co/basic-memory) · **OV** [OpenViking](https://github.com/volcengine/OpenViking)  
 **Cells:** ✓ present · ◐ partial or a different mechanism · opt present but off by default · — looked for and not found · n/v not verified (closed engine or undocumented) · N/A not applicable · ↓<sup>n</sup> see note *n* under the table. Small notes under each table carry the qualifiers.
 
 **Recall**
 
-| Capability | MM | M0 | SM | CM | Le | Zep | LM | Co | GL | CW | MU | En | BM |
-|---|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|
-| BM25 lexical | ✓ | ✓ | ◐ | ✓ | ◐ | ✓ | — | ✓ | ◐ | ✓ | — | ✓ | ✓ |
-| Vector semantic | opt | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — | ✓ |
-| Hybrid fusion<sup>1</sup> | opt | ◐ | ◐ | ◐ | ◐ | ✓ | — | ◐ | ◐ | ✓ | — | — | ◐ |
-| Cross-encoder | opt | opt | opt | — | ◐ | ✓ | — | — | ✓ | ✓ | — | — | opt |
-| Intent routing<sup>2</sup> | ✓ | — | — | — | — | — | — | ◐ | — | ✓ | — | — | — |
-| Query expansion<sup>3</sup> | ✓ | — | ◐ | — | — | — | ◐ | ◐ | ◐ | ◐ | — | — | — |
-| Graph boost<sup>4</sup> | ✓ | ◐ | ◐ | — | — | ◐ | — | ✓ | ◐ | ✓ | — | — | ◐ |
-| Fact sub-blocks | ✓ | ◐ | ✓ | ✓ | — | ✓ | — | ◐ | ◐ | ✓ | ◐ | — | ✓ |
-| Hard negatives | ✓ | — | — | — | — | — | — | — | — | — | — | — | — |
-| Knee cutoff | ✓ | ◐ | ◐ | — | — | ◐ | — | — | — | ◐ | — | — | ◐ |
-| Multi-query + RRF | ✓ | — | ◐ | — | — | — | ◐ | ◐ | — | ✓ | — | — | — |
-| Search dedup<sup>5</sup> | ✓ | ◐ | n/v | ◐ | — | ◐ | ◐ | ◐ | n/v | ✓ | — | ◐ | ◐ |
-| Semantic chunking | ✓ | — | ✓ | ◐ | ◐ | ◐ | — | ◐ | ◐ | ✓ | — | — | ✓ |
+| Capability | MM | M0 | SM | CM | Le | Zep | LM | Co | GL | CW | MU | En | BM | OV |
+|---|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|
+| BM25 lexical | ✓ | ✓ | ◐ | ✓ | ◐ | ✓ | — | ✓ | ◐ | ✓ | — | ✓ | ✓ | opt |
+| Vector semantic | opt | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — | ✓ | ✓ |
+| Hybrid fusion<sup>1</sup> | opt | ◐ | ◐ | ◐ | ◐ | ✓ | — | ◐ | ◐ | ✓ | — | — | ◐ | opt |
+| Cross-encoder | opt | opt | opt | — | ◐ | ✓ | — | — | ✓ | ✓ | — | — | opt | opt |
+| Intent routing<sup>2</sup> | ✓ | — | — | — | — | — | — | ◐ | — | ✓ | — | — | — | ✓ |
+| Query expansion<sup>3</sup> | ✓ | — | ◐ | — | — | — | ◐ | ◐ | ◐ | ◐ | — | — | — | ✓ |
+| Graph boost<sup>4</sup> | ✓ | ◐ | ◐ | — | — | ◐ | — | ✓ | ◐ | ✓ | — | — | ◐ | — |
+| Fact sub-blocks | ✓ | ◐ | ✓ | ✓ | — | ✓ | — | ◐ | ◐ | ✓ | ◐ | — | ✓ | ✓ |
+| Hard negatives | ✓ | — | — | — | — | — | — | — | — | — | — | — | — | — |
+| Knee cutoff | ✓ | ◐ | ◐ | — | — | ◐ | — | — | — | ◐ | — | — | ◐ | — |
+| Multi-query + RRF | ✓ | — | ◐ | — | — | — | ◐ | ◐ | — | ✓ | — | — | — | ◐ |
+| Search dedup<sup>5</sup> | ✓ | ◐ | n/v | ◐ | — | ◐ | ◐ | ◐ | n/v | ✓ | — | ◐ | ◐ | ✓ |
+| Semantic chunking | ✓ | — | ✓ | ◐ | ◐ | ◐ | — | ◐ | ◐ | ✓ | — | — | ✓ | ✓ |
 
 <sub><sup>1</sup> MIND-Mem: BM25+vector+RRF<br><sup>2</sup> MIND-Mem: 9 types<br><sup>3</sup> MIND-Mem: RM3<br><sup>4</sup> MIND-Mem: co-retrieval PageRank<br><sup>5</sup> MIND-Mem: 4 layers</sub>
 
 **Persistence**
 
-| Capability | MM | M0 | SM | CM | Le | Zep | LM | Co | GL | CW | MU | En | BM |
-|---|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|
-| Truth pages<sup>1</sup> | ✓ | — | ◐ | ◐ | — | ◐ | ◐ | ◐ | ◐ | ◐ | ◐ | — | — |
-| Background enrichment<sup>2</sup> | ✓ | ◐ | ✓ | ◐ | ✓ | ◐ | ◐ | ✓ | ◐ | opt | ✓ | — | — |
-| Backup/restore<sup>3</sup> | ✓ | ◐ | — | ◐ | ◐ | — | — | — | — | — | — | ◐ | ◐ |
+| Capability | MM | M0 | SM | CM | Le | Zep | LM | Co | GL | CW | MU | En | BM | OV |
+|---|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|
+| Truth pages<sup>1</sup> | ✓ | — | ◐ | ◐ | — | ◐ | ◐ | ◐ | ◐ | ◐ | ◐ | — | — | ◐ |
+| Background enrichment<sup>2</sup> | ✓ | ◐ | ✓ | ◐ | ✓ | ◐ | ◐ | ✓ | ◐ | opt | ✓ | — | — | ✓ |
+| Backup/restore<sup>3</sup> | ✓ | ◐ | — | ◐ | ◐ | — | — | — | — | — | — | ◐ | ◐ | ✓ |
 
 <sub><sup>1</sup> compiled, per entity<br><sup>2</sup> MIND-Mem: dream cycle<br><sup>3</sup> with zip-slip protection</sub>
 
 **Integrity**
 
-| Capability | MM | M0 | SM | CM | Le | Zep | LM | Co | GL | CW | MU | En | BM |
-|---|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|
-| Contradictions | ✓ | ◐ | ✓ | — | ◐ | ✓ | ◐ | ◐ | — | ◐ | — | ◐ | — |
-| Drift analysis | ✓ | — | — | — | — | — | — | — | — | — | — | ◐ | ◐ |
+| Capability | MM | M0 | SM | CM | Le | Zep | LM | Co | GL | CW | MU | En | BM | OV |
+|---|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|
+| Contradictions | ✓ | ◐ | ✓ | — | ◐ | ✓ | ◐ | ◐ | — | ◐ | — | ◐ | — | ◐ |
+| Drift analysis | ✓ | — | — | — | — | — | — | — | — | — | — | ◐ | ◐ | ◐ |
 
 **Governance**
 
-| Capability | MM | M0 | SM | CM | Le | Zep | LM | Co | GL | CW | MU | En | BM |
-|---|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|
-| Propose/apply<sup>1</sup> | ✓ | — | ◐ | — | — | — | — | ◐ | ◐ | — | — | — | — |
-| Shared memory<sup>2</sup> | ✓ | ◐ | ✓ | ✓ | ✓ | ✓ | ◐ | ✓ | ✓ | ✓ | ◐ | ✓ | ◐ |
+| Capability | MM | M0 | SM | CM | Le | Zep | LM | Co | GL | CW | MU | En | BM | OV |
+|---|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|
+| Propose/apply<sup>1</sup> | ✓ | — | ◐ | — | — | — | — | ◐ | ◐ | — | — | — | — | — |
+| Shared memory<sup>2</sup> | ✓ | ◐ | ✓ | ✓ | ✓ | ✓ | ◐ | ✓ | ✓ | ✓ | ◐ | ✓ | ◐ | ✓ |
 
 <sub><sup>1</sup> governance pipeline<br><sup>2</sup> several agents can read and write one store, via MCP or API. The Full Feature Matrix row "Multi-agent" is stricter: per-agent identity and isolation (◐ = shared store without per-agent isolation)</sub>
 
 **Operations**
 
-| Capability | MM | M0 | SM | CM | Le | Zep | LM | Co | GL | CW | MU | En | BM |
-|---|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|
-| Zero core deps | ✓ | — | n/v | — | — | — | — | — | — | — | — | ✓ | — |
-| Local-only<sup>1</sup> | ✓ | ◐ | ◐ | ◐ | ◐ | ◐ | ◐ | ✓ | — | ✓ | ◐ | ✓ | ✓ |
-| Native C scorer<sup>2</sup> | ✓ | — | — | — | — | — | — | — | — | ◐ | ◐ | — | ◐ |
+| Capability | MM | M0 | SM | CM | Le | Zep | LM | Co | GL | CW | MU | En | BM | OV |
+|---|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|
+| Zero core deps | ✓ | — | n/v | — | — | — | — | — | — | — | — | ✓ | — | — |
+| Local-only<sup>1</sup> | ✓ | ◐ | ◐ | ◐ | ◐ | ◐ | ◐ | ✓ | — | ✓ | ◐ | ✓ | ✓ | ◐ |
+| Native C scorer<sup>2</sup> | ✓ | — | — | — | — | — | — | — | — | ◐ | ◐ | — | ◐ | ✓ |
 
 <sub><sup>1</sup> no cloud required<br><sup>2</sup> optional backend</sub>
 
@@ -536,6 +536,13 @@ managed platform self-reports **91.6** on LoCoMo — a different setup/judge
 (hosted product, not the open-paper config), not apples-to-apples with this
 table. Surfaced rather than omitted, per policy: never publish a comparison
 a skeptic could catch as cherry-picked.
+
+³ OpenViking (0.3.22) self-reports **80.3–82.9%** LoCoMo accuracy for three
+agent integrations. It is not a row here because the scope and metric differ:
+its scripts drop the 446 adversarial (category 5) questions and score the other
+1,540, use a binary LLM judge told to accept any answer that "touches on the
+same topic" as the gold answer, and measure the whole agent (harness, memory and
+hosted Doubao models), not the memory layer alone. Not re-run by MIND-Mem.
 
 ### LongMemEval-S
 
@@ -960,17 +967,17 @@ your-workspace/
 
 ### Quick Comparison
 
-| Feature | MIND-Mem | Mem0 | Letta | Zep/Graphiti | Engram | Basic Memory |
-|---|---|---|---|---|---|---|
-| Local-only | Yes | Part<sup>a</sup> | Self-host<sup>b</sup> | Self-host<sup>c</sup> | Yes<sup>d</sup> | Yes<sup>e</sup> |
-| Zero infrastructure | Yes | Part<sup>f</sup> | No | No | Yes<sup>g</sup> | Yes |
-| Hybrid retrieval | BM25F + vector + RRF | Semantic + BM25 + entity, additive<sup>h</sup> | Vector<sup>i</sup> | Graph + BM25 + vector, RRF / cross-encoder | FTS5 only | FTS5 + vector, score fusion |
-| Governance (propose/review/apply) | Yes | No | No | No | No | No |
-| Contradiction detection | Yes | Platform only<sup>j</sup> | LLM prompt only | Yes<sup>k</sup> | Agent-judged | No |
-| Test functions | 12,624 test functions | - | - | - | - | - |
-| LoCoMo benchmark (full 10-conv, Acc>=50)¹ | 73.8% | 66.9%² | 74.0% | - | - | - |
-| MCP tools | 107 distinct<sup>l</sup> | Hosted<sup>m</sup> | Client only | 13 | 23 | 27 |
-| Core dependencies | 0 | Many | Many | Many | 0<sup>n</sup> | Many |
+| Feature | MIND-Mem | Mem0 | Letta | Zep/Graphiti | Engram | Basic Memory | OpenViking |
+|---|---|---|---|---|---|---|---|
+| Local-only | Yes | Part<sup>a</sup> | Self-host<sup>b</sup> | Self-host<sup>c</sup> | Yes<sup>d</sup> | Yes<sup>e</sup> | Part (needs a configured VLM) |
+| Zero infrastructure | Yes | Part<sup>f</sup> | No | No | Yes<sup>g</sup> | Yes | No (server) |
+| Hybrid retrieval | BM25F + vector + RRF | Semantic + BM25 + entity, additive<sup>h</sup> | Vector<sup>i</sup> | Graph + BM25 + vector, RRF / cross-encoder | FTS5 only | FTS5 + vector, score fusion | Vector, optional rerank; BM25 / sparse only with hosted VikingDB |
+| Governance (propose/review/apply) | Yes | No | No | No | No | No | No |
+| Contradiction detection | Yes | Platform only<sup>j</sup> | LLM prompt only | Yes<sup>k</sup> | Agent-judged | No | LLM, at merge |
+| Test functions | 12,624 test functions | - | - | - | - | - | - |
+| LoCoMo benchmark (full 10-conv, Acc>=50)¹ | 73.8% | 66.9%² | 74.0% | - | - | - | -³ |
+| MCP tools | 107 distinct<sup>l</sup> | Hosted<sup>m</sup> | Client only | 13 | 23 | 27 | 24 |
+| Core dependencies | 0 | Many | Many | Many | 0<sup>n</sup> | Many | Many |
 
 <sub><sup>a</sup> Mem0, Local-only: OSS can run locally; defaults to a cloud LLM<br><sup>b</sup> Letta, Local-only: heavy runtime<br><sup>c</sup> Zep/Graphiti, Local-only: graph DB + LLM<br><sup>d</sup> Engram, Local-only: cloud optional<br><sup>e</sup> Basic Memory, Local-only: cloud optional<br><sup>f</sup> Mem0, Zero infrastructure: library mode; needs LLM + embedder<br><sup>g</sup> Engram, Zero infrastructure: single Go binary<br><sup>h</sup> Mem0, Hybrid retrieval: no RRF<br><sup>i</sup> Letta, Hybrid retrieval: BM25 + RRF only with Turbopuffer<br><sup>j</sup> Mem0, Contradiction detection: Dream<br><sup>k</sup> Zep/Graphiti, Contradiction detection: LLM-based<br><sup>l</sup> MIND-Mem, MCP tools: `mcp.tool` registrations; `recall` dispatcher shadows base `recall`<br><sup>m</sup> Mem0, MCP tools: Platform<br><sup>n</sup> Engram, Core dependencies: single binary</sub>
 
@@ -984,6 +991,10 @@ option.
 ² Mem0's own published LoCoMo-paper number. Mem0's separate 2026 managed
 platform self-reports 91.6 on a different setup/judge — not apples-to-apples
 with this row.
+
+³ OpenViking self-reports 80.3–82.9% on a narrower scope (1,540 questions, no
+adversarial category) with a more lenient judge; see note ³ under the
+Competitive Landscape table.
 
 ### At a Glance
 
@@ -1001,6 +1012,7 @@ with this row.
 | [**MemU**](https://github.com/NevaMind-AI/memU) | Markdown wiki/skills, host-agent-driven capture, LLM-free vector retrieval | Needs an embedding API key; no lexical or hybrid search; no MCP server |
 | [**Engram**](https://github.com/Gentleman-Programming/engram) | Single Go binary, FTS5 search, agent-judged conflict/supersession relations, Git sync | Lexical-only recall; no vector search or propose/review/apply pipeline |
 | [**Basic Memory**](https://github.com/basicmachines-co/basic-memory) | Markdown knowledge graph, FTS + vector hybrid search, valid-time filters | Python with many dependencies; no contradiction detection or propose/review/apply pipeline |
+| [**OpenViking**](https://github.com/volcengine/OpenViking) | Context database that stores memory, documents and skills as one `viking://` file tree; generated one-line abstracts and overviews let agents read summaries before full files; multi-tenant server with ACLs; 24 MCP tools | AGPL-3.0; needs a server and a configured vision-language model; BM25 and sparse retrieval only with Volcengine's hosted VikingDB; LLM-extracted memories are written directly, with no review |
 | **MIND-Mem** | Integrity + governance + zero core deps + hybrid search + MIND kernels + 107 MCP tools (incl. MIC/MAP, walkthrough, persona, pipeline-hash) + cross-model consensus audits (published for v3.11 and v3.12; see `audits/`) | Lexical recall by default (vector/CE optional) |
 
 ### Full Feature Matrix
@@ -1009,71 +1021,71 @@ Compared against every major memory solution for AI agents, checked against each
 
 **Recall**
 
-| Feature | MM | M0 | SM | CM | Le | Zep | LM | Co | GL | CW | MU | En | BM |
-|---|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|
-| Vector | **opt** | ✓ | ✓ | <sub>Chroma</sub> | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — | ↓<sup>1</sup> |
-| Lexical | <sub>**BM25F**</sub> | <sub>BM25</sub> | <sub>FTS</sub> | <sub>FTS5</sub> | ◐ | <sub>BM25</sub> | — | ◐ | <sub>Keyword</sub> | <sub>BM25</sub> | — | <sub>FTS5</sub> | <sub>FTS5</sub> |
-| Graph | <sub>**2-hop**</sub> | ◐ | ✓ | — | — | ✓ | — | ✓ | ✓ | ↓<sup>2</sup> | — | — | ✓ |
-| Hybrid + RRF | **opt** | ◐<sup>3</sup> | ◐ | ◐ | ◐ | ✓ | — | ◐ | ◐ | **✓** | — | — | ◐<sup>4</sup> |
-| Cross-encoder | **↓**<sup>5</sup> | opt | opt | — | ◐ | ✓ | — | — | ↓<sup>6</sup> | ↓<sup>7</sup> | — | — | opt |
-| Intent routing | <sub>**9 types**</sub> | — | — | — | — | — | — | ◐ | — | ✓ | — | — | — |
-| Query expansion | **↓**<sup>8</sup> | — | ↓<sup>9</sup> | — | — | — | ◐ | ◐ | ◐ | ↓<sup>10</sup> | — | — | — |
+| Feature | MM | M0 | SM | CM | Le | Zep | LM | Co | GL | CW | MU | En | BM | OV |
+|---|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|
+| Vector | **opt** | ✓ | ✓ | <sub>Chroma</sub> | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — | ↓<sup>1</sup> | ✓ |
+| Lexical | <sub>**BM25F**</sub> | <sub>BM25</sub> | <sub>FTS</sub> | <sub>FTS5</sub> | ◐ | <sub>BM25</sub> | — | ◐ | <sub>Keyword</sub> | <sub>BM25</sub> | — | <sub>FTS5</sub> | <sub>FTS5</sub> | opt |
+| Graph | <sub>**2-hop**</sub> | ◐ | ✓ | — | — | ✓ | — | ✓ | ✓ | ↓<sup>2</sup> | — | — | ✓ | ◐ |
+| Hybrid + RRF | **opt** | ◐<sup>3</sup> | ◐ | ◐ | ◐ | ✓ | — | ◐ | ◐ | **✓** | — | — | ◐<sup>4</sup> | ◐ |
+| Cross-encoder | **↓**<sup>5</sup> | opt | opt | — | ◐ | ✓ | — | — | ↓<sup>6</sup> | ↓<sup>7</sup> | — | — | opt | opt |
+| Intent routing | <sub>**9 types**</sub> | — | — | — | — | — | — | ◐ | — | ✓ | — | — | — | ✓ |
+| Query expansion | **↓**<sup>8</sup> | — | ↓<sup>9</sup> | — | — | — | ◐ | ◐ | ◐ | ↓<sup>10</sup> | — | — | — | ✓ |
 
 <sub><sup>1</sup> Basic Memory, Vector: FastEmbed<br><sup>2</sup> ClawMem, Graph: Beam + MPFP<br><sup>3</sup> Mem0, Hybrid + RRF: no RRF<br><sup>4</sup> Basic Memory, Hybrid + RRF: score fusion<br><sup>5</sup> MIND-Mem, Cross-encoder: MiniLM 80MB<br><sup>6</sup> Graphlit, Cross-encoder: Reranker<br><sup>7</sup> ClawMem, Cross-encoder: qwen3 0.6B<br><sup>8</sup> MIND-Mem, Query expansion: RM3 (zero-dep)<br><sup>9</sup> Supermemory, Query expansion: LLM rewrite<br><sup>10</sup> ClawMem, Query expansion: QMD 1.7B</sub>
 
 **Persistence**
 
-| Feature | MM | M0 | SM | CM | Le | Zep | LM | Co | GL | CW | MU | En | BM |
-|---|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|
-| Structured | <sub>**Markdown**</sub> | <sub>JSON</sub> | <sub>Grph</sub> | <sub>SQL</sub> | <sub>Blk</sub> | <sub>Grph</sub> | <sub>KV</sub> | <sub>Grph</sub> | <sub>Grph</sub> | <sub>SQL</sub> | ↓<sup>1</sup> | <sub>SQL</sub> | ↓<sup>2</sup> |
-| Entities | **✓** | ✓ | ✓ | — | ◐ | ✓ | ◐ | ✓ | ✓ | ✓ | — | — | ✓ |
-| Temporal | **✓** | ◐ | ✓ | ◐ | ◐ | ✓ | ◐ | ✓ | ✓ | ✓ | ◐ | ◐ | ✓ |
-| Supersede | **✓** | ◐ | ✓ | — | ◐ | ✓ | ◐ | ◐ | ◐ | ✓ | ◐ | ✓ | — |
-| Append-only | **✓** | ◐ | — | — | — | ◐ | — | ◐ | — | — | — | ◐ | — |
-| A-MEM metadata | **✓** | — | — | ◐ | — | — | — | ◐ | ◐ | ✓ | — | ◐ | — |
+| Feature | MM | M0 | SM | CM | Le | Zep | LM | Co | GL | CW | MU | En | BM | OV |
+|---|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|
+| Structured | <sub>**Markdown**</sub> | <sub>JSON</sub> | <sub>Grph</sub> | <sub>SQL</sub> | <sub>Blk</sub> | <sub>Grph</sub> | <sub>KV</sub> | <sub>Grph</sub> | <sub>Grph</sub> | <sub>SQL</sub> | ↓<sup>1</sup> | <sub>SQL</sub> | ↓<sup>2</sup> | ↓<sup>3</sup> |
+| Entities | **✓** | ✓ | ✓ | — | ◐ | ✓ | ◐ | ✓ | ✓ | ✓ | — | — | ✓ | ✓ |
+| Temporal | **✓** | ◐ | ✓ | ◐ | ◐ | ✓ | ◐ | ✓ | ✓ | ✓ | ◐ | ◐ | ✓ | ◐ |
+| Supersede | **✓** | ◐ | ✓ | — | ◐ | ✓ | ◐ | ◐ | ◐ | ✓ | ◐ | ✓ | — | ◐ |
+| Append-only | **✓** | ◐ | — | — | — | ◐ | — | ◐ | — | — | — | ◐ | — | ◐ |
+| A-MEM metadata | **✓** | — | — | ◐ | — | — | — | ◐ | ◐ | ✓ | — | ◐ | — | ◐ |
 
-<sub><sup>1</sup> MemU, Structured: SQL + Markdown<br><sup>2</sup> Basic Memory, Structured: Markdown</sub>
+<sub><sup>1</sup> MemU, Structured: SQL + Markdown<br><sup>2</sup> Basic Memory, Structured: Markdown<br><sup>3</sup> OpenViking, Structured: Markdown + vector index</sub>
 
 **Integrity**
 
-| Feature | MM | M0 | SM | CM | Le | Zep | LM | Co | GL | CW | MU | En | BM |
-|---|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|
-| Contradictions | **✓** | ◐ | ✓ | — | ◐ | ✓ | ◐ | ◐ | — | ◐ | — | ↓<sup>1</sup> | — |
-| Drift detection | **✓** | — | — | — | — | — | — | — | — | — | — | ↓<sup>2</sup> | ↓<sup>3</sup> |
-| Validation | <sub>**Structural**</sub> | — | — | — | — | n/v | ◐ | ✓ | — | ◐ | — | ◐ | <sub>Schema</sub> |
-| Impact graph | **✓** | — | — | — | — | — | — | — | — | ◐ | — | — | — |
-| Coverage | **✓** | — | — | — | — | — | — | — | — | — | — | — | — |
-| Multi-agent | <sub>**ACL-based**</sub> | ◐ | ✓ | ◐ | ✓ | ◐ | ◐ | ✓ | ✓ | ✓ | ◐ | ✓ | ◐ |
-| Conflict res. | <sub>**Automatic**</sub> | ◐ | ◐ | — | — | ◐ | ◐ | ◐ | — | ◐ | — | ↓<sup>4</sup> | ◐ |
-| WAL/crash | **✓** | — | n/v | ◐ | — | n/v | — | ◐ | n/v | ✓ | ◐ | ✓ | ↓<sup>5</sup> |
-| Backup/restore | **✓** | ◐ | — | ◐ | ◐ | — | — | — | — | — | — | <sub>JSON</sub> | <sub>Cloud</sub> |
-| Abstention | **✓** | — | — | — | — | — | — | — | — | ✓ | — | — | — |
+| Feature | MM | M0 | SM | CM | Le | Zep | LM | Co | GL | CW | MU | En | BM | OV |
+|---|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|
+| Contradictions | **✓** | ◐ | ✓ | — | ◐ | ✓ | ◐ | ◐ | — | ◐ | — | ↓<sup>1</sup> | — | ◐ |
+| Drift detection | **✓** | — | — | — | — | — | — | — | — | — | — | ↓<sup>2</sup> | ↓<sup>3</sup> | ◐ |
+| Validation | <sub>**Structural**</sub> | — | — | — | — | n/v | ◐ | ✓ | — | ◐ | — | ◐ | <sub>Schema</sub> | ✓ |
+| Impact graph | **✓** | — | — | — | — | — | — | — | — | ◐ | — | — | — | ◐ |
+| Coverage | **✓** | — | — | — | — | — | — | — | — | — | — | — | — | — |
+| Multi-agent | <sub>**ACL-based**</sub> | ◐ | ✓ | ◐ | ✓ | ◐ | ◐ | ✓ | ✓ | ✓ | ◐ | ✓ | ◐ | ✓ |
+| Conflict res. | <sub>**Automatic**</sub> | ◐ | ◐ | — | — | ◐ | ◐ | ◐ | — | ◐ | — | ↓<sup>4</sup> | ◐ | ◐ |
+| WAL/crash | **✓** | — | n/v | ◐ | — | n/v | — | ◐ | n/v | ✓ | ◐ | ✓ | ↓<sup>5</sup> | ◐ |
+| Backup/restore | **✓** | ◐ | — | ◐ | ◐ | — | — | — | — | — | — | <sub>JSON</sub> | <sub>Cloud</sub> | ✓ |
+| Abstention | **✓** | — | — | — | — | — | — | — | — | ✓ | — | — | — | ◐ |
 
 <sub><sup>1</sup> Engram, Contradictions: Agent-judged<br><sup>2</sup> Engram, Drift detection: Staleness<br><sup>3</sup> Basic Memory, Drift detection: Schema drift<br><sup>4</sup> Engram, Conflict res.: Agent-judged<br><sup>5</sup> Basic Memory, WAL/crash: Index only</sub>
 
 **Governance**
 
-| Feature | MM | M0 | SM | CM | Le | Zep | LM | Co | GL | CW | MU | En | BM |
-|---|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|
-| Auto-capture | <sub>**Propose**</sub> | <sub>Auto</sub> | <sub>Auto</sub> | <sub>Auto</sub> | <sub>Self</sub> | <sub>Ext</sub> | <sub>Auto</sub> | <sub>Auto</sub> | <sub>Ing</sub> | <sub>Auto</sub> | <sub>Auto</sub> | ↓<sup>1</sup> | ↓<sup>2</sup> |
-| Proposal queue | **✓** | — | ◐ | — | — | — | — | ◐ | — | — | — | — | — |
-| Rollback | **✓** | — | ◐ | — | ◐ | ◐ | — | — | — | ◐ | — | — | <sub>Cloud</sub> |
-| Mode governance | <sub>**3 modes**</sub> | — | — | — | — | — | — | — | — | — | — | — | — |
-| Audit trail | <sub>**Full**</sub> | ◐ | ◐ | — | ◐ | ◐ | — | opt | n/v | ◐ | ◐ | ◐ | — |
+| Feature | MM | M0 | SM | CM | Le | Zep | LM | Co | GL | CW | MU | En | BM | OV |
+|---|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|
+| Auto-capture | <sub>**Propose**</sub> | <sub>Auto</sub> | <sub>Auto</sub> | <sub>Auto</sub> | <sub>Self</sub> | <sub>Ext</sub> | <sub>Auto</sub> | <sub>Auto</sub> | <sub>Ing</sub> | <sub>Auto</sub> | <sub>Auto</sub> | ↓<sup>1</sup> | ↓<sup>2</sup> | <sub>Auto</sub> |
+| Proposal queue | **✓** | — | ◐ | — | — | — | — | ◐ | — | — | — | — | — | — |
+| Rollback | **✓** | — | ◐ | — | ◐ | ◐ | — | — | — | ◐ | — | — | <sub>Cloud</sub> | ◐ |
+| Mode governance | <sub>**3 modes**</sub> | — | — | — | — | — | — | — | — | — | — | — | — | — |
+| Audit trail | <sub>**Full**</sub> | ◐ | ◐ | — | ◐ | ◐ | — | opt | n/v | ◐ | ◐ | ◐ | — | ✓ |
 
 <sub><sup>1</sup> Engram, Auto-capture: Agent + passive<br><sup>2</sup> Basic Memory, Auto-capture: Plugin hooks</sub>
 
 **Operations**
 
-| Feature | MM | M0 | SM | CM | Le | Zep | LM | Co | GL | CW | MU | En | BM |
-|---|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|
-| Local-only | **✓** | ◐ | ◐ | ◐ | ◐ | ◐ | ◐ | ✓ | — | ✓ | ◐ | ✓ | ✓ |
-| Zero core deps | **✓** | — | n/v | — | — | — | — | — | — | — | — | ✓ | — |
-| No daemon | **✓** | ✓ | — | — | — | ◐ | ✓ | ✓ | N/A | ◐ | ✓ | ◐ | ✓ |
-| GPU required | <sub>**No**</sub> | <sub>No</sub> | <sub>No</sub> | <sub>No</sub> | <sub>No</sub> | <sub>No</sub> | <sub>No</sub> | <sub>No</sub> | <sub>No</sub> | No<sup>1</sup> | <sub>No</sub> | <sub>No</sub> | <sub>No</sub> |
-| Git-friendly | **✓** | — | — | — | ✓ | — | — | — | — | ◐ | ◐ | ✓ | ✓ |
-| MCP server | <sub>**107 tools**</sub> | <sub>Hosted</sub> | ✓ | ✓ | — | ✓ | — | ✓ | ✓ | ✓ | — | <sub>23 tools</sub> | <sub>27 tools</sub> |
-| MIND `.mind` files<sup>2</sup> | <sub>**26 files**</sub> | — | — | — | — | — | — | — | — | — | — | — | — |
+| Feature | MM | M0 | SM | CM | Le | Zep | LM | Co | GL | CW | MU | En | BM | OV |
+|---|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|
+| Local-only | **✓** | ◐ | ◐ | ◐ | ◐ | ◐ | ◐ | ✓ | — | ✓ | ◐ | ✓ | ✓ | ◐ |
+| Zero core deps | **✓** | — | n/v | — | — | — | — | — | — | — | — | ✓ | — | — |
+| No daemon | **✓** | ✓ | — | — | — | ◐ | ✓ | ✓ | N/A | ◐ | ✓ | ◐ | ✓ | — |
+| GPU required | <sub>**No**</sub> | <sub>No</sub> | <sub>No</sub> | <sub>No</sub> | <sub>No</sub> | <sub>No</sub> | <sub>No</sub> | <sub>No</sub> | <sub>No</sub> | No<sup>1</sup> | <sub>No</sub> | <sub>No</sub> | <sub>No</sub> | <sub>No</sub> |
+| Git-friendly | **✓** | — | — | — | ✓ | — | — | — | — | ◐ | ◐ | ✓ | ✓ | ◐ |
+| MCP server | <sub>**107 tools**</sub> | <sub>Hosted</sub> | ✓ | ✓ | — | ✓ | — | ✓ | ✓ | ✓ | — | <sub>23 tools</sub> | <sub>27 tools</sub> | <sub>24 tools</sub> |
+| MIND `.mind` files<sup>2</sup> | <sub>**26 files**</sub> | — | — | — | — | — | — | — | — | — | — | — | — | — |
 
 <sub><sup>1</sup> ClawMem, GPU required: optional<br><sup>2</sup> 18 config + 8 source</sub>
 
