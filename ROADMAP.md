@@ -6146,3 +6146,53 @@ scan per run and stays unless it raises false alarms on clean benchmark data.
 
 Proposed. Nothing built. §4 is a precondition for publishing any further benchmark
 number.
+
+## Transcript capture beyond one agent CLI (2026-10-21, Proposed)
+
+MIND-Mem already reaches 16 agent clients on the write side (`mm inject` and the hook
+installer). The read side reaches one: `transcript_capture --scan-recent` reads only
+`~/.claude/projects/*.jsonl`. Sessions from Codex, Gemini, Qwen, OpenCode, OpenClaw and
+the other clients never become signals, so what an agent learned in those sessions is
+lost when the session ends. Recent work on reading many agents' local histories shows
+the shape that keeps such readers correct while the formats keep changing. Ideas only;
+no code adopted, and the source is not named in this public file.
+
+### 1. One event shape, one reader per client
+
+Each reader turns its client's records into one event: required `id`, `kind` and `raw`
+(the original record, so nothing is lost); optional `timestamp`, `role`, `text`, tool
+name, input and output, `model`. `kind` is one of `user`, `assistant`, `tool_call`,
+`tool_result`, `error`, `meta`. Signal extraction (`scan_transcript`) runs on the event
+shape, so adding a client means adding a reader, not touching extraction. Storage
+differs per client: JSONL files for some, SQLite tables for others.
+
+Readers open each client's history paths only. Some clients keep credentials in the same
+directory, or in the same database file, as their history; a reader never opens those.
+
+### 2. Unknown records are counted, never dropped
+
+A record type a reader does not know becomes `meta` and is counted. Each reader ships
+with a redacted fixture and a fingerprint of the types and keys it knows, and a check
+that exits 0 (current sessions match), 1 (something new appeared; prints the difference)
+or 2 (cannot check: client missing, no recent session, or too few records to judge).
+Too few records is 2, never 0. A fixture with one injected unknown key must exit 1.
+
+### 3. Missing stays missing
+
+A field the client does not record (model, token counts, a timestamp) is stored as
+absent. It is never inferred, so a later reader cannot mistake a guess for a record.
+
+### 4. Secrets and governance unchanged
+
+Transcripts carry keys and tokens. Captured text passes the existing pre-write
+redaction before anything is proposed, and every signal still enters memory only
+through `propose_update`.
+
+### Falsification condition
+
+A client's reader is dropped if its sessions produce no accepted proposal over 30 days
+of capture.
+
+### Status
+
+Proposed. Nothing built. Order: Codex, Gemini, Qwen, OpenCode, OpenClaw.
