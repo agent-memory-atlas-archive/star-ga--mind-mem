@@ -6196,3 +6196,27 @@ of capture.
 ### Status
 
 Proposed. Nothing built. Order: Codex, Gemini, Qwen, OpenCode, OpenClaw.
+
+
+---
+
+## Byte-Level Distillation Research Track (2026-10-23)
+
+**Owner:** STARGA, Inc.  
+**Status:** Proposed; no implementation or performance claims.  
+**Research:** K. Marathe et al., *Breaking the Token Ceiling: Distilling Smaller, Stronger Byte Models* (2026), https://arxiv.org/abs/2609.12303
+
+This paper studies decoder-only byte versus token models and token-teacher-to-byte-student supervision via approximate Marginalize-It and exact End-of-Token (EOT). Raw bytes are not synonymous with byte-level BPE. Paper-specific scaling estimates do not constitute STARGA results.
+
+### Project scope
+
+First regenerate training data against the live MCP tool definitions, resolving known weight/tool-surface drift. Then compare token-based versus raw-byte student models for tool selection, schema validity, governed recall, hallucination, privacy compliance and cost. Preserve BM25F/vector retrieval and governed writes.
+
+### Validation, dependencies and release gates
+
+- Verify full teacher-vocabulary byte-prefix probabilities against exhaustive small-vocabulary oracles, including EOT mass, UTF-8 multibyte strings, shared prefixes and token endings. Top-k truncation must not be called exact.
+- Compare token and byte baselines with matched data, compute, model capability and honest serving-cost accounting. Report bytes-per-byte, quality, p50/p95 latency per output character, peak memory and reproducibility.
+- Preserve existing public APIs, admission/governance gates and determinism contracts by default; use feature flags. Revert or defer when benefits are not established.
+- Dependency order: mind-inference reference -> mind-nerve benchmark -> MindLLM optional dispatch -> naestro/mind-mem pilots; mind-flow orchestrates experiments and mind/mind-runtime implement only proven optimizations.
+
+**Attribution:** STARGA, Inc. Research source is cited above. No software-development co-authors are designated.
