@@ -6245,3 +6245,27 @@ Opt-in acceleration for generative model only; retain retrieval, MCP, governance
 - Treat byte-model distillation as a separate experiment; tokenizer alignment and proposal distributions must be verified before combining.
 
 **Software roadmap attribution:** STARGA, Inc. No co-author trailers.
+
+
+---
+
+## Verified Engineering Delivery Research (2026-10-23)
+
+**Owner:** STARGA, Inc.  
+**Status:** Proposed; not shipped or independently benchmarked.  
+**Competitive reference:** https://sun-asterisk.us/takumi/ — learn from engineering workflow patterns; no copying of restricted assets.
+
+### Repository-specific work
+
+Governed engineering decision memory with requirements history, source links, contradiction and staleness detection; no automatic rewriting of policies.
+
+### Cross-project gates
+
+- Canonical requirement and scope contract with permitted actions, named authority, expiry, budgets, impacted code and required tests.
+- Requirement -> symbols -> commit -> independently executed test evidence -> build artifact -> release decision; missing evidence fails closed. Implementer may not approve its own work.
+- Record signed evidence and offline replay verification where supported; never overclaim cryptographic guarantees or deployed status.
+- Evaluate prohibited-action prevention, missing-gate rejection, trace precision/recall, escaped defects, cost per accepted task and verification repeatability using held-out changes.
+- P0: authorization, independent CI and provenance. P1: cross-repo impact, bounded autonomous repair, cost routing and memory. P2: modernization parity testing and an enterprise control plane.
+- Ownership: Naestro OS mission UI/control; mind-flow DAG execution; mind-law authorization; mind-ci independent gates; mind-codegraph impact; mind-mem decisions; mind-predict calibration. Keep interfaces explicit and avoid duplicate engines.
+
+**Attribution:** STARGA, Inc. No additional software co-authors.
