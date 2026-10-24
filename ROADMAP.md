@@ -154,7 +154,10 @@ witnessing and the broader transport/backend acceptance remain separate work.
 ### Group G — Ecosystem (9 items, mostly SDK fan-out)
 
 - *(tracked below — see “JavaScript / TypeScript SDK” in the status section; listed twice, counted once)*
-- [ ] **Publish the Go client as a Go module** — `sdk/go/` exists in-tree with tests; only the publish step is open. Kept from the cut SDK fan-out (the JS publish is tracked separately above); the Rust/Java/Ruby STUBS were inventory and are cut.
+- [~] **Client SDKs stay in-tree, unpublished** — `sdk/js/` and `sdk/go/` remain in
+      the repository as reference clients and are not published to npm or as a Go
+      module. The product direction is pure MIND with one binary per platform;
+      the generated specs in `sdk/spec/` stay the public contract. Not a deletion.
 - *(tracked below — see “OpenAPI + AsyncAPI specs” in the status section; listed twice, counted once)*
 - [ ] **Migration importers** — `mm import --from {chroma|mem0|letta} <dump.json>` **ships** (file-based subset: `src/mind_mem/importers/`, `IMP-` blocks in `memory/IMPORTED.md`, `imported:<system>` provenance, idempotent re-import). Qdrant now has an explicit bounded, read-only endpoint/collection scroll adapter that still lands quarantined; Pinecone and Weaviate remain deferred. The broader migration item stays open for those systems and complete endpoint acceptance.
 - [x] **Model-call token metering** — per-day token counter plus optional daily cap behind `mm usage`.
@@ -253,6 +256,7 @@ Prioritize existing release and retrieval-correctness work first.
 - [ ] **RE.3 — independent CVS / MIND Witness contract** — implement the adopted architectural split: CVS owns a substrate-neutral evidence contract; MIND Witness maps canonical MIND events/artifact context into it; MIND-Law owns admissibility and may require evidence under explicit policy. Acceptance: a non-MIND producer and external verifier interoperate; mapping mutations, forged identity, producer-controlled witness keys/history and unauthorized disclosure cannot pass independent-evidence claims. Distinguish received self-reports from independently observed execution. Local audit remains useful at its own scope.
 - [~] **RE.4 — measured operator pilot** — a [scoped authentic-history pilot](docs/benchmarks/local-receipt-pilot-20260914.md) now documents the installed V1 reader versus mixed V1/V2 history diagnosis and publishes source-bound timing, CPU, memory, storage and concurrent-export measurements with predeclared budgets. All local pilot budgets passed. **Remaining:** the receipt contract’s full ordinary-recall/recording comparison, controlled per-mode and live-append matrix, cold storage, longer histories and physical write amplification. No external performance claim without matched baselines.
 - [ ] **RE.5 — canonical 512 lineage consumer** — required for canonical-lineage claims, independent of commercial demand. Consume the MIND-Law producer's versioned commitment that binds the immutable canonical root to decomposition, registry and implementation; preserve the distinct MIND language-spec identity. Bind and verify both root and implementation in actual verdict/event evidence. Acceptance: RE-A10 changed/missing-field and legacy-profile controls pass; no silent rehashing or metadata-only closure. Depends on the producer contract and implementation.
+- [ ] **XT-001 S6 — transaction record through the governed door** — the transaction record is written through the governed door, recalled by a fresh session, and its receipt verifies with `mm receipt verify`. Done when S6 reports `VERIFIED` on the XT-001 board.
 
 For contracted retrieval, parties or delegated agents agree upstream. A bounded
 agreement arrives with the request; 512 enforces its constraints before retrieval
@@ -825,7 +829,7 @@ milestone in the MIND compiler roadmap.
 **Sizing summary** (genuine remaining work):
 
 - **Small (1–3 day items, ship-this-month):** audit headers, public/private workspaces, peer allowlist, token rotation, time-bounded recall, time-travel/as_of, OpenAPI specs, vocabulary-bound fields, Group J `mind-mem connect`
-- **Medium (1–3 weeks):** TLS 1.3 + cert pinning, mTLS service-to-service, AI lint with auto-fix, JS/TS SDK, audit attribution ContextVar fix, FastAPI request.state, migration importers, plugin SDK, cost metering, Group I per-hit feedback-quality credit + recall-sufficiency score, Group J tool-output offload store + anticipation-cache consumer
+- **Medium (1–3 weeks):** TLS 1.3 + cert pinning, mTLS service-to-service, AI lint with auto-fix, audit attribution ContextVar fix, FastAPI request.state, migration importers, plugin SDK, cost metering, Group I per-hit feedback-quality credit + recall-sufficiency score, Group J tool-output offload store + anticipation-cache consumer
 - **Large (multi-month):** local visual viewer (`mm view` web UI), conversational chat layer, Kubernetes operator, managed-service console, Byzantine consensus, Pure-MIND port (gated on `mindc` C-ABI maturity)
 - **Long-horizon / research (post-v4):** Pure-MIND port completion, [CAUSAL]/[SKILL]/[VISUAL] block types, ActivityPub interop, edge deployment, Group I validity-gated fusion + feedback-quality→success bench
 
@@ -2550,8 +2554,10 @@ default story is two laptops talking to each other.
 
 **Open:**
 
-- [ ] **JavaScript / TypeScript SDK** — client code ships in-tree at `sdk/js/`; the npm publish as `@star-ga/mind-mem-client` is the open step. Tracked.
-- [ ] **Go SDK publish + Rust / Java / Ruby stubs** — Go client ships in-tree at `sdk/go/` (with tests); module publish is the open step. Rust/Java/Ruby not started. Tracked.
+- [~] **Client SDKs stay in-tree, unpublished** — `sdk/js/` and `sdk/go/` remain in
+      the repository as reference clients and are not published to npm or as a Go
+      module. The product direction is pure MIND with one binary per platform;
+      the generated specs in `sdk/spec/` stay the public contract. Not a deletion.
 - [ ] **Migration importers from competing systems** — file-based subset implemented: `mm import --from {chroma|mem0|letta} <dump.json>`. Qdrant has a bounded explicit endpoint/collection scroll adapter; Pinecone and Weaviate remain deferred, and the complete endpoint-backed migration scope remains open.
 
 ### F. Anti-patterns explicitly forbidden
@@ -4971,6 +4977,50 @@ harvest, and it is worth having.
 T2 (write the five tests) → T1 (fix what they expose in the 36 files) → T0
 re-run as a red test → T3 (design the read-seam filter) → only then decide
 whether T4's adapter is worth the work. Do not start at T4.
+
+---
+
+## Group U — Memory contract v1 (2026-10-24, Proposed)
+
+The memory layer is three repositories with three independent definitions of a
+record, a graph edge, a vector and an ordering. Nothing today lets a MIND-KG
+subgraph, a MIND-Vec result set and a MIND-Mem block be checked against one
+another, so no component can be swapped or ported except by faith. Group U fixes
+one contract and one corpus, and makes every migration pass behind them.
+
+**Owners (normative, one per section; the contract is the composition, not a new document):**
+
+| Section | Normative owner | Where it is defined today |
+|---|---|---|
+| Record | MIND-Mem | block schema + served-ledger row (`src/mind_mem/served_ledger.py`, `specs/retrieval-receipt-contract.md`) |
+| Graph | MIND-KG | `Predicate` / `Entity` / `Edge` in `src/kg.mind`, frozen at its Phase-1 gate |
+| Vector | MIND-Vec | `SPEC.md` §3 (input admission) and §7 (deterministic ranking) |
+| Ordering | MIND-Vec | the canonical Top-K comparator (`src/rank.mind`): descending score, ascending stable id on ties, filter before admission |
+| Evidence | the ecosystem evidence profile (tracked in the compiler and governance roadmaps) | Group RE consumes it; this group does not redefine it |
+
+**Deliverables**
+
+- [ ] **U.1 Shared parity corpus** — one checked-in fixture (blocks, typed edges with
+      provenance, f32 vectors with stable `u64` ids, and a filter set) with golden
+      digests for: block content digest, lex-sorted adjacency state hash, Top-K ids
+      per query. Goldens are produced by an independent double-precision/Python
+      reference once, then frozen.
+- [ ] **U.2 MIND-Mem reproduces the goldens** — `mm` recall, graph query and the
+      vector backend over the corpus match U.1 byte-for-byte; wired as a CI gate here.
+- [ ] **U.3 Consumer gates** — MIND-KG and MIND-Vec each run the same corpus in
+      their own CI against the same goldens (their roadmaps carry the obligation).
+- [ ] **U.4 Migration-behind-parity rule** — no backend swap (Python KG → MIND-KG,
+      Python vector fallback → MIND-Vec) and no Pure-MIND port increment of a
+      scoring or graph unit ships unless U.2 holds before and after. Extends the
+      per-unit bit-identity discipline of the Pure-MIND Core Port across repositories.
+
+**Done when:** U.1–U.3 are green in three repositories; a deliberate tie-break
+inversion in any one implementation turns that repository's gate red (mutation
+control); the owners table above is mirrored in the ecosystem architecture
+registry.
+
+**Firewall:** the contract fixes identities and orderings, never scores or
+confidence; a component that reproduces the goldens has proved parity, not quality.
 
 ---
 

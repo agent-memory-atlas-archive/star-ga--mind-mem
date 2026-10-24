@@ -36,6 +36,9 @@ Billing and settlement remain optional
 future adapters behind demonstrated demand. They do not block release readiness,
 Pure-MIND migration, or model training.
 
+[Group U](../ROADMAP.md#group-u--memory-contract-v1-2026-10-24-proposed) defines one memory contract
+(record, graph, vector, ordering) with a shared parity corpus that every backend swap must pass.
+
 ## v3.12.1 (Historical release record — released 2026-05-10)
 
 `mind-mem-4b` v3.12.0-fullft retrain on Qwen3.5-4B (H200 SXM,
