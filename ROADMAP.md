@@ -6245,6 +6245,69 @@ Proposed. Nothing built. Depends on "Transcript capture beyond one agent CLI".
 
 ---
 
+## Capture from the agent's own report, checkable verification, and a brief that tires (2026-10-24, Proposed)
+
+Recent public work on a local memory for coding agents runs the loop MIND-Mem already
+ships: a token-budgeted brief at session start and a capture at session end. It also
+reports what broke in daily use, and three of its answers fill gaps here. Ideas only;
+no code adopted, and the source is not named in this public file.
+
+### 0. Prerequisite: capture must not reuse ids
+
+Measured on our own Postgres-backed workspace. Auto-capture takes its dedup set and its
+next `SIG-` number from `intelligence/SIGNALS.md`, but a Postgres store never writes
+that file. Since 2026-09-06 every run has reissued the day's `-001`: 1,834 writes for
+40 signals. On two days a second, different signal took the same id and overwrote the
+first. The fix is in progress separately, and nothing below lands before it.
+
+### 1. Capture the report the agent already writes
+
+Agents run under a structured dispatch already end with a status token and labelled
+fields (done, concerns, deviations, findings), and many also write `Verification:`,
+`Decision:` or `Commit:` lines. The session-end hook reads those labelled fields from
+the final report deterministically, with no model call, and proposes one signal per
+field that has content. A label written in markdown (`**Verification:**`) must still
+end the field before it; the reported failure was one field swallowing the rest of the
+message. Chatter ("Done!", "let me check") produces nothing. Proposals go through
+`propose_update` unchanged.
+
+### 2. "Verified" must name something checkable
+
+A captured fix counts as verified only when its verification names something a reader
+can re-run: a command, a test id or a commit. Prose like "tested, works" stays
+unverified. The cited work measured that a keyword-only rule let mostly unverified prose
+through. This sets the existing provenance class and adds no new trust level.
+
+### 3. A brief that tires of blocks it keeps serving
+
+The served-set ledger (RA.1) records what each brief served, but nothing uses that
+record against the brief itself. A block served in many briefs and never cited or used
+gets a fatigue penalty when the brief is built. The penalty is capped below the bonus a
+verified block gets, so fatigue alone never pushes out a verified block. It is computed
+from the ledger at brief time and never stored as a score, so RA.1's ruling against
+unreviewed score transitions holds.
+
+### 4. Drop blocks about another project
+
+The brief drops a block that names another known project and never the current one.
+Known projects come from the existing project profiles.
+
+### Falsification condition
+
+Each item runs for 30 days on our own sessions against the current brief. Item 1 is
+dropped if fewer than half of its proposals are accepted. Item 2 is dropped if the
+verified share of accepted fixes does not rise. Items 3 and 4 are dropped if the share
+of served blocks that are later cited does not rise.
+
+### Status
+
+Proposed. Nothing built. Needs an architecture audit before implementation. Item 1 also
+needs the session-end hook installed on our own development machine: there, the main
+agent CLI's Stop hook only prints status, so none of its sessions reach capture.
+
+
+---
+
 ## Byte-Level Distillation Research Track (2026-10-23)
 
 **Owner:** STARGA, Inc.  
