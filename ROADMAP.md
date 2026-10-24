@@ -6200,6 +6200,51 @@ Proposed. Nothing built. Order: Codex, Gemini, Qwen, OpenCode, OpenClaw.
 
 ---
 
+## Dreaming over agent sessions: a nightly pass that learns across sessions (2026-10-23, Proposed)
+
+Recent public work on hosted agents runs a scheduled pass over many past sessions and
+the memory store. The pass finds what no single session can see and writes a separate,
+reviewable output. MIND-Mem has half of this. `dream_cycle` runs five nightly passes,
+but only over MIND-Mem's own daily logs and blocks; agent sessions are never an input.
+Ideas only; no code adopted, and the source is not named in this public file.
+
+### 1. Sessions become an input
+
+Once "Transcript capture beyond one agent CLI" (above) has readers, `dream_cycle` gains
+a sixth pass over the last N days of captured session events. It uses the same event
+shape and the same pre-write redaction, and reads no new paths of its own.
+
+### 2. It looks for patterns across sessions only
+
+The pass skips facts a single session already yields, since per-session capture
+covers those. It looks only for what needs several sessions:
+
+- the same failure in three or more sessions;
+- a sequence of steps several sessions converged on for one kind of task;
+- a correction the user made more than once.
+
+Each candidate names the sessions it rests on and uses the verdict format from
+"Verdict-labelled lessons". A pattern from a single session is `confounded`.
+
+### 3. Separate output, never an in-place edit
+
+The pass never edits its inputs: no session file and no existing block. It writes a
+staged set of proposals, and each one enters memory only through `propose_update`, so
+review, contradiction checks and rollback apply unchanged. The `auto_repair` option of
+the other passes does not extend to this one.
+
+### Falsification condition
+
+Dropped if, over 30 days of nightly runs, it produces no accepted proposal that
+per-session capture had not already produced.
+
+### Status
+
+Proposed. Nothing built. Depends on "Transcript capture beyond one agent CLI".
+
+
+---
+
 ## Byte-Level Distillation Research Track (2026-10-23)
 
 **Owner:** STARGA, Inc.  
