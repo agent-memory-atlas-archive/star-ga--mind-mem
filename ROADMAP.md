@@ -6377,3 +6377,58 @@ Governed engineering decision memory with requirements history, source links, co
 - Ownership: Naestro OS mission UI/control; mind-flow DAG execution; mind-law authorization; mind-ci independent gates; mind-codegraph impact; mind-mem decisions; mind-predict calibration. Keep interfaces explicit and avoid duplicate engines.
 
 **Attribution:** STARGA, Inc. No additional software co-authors.
+
+---
+
+## Security evidence a reader can re-check: a repo scorecard and a published agent-security audit (2026-10-24, Proposed)
+
+MIND-Mem's security claims should rest on results anyone can open for this repository.
+Unsolicited "verified safe" badges circulate whose image is the same for every project
+and whose scan page reads A+ before anything is scanned. Rule for this README: a
+security badge links to a result for this repository, or it is not added.
+
+### 1. Public supply-chain scorecard
+
+- Add the OpenSSF Scorecard workflow: on push to `main` and weekly, results published to
+  the public Scorecard API and uploaded as SARIF to code scanning. Actions pinned by
+  commit SHA; the job gets only `security-events: write` and `id-token: write`, read
+  for everything else.
+- No score exists today: the Scorecard API returns 404 for `star-ga/mind-mem`
+  (checked 2026-10-24).
+- The README badge is added only after the first published run, and it links to the
+  per-check result page. It shows the real score, whatever it is. No check is skipped
+  or worked around to raise the number.
+- Each check below 10 gets either a fix in its own commit (for example unpinned
+  actions, token permissions, branch protection, signed releases) or a written reason
+  it does not apply, kept in `docs/security/`.
+
+### 2. A published agent-security audit
+
+- Run an open-source (MIT) multi-phase security-audit skill for coding agents in full
+  audit mode against a fixed `main` commit, with output outside the repository.
+  Hunting agents propose candidates and separate agents try to disprove them; every
+  record ends as `confirmed`, `needs_validation` or `rejected` and must pass the
+  skill's own schema and validators.
+- Scope: the MCP tool surface; the governance gate (`propose_update` → apply); recall
+  paths that hand stored block text back to a model (indirect prompt injection through
+  memory); tool arguments that reach paths, SQL or subprocesses; the encrypted backend's
+  key handling; release and supply chain (PyPI publish, CI workflows); and resource
+  exhaustion (recall, indexing, unbounded loops).
+- Every confirmed finding gets a fix and a regression test that fails before the fix.
+  Details of a confirmed finding are published only after its fix ships in a release.
+- Publish `docs/security/audits/<date>/`: the report, the full `findings.json`
+  including rejected candidates, the audited commit and the exact invocation. The
+  existing audit badge links to it.
+
+### Falsification condition
+
+Item 1 is done when a published Scorecard result exists, the badge links to it and
+every check below 10 has a fix commit or a written reason. Item 2 is done when the
+report is published, its `findings.json` passes the validators and every confirmed
+finding has a fix commit and test. If the audit finds nothing that CodeQL, pip-audit
+and the red-team workflow had not already found, it stays a one-off and is not added
+to release gating.
+
+### Status
+
+Proposed. Nothing built. Needs an architecture audit before implementation.
