@@ -5,8 +5,8 @@
 > Re-generate with: `anatomy .`
 
 **Project:** `mind-mem`
-**Files:** 1686 | **Est. tokens:** ~4,914,797
-**Generated:** 2026-10-24 09:02 UTC
+**Files:** 1686 | **Est. tokens:** ~4,914,847
+**Generated:** 2026-10-24 23:19 UTC
 
 ## Token Budget Guide
 
@@ -35,7 +35,7 @@
 | `deploy/docker/` | 1 | ~824 |
 | `deploy/edge/` | 2 | ~1,149 |
 | `deploy/grafana/` | 1 | ~1,145 |
-| `docs/` | 95 | ~217,626 |
+| `docs/` | 95 | ~217,676 |
 | `docs/adr/` | 2 | ~521 |
 | `docs/advisories/` | 1 | ~834 |
 | `docs/audit/` | 1 | ~4,973 |
@@ -475,7 +475,7 @@
 - `review-docs-v3.2.0.md` (~1957 tok, huge) — Documentation Review — MIND-Mem v3.2.0
 - `review.md` (~1647 tok, huge) — `mm review` — batch approval for the HITL queue
 - `review-tests-v3.2.0.md` (~1300 tok, large) — Test Review — MIND-Mem v3.2.0
-- `roadmap.md` (~14477 tok, huge) — Roadmap
+- `roadmap.md` (~14527 tok, huge) — Roadmap
 - `ROADMAP-RETRIEVAL-ACCOUNTABILITY.md` (~2861 tok, huge) — Group R — Retrieval Accountability (memory as rent, not storage)
 - `roadmap-v4.md` (~11275 tok, huge) — mind-mem v4.0 — Design Rationale
 - `scoring.md` (~517 tok, large) — Scoring System

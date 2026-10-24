@@ -6402,6 +6402,18 @@ Opt-in acceleration for generative model only; retain retrieval, MCP, governance
 - Preserve governance, admission, evidence generation and normal-decoding fallback; feature-flag everything and do not promise numerical EAGLE-4 gains.
 - Treat byte-model distillation as a separate experiment; tokenizer alignment and proposal distributions must be verified before combining.
 
+### Addendum 2026-10-24: copy-heavy calls first, evidence preimages protected
+
+Field data, not reproduced by us: a recent community report on a 27B open-weight model on one 24 GB consumer GPU reached 4.6× decode speed on a task that quotes a long document (about 15 of every 16 drafted tokens accepted), but only 1.6× in ordinary chat. An independent replication on a mainstream engine found the best general arm was a 2-token multi-token-prediction head (+60%), and that 92–100% of speculative requests did not reproduce plain greedy output byte for byte.
+
+What that means here:
+
+- **Context-lookup drafting first.** Compression, relation extraction and graph ingest copy most of their output from the input, which is where lookup drafting does best. It needs no draft model and no change to `mind-mem:4b`. The `vllm` and `openai-compatible` extractor backends can already point at a server that offers n-gram lookup drafting; `OllamaCompressor` is Ollama-only today. Multi-token-prediction heads are a training-time option for a future model build; measure them against lookup on the same gate.
+- **Drafting can silently move evidence preimages.** `OllamaCompressor` requires `temperature=0` and a fixed seed because its output is an evidence-chain preimage. If drafting changes those bytes, the chain records a different hash for the same input with nothing flagging it. Drafting stays off on every path whose output is hashed until the gate below passes for that backend.
+- **Gate:** on a fixed corpus, compressor output is byte-identical with drafting on and off, per backend. Extraction runs at `temperature=0.1`, so it is held to the output-distribution check above instead. Report tok/s and accepted tokens per verify step separately for copy-heavy calls and for chat; a drafter slower than no drafting on either class stays off for that class.
+
+Status: proposed, not built. A Fable audit verdict is required before any build.
+
 **Software roadmap attribution:** STARGA, Inc. No co-author trailers.
 
 
