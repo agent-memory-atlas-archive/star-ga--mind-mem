@@ -5,8 +5,8 @@
 > Re-generate with: `anatomy .`
 
 **Project:** `mind-mem`
-**Files:** 1756 | **Est. tokens:** ~5,171,856
-**Generated:** 2026-10-27 09:59 UTC
+**Files:** 1756 | **Est. tokens:** ~5,171,974
+**Generated:** 2026-10-27 10:05 UTC
 
 ## Token Budget Guide
 
@@ -93,7 +93,7 @@
 | `src/mind_mem/tool_output/` | 3 | ~5,895 |
 | `src/mind_mem/v4/` | 24 | ~96,311 |
 | `src/mind_mem/viewer_static/` | 3 | ~865 |
-| `tests/` | 799 | ~2,354,540 |
+| `tests/` | 799 | ~2,354,658 |
 | `tests/fixtures/` | 8 | ~16,356 |
 | `tests/fixtures/importers/` | 5 | ~1,218 |
 | `tests/fixtures/importers/agent_memory/` | 4 | ~383 |
@@ -2020,7 +2020,7 @@
 - `test_v4_kernels_wiring.py` (~3137 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_v4_kind_conn_close.py` (~2197 tok, huge) — Regression: ``v4.block_kinds`` / ``v4.kind_summaries`` must CLOSE connections.
 - `test_v4_kind_summaries_wiring.py` (~2133 tok, huge) — # Copyright 2026 STARGA, Inc.
-- `test_v4_logging_context_wiring.py` (~4154 tok, huge) — ``v4.logging_context`` is WIRED — 5.0.1 restoration slice.
+- `test_v4_logging_context_wiring.py` (~4272 tok, huge) — ``v4.logging_context`` is WIRED — 5.0.1 restoration slice.
 - `test_v4_metadata_pq_conn_close.py` (~3168 tok, huge) — Regression: ``v4.block_metadata`` / ``v4.pq`` must CLOSE their connections.
 - `test_v4_pq.py` (~3447 tok, huge) — Tests for v4 product-quantization (PQ) encoding."""
 - `test_v4_pq_wiring.py` (~3102 tok, huge) — # Copyright 2026 STARGA, Inc.
