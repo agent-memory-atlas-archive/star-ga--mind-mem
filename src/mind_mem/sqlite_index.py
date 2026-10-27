@@ -334,7 +334,7 @@ def _get_conn_manager(workspace: str) -> ConnectionManager:
     """
     path = _db_path(workspace)
     os.makedirs(os.path.dirname(path), exist_ok=True)
-    pinned = getattr(_pinned, "mgrs", {}).get(path)
+    pinned: ConnectionManager | None = getattr(_pinned, "mgrs", {}).get(path)
     if pinned is not None and os.path.isfile(path):
         return pinned  # this thread holds a lease on it; do not swap it mid-query
     stale: list[ConnectionManager] = []
@@ -1990,12 +1990,12 @@ def _caller_view(conn: sqlite3.Connection, workspace: str, agent_id: str | None)
         if not registry:
             return _UNRESTRICTED_VIEW
         custom = set(_declared_custom(workspace, config))
-        namespaces = tuple(
+        custom_views = tuple(
             (name, table, None)
             for name, table in registry
             if name in custom and namespace_search_allowed(f"{name}/decisions/DECISIONS.md", config)
         )
-        return _CallerView(None, namespaces)
+        return _CallerView(None, custom_views)
 
     from ._recall_core import _indexed_hit_is_readable
     from .namespaces import InvalidAgentIdError, NamespaceManager

@@ -392,7 +392,8 @@ def _empty_ref(value: Any) -> bool:
 
 def _marked_superseded(block: dict[str, Any]) -> bool:
     """A block whose own SupersededBy / Superseded_by field names a successor is history."""
-    nested = block.get("fields") if isinstance(block.get("fields"), dict) else {}
+    raw_fields = block.get("fields")
+    nested: dict[str, Any] = raw_fields if isinstance(raw_fields, dict) else {}
     for key in ("SupersededBy", "Superseded_by", "superseded_by", "supersededBy"):
         for raw in (block.get(key), nested.get(key)):
             if isinstance(raw, list) and any(not _empty_ref(v) for v in raw):
@@ -417,7 +418,8 @@ def _identity(block: dict[str, Any]) -> tuple:
     for key in ("excerpt", "content"):
         fields.pop(key, None)
     # Lines the block parser did not map to a field still make the block what it is.
-    nested = block.get("fields") if isinstance(block.get("fields"), dict) else {}
+    raw_fields = block.get("fields")
+    nested: dict[str, Any] = raw_fields if isinstance(raw_fields, dict) else {}
     unparsed = block.get("_unparsed") or nested.get("_unparsed") or []
     ordered = sorted(fields.items(), key=lambda kv: _key_order(kv[0]))
     return (

@@ -5,8 +5,8 @@
 > Re-generate with: `anatomy .`
 
 **Project:** `mind-mem`
-**Files:** 1756 | **Est. tokens:** ~5,171,541
-**Generated:** 2026-10-27 09:40 UTC
+**Files:** 1756 | **Est. tokens:** ~5,171,856
+**Generated:** 2026-10-27 09:59 UTC
 
 ## Token Budget Guide
 
@@ -78,12 +78,12 @@
 | `skills/mind-mem/` | 1 | ~1,765 |
 | `skills/mind-mem/references/` | 6 | ~19,499 |
 | `src/` | 1 | ~280 |
-| `src/mind_mem/` | 257 | ~1,147,062 |
+| `src/mind_mem/` | 257 | ~1,147,218 |
 | `src/mind_mem/api/` | 5 | ~28,982 |
 | `src/mind_mem/bench/` | 17 | ~48,632 |
 | `src/mind_mem/compliance/` | 7 | ~15,436 |
 | `src/mind_mem/importers/` | 10 | ~34,469 |
-| `src/mind_mem/mcp/` | 3 | ~7,718 |
+| `src/mind_mem/mcp/` | 3 | ~7,717 |
 | `src/mind_mem/mcp/infra/` | 8 | ~20,711 |
 | `src/mind_mem/mcp/tools/` | 28 | ~112,899 |
 | `src/mind_mem/skill_opt/` | 11 | ~20,899 |
@@ -93,7 +93,7 @@
 | `src/mind_mem/tool_output/` | 3 | ~5,895 |
 | `src/mind_mem/v4/` | 24 | ~96,311 |
 | `src/mind_mem/viewer_static/` | 3 | ~865 |
-| `tests/` | 799 | ~2,354,380 |
+| `tests/` | 799 | ~2,354,540 |
 | `tests/fixtures/` | 8 | ~16,356 |
 | `tests/fixtures/importers/` | 5 | ~1,218 |
 | `tests/fixtures/importers/agent_memory/` | 4 | ~383 |
@@ -754,7 +754,7 @@
 - `alerting.py` (~2738 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `alert_urls.py` (~1873 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `anchoring.py` (~4266 tok, huge) — # Copyright 2026 STARGA, Inc.
-- `answer_facts.py` (~3635 tok, huge) — Deterministic facts computed from the evidence before the answerer sees it.
+- `answer_facts.py` (~3637 tok, huge) — Deterministic facts computed from the evidence before the answerer sees it.
 - `answer_quality.py` (~3059 tok, huge) — Answer-quality layer: verification + self-consistency + per-category spec.
 ### `src/mind_mem/api/`
 
@@ -821,7 +821,7 @@
 - `client_mcp.py` (~2886 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `client_paths.py` (~760 tok, large) — # Copyright 2026 STARGA, Inc.
 - `client_registry_data.py` (~6077 tok, huge) — # Copyright 2026 STARGA, Inc.
-- `client_registry.py` (~2115 tok, huge) — # Copyright 2026 STARGA, Inc.
+- `client_registry.py` (~2117 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `client_restore.py` (~1459 tok, large) — # Copyright 2026 STARGA, Inc.
 - `client_writers.py` (~5521 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `closed_slots.py` (~6827 tok, huge) — Closed, versioned fact slots on the governed Markdown store.
@@ -874,7 +874,7 @@
 - `evidence_recovery.py` (~10620 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `extraction_feedback.py` (~1877 tok, huge) — mind-mem Extraction Quality Feedback Tracker.
 - `extractor.py` (~7670 tok, huge) — mind-mem Entity & Fact Extractor (Regex NER-lite). Zero external deps.
-- `fact_slots.py` (~19764 tok, huge) — # Copyright 2026 STARGA, Inc.
+- `fact_slots.py` (~19820 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `feature_gate.py` (~2240 tok, huge) — Shared config-resolver for retrieval features (architect audit item #6).
 - `federation_connect.py` (~3549 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `field_audit.py` (~3103 tok, huge) — mind-mem Per-Field Mutation Audit — tracks individual field changes.
@@ -882,7 +882,7 @@
 - `governance_bench.py` (~1855 tok, huge) — mind-mem Governance Benchmark Suite.
 - `governance_gate.py` (~23279 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `governance_raft.py` (~2474 tok, huge) — Raft-style consensus wrapper for governance writes (v4.0 prep).
-- `granularity_align.py` (~6286 tok, huge) — Granularity / abstraction alignment — named merge operation (Group H, v4.0.x).
+- `granularity_align.py` (~6304 tok, huge) — Granularity / abstraction alignment — named merge operation (Group H, v4.0.x).
 - `graph_ingest.py` (~7489 tok, huge) — Corpus → typed knowledge-graph ingestion (HITL-gated).
 - `graph_recall.py` (~4634 tok, huge) — Multi-hop graph traversal for recall (v3.3.0 Tier 1 #2).
 - `graph_schema.py` (~2082 tok, huge) — # Copyright 2026 STARGA, Inc.
@@ -939,7 +939,7 @@
 ### `src/mind_mem/mcp/`
 
 - `__init__.py` (~215 tok, medium) — v3.2.0 §1.2 decomposition namespace — subpackage for MCP server modules.
-- `resources.py` (~4288 tok, huge) — MCP ``@mcp.resource`` declarations.
+- `resources.py` (~4287 tok, huge) — MCP ``@mcp.resource`` declarations.
 ### `src/mind_mem/`
 
 - `mcp_server.py` (~2381 tok, huge) — Mind-Mem MCP Server — public facade (v3.2.0 §1.2 PR-final shim).
@@ -1003,9 +1003,9 @@
 - `online_trainer.py` (~6082 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `ontology.py` (~3933 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `opencode_config.py` (~1873 tok, huge) — # Copyright 2026 STARGA, Inc.
-- `outcome_attribution.py` (~4513 tok, huge) — Outcome attribution — did the recalled memory actually *help*?
+- `outcome_attribution.py` (~4535 tok, huge) — Outcome attribution — did the recalled memory actually *help*?
 - `outcome_store.py` (~4973 tok, huge) — Outcome-attribution persistence over the calibration store.
-- `path_redact.py` (~842 tok, large) — # Copyright 2026 STARGA, Inc.
+- `path_redact.py` (~887 tok, large) — # Copyright 2026 STARGA, Inc.
 - `payload_admission.py` (~3614 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `personas.py` (~1256 tok, large) — Persona-aware recall projection (v3.9.0 candidate).
 - `pipeline_hash.py` (~3573 tok, huge) — Hash-of-code pipeline invalidation (v3.9.0 candidate).
@@ -1144,7 +1144,7 @@
 - `trajectory.py` (~6323 tok, huge) — Trajectory Memory — task execution trace storage and recall.
 - `transcript_capture.py` (~2839 tok, huge) — mind-mem Transcript JSONL Capture. Zero external deps.
 - `trust_scores.py` (~2416 tok, huge) — Standalone trust surface — a thin façade over the validity gate.
-- `trust_signals.py` (~2107 tok, huge) — Workspace signal loaders for the validity gate's provenance component.
+- `trust_signals.py` (~2118 tok, huge) — Workspace signal loaders for the validity gate's provenance component.
 - `truth_score.py` (~1975 tok, huge) — Probabilistic truth score for memory blocks (v3.3.0).
 - `turbo_quant.py` (~1295 tok, large) — # Copyright 2026 STARGA, Inc.
 - `uncertainty_propagation.py` (~1262 tok, large) — # Copyright 2026 STARGA, Inc.
@@ -1487,7 +1487,7 @@
 - `test_fact_card_context.py` (~1339 tok, large) — A fact card must stay SMALL. It must not become a copy of its parent.
 - `test_fact_indexing.py` (~3305 tok, huge) — Tests for Feature 2 (fact card indexing) and Feature 4 (metadata-augmented embeddings)."""
 - `test_fact_slots_context.py` (~10964 tok, huge) — # Copyright 2026 STARGA, Inc.
-- `test_fact_slots_failclosed.py` (~4670 tok, huge) — # ruff: noqa: E501  (tables of natural-language test sentences)
+- `test_fact_slots_failclosed.py` (~4830 tok, huge) — # ruff: noqa: E501  (tables of natural-language test sentences)
 - `test_feature_gate.py` (~7614 tok, huge) — Tests for FeatureGate — the shared config-resolver for retrieval features."""
 - `test_federation_connect.py` (~3244 tok, huge) — ``mind-mem-connect`` — the join, and the three ways a join can go wrong.
 - `test_federation_lww_vclock_convergence.py` (~1699 tok, huge) — LAST_WRITER_WINS must converge the version vector, not just the log.

@@ -288,8 +288,8 @@ def get_recall(query: str) -> str:
     # The engine filters by principal; the post-filter is the shared source
     # check again, so a result whose source cannot be resolved is dropped
     # rather than trusted (fail closed), exactly as the tool path does.
-    results = recall_engine(ws, query, limit=10, agent_id=principal)
-    results = readable_blocks(ws, results, principal)
+    served = recall_engine(ws, query, limit=10, agent_id=principal)
+    results = readable_blocks(ws, served, principal)
     return json.dumps(results, indent=2, default=str)
 
 

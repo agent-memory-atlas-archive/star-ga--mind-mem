@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import os
 import re
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 
 __all__ = ["redact_host_paths", "supplied_pairs", "workspace_label"]
 
@@ -59,6 +59,11 @@ def _forms(path: str) -> list[str]:
     return seen
 
 
+def _literal(text: str) -> Callable[[re.Match[str]], str]:
+    """A re.sub replacement that inserts *text* verbatim (no backslash or group expansion)."""
+    return lambda _m: text
+
+
 def redact_host_paths(
     text: str,
     *,
@@ -78,8 +83,8 @@ def redact_host_paths(
         if not host or host == "/":
             continue
         keep = mine if mine.endswith("/") else mine + "/"
-        out = re.sub(re.escape(host) + "/", lambda _m, k=keep: k, out)
-        out = re.sub(re.escape(host) + _END, lambda _m, k=mine: k, out)
+        out = re.sub(re.escape(host) + "/", _literal(keep), out)
+        out = re.sub(re.escape(host) + _END, _literal(mine), out)
     if workspace:
         for form in sorted(_forms(workspace), key=len, reverse=True):
             out = re.sub(re.escape(form) + "/", "", out)

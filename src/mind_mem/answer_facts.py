@@ -224,8 +224,8 @@ def timeline_facts(question: str, items: Sequence[tuple[str, date | None, str]])
         lines.append("Days between events (later minus earlier):")
         for i, a in enumerate(events):
             for b in events[i + 1 :]:
-                d = (b.day - a.day).days
-                lines.append(f"- [[{a.block_id}]] -> [[{b.block_id}]]: {d} days ({d // 7} weeks)")
+                gap = (b.day - a.day).days
+                lines.append(f"- [[{a.block_id}]] -> [[{b.block_id}]]: {gap} days ({gap // 7} weeks)")
     return lines
 
 

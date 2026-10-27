@@ -935,10 +935,12 @@ def _compare_tokens_cased(text: str) -> tuple[list[str], list[bool]]:
             continue
         if tok == "halb" and i + 1 < n and (raw[i + 1] in _GERMAN_NUMBERS or _is_digits(raw[i + 1])):
             h = _GERMAN_NUMBERS.get(raw[i + 1]) or int(raw[i + 1])
-            out.append(_canon_clock((h - 1) or 12, 30, None))  # German "halb zehn" == 9:30
-            i += 2
-            titled.extend([False] * (len(out) - mark))
-            continue
+            clock = _canon_clock((h - 1) or 12, 30, None)  # German "halb zehn" == 9:30
+            if clock is not None:  # "halb 99" is no clock: never put None in the token stream
+                out.append(clock)
+                i += 2
+                titled.extend([False] * (len(out) - mark))
+                continue
         if tok in ("noon", "midday"):
             out.append("t12:00")  # "noon" == "12pm" == "12:00"
             i += 1
@@ -1057,9 +1059,9 @@ def _clock_at(raw: list[str], i: int, prev: str) -> tuple[str | None, int]:
     hour, minute_s, mer = int(m.group(1)), m.group(2), m.group(3)
     j = i + 1
     if mer is None:
-        for form, value in _MERIDIEM_FORMS:
+        for form, mer_form in _MERIDIEM_FORMS:
             if tuple(raw[j : j + len(form)]) == form:
-                mer, j = value, j + len(form)
+                mer, j = mer_form, j + len(form)
                 break
     if minute_s is not None and "." in tok and mer is None and (prev not in _BARE_HOUR_PREV or not _follower_ok(raw, i + 1)):
         return None, 0  # "1.50" is a number, "at 10.30 Main Street" an address; "10.30am", "at 10.30" are times
@@ -1200,7 +1202,8 @@ def _glued_unit_cue(toks: list[str], i: int, unit: str) -> bool:
     if unit in ("min", "mins"):
         return True  # "30min" is never a label
     prev = toks[i - 1] if i > 0 else ""
-    if unit == "h" and float(re.match(r"^\d+(?:\.\d+)?", toks[i]).group(0)) > 24:
+    num = re.match(r"^\d+(?:\.\d+)?", toks[i])
+    if unit == "h" and num is not None and float(num.group(0)) > 24:
         return True  # "48h" is never a clock; "3D printer", "bus 5d" stay labels
     cue_words = ("lasts", "takes", "duration", "long", "retention", "ttl", "timeout", "interval", "window", "expiry")
     return prev in _DURATION_CUES or any(t in cue_words for t in window)
@@ -1525,10 +1528,10 @@ def _value_at(toks: list[str], i: int, titled: list[bool] | None = None, schedul
         return None if _id_context(toks, i) else f"d{int(y)}-{int(mth)}-{int(d)}"
     slash = re.match(r"^(\d{1,2})/(\d{1,2})/(\d{4})$", t)
     if slash and not _id_context(toks, i):
-        a, b, y = int(slash.group(1)), int(slash.group(2)), int(slash.group(3))
-        mth, day = (b, a) if a > 12 else (a, b)  # month-first unless the first part cannot be a month
-        if 1 <= mth <= 12 and 1 <= day <= 31:
-            return f"d{y}-{mth}-{day}"
+        first, second, year = int(slash.group(1)), int(slash.group(2)), int(slash.group(3))
+        month, mday = (second, first) if first > 12 else (first, second)  # month-first unless the first part cannot be a month
+        if 1 <= month <= 12 and 1 <= mday <= 31:
+            return f"d{year}-{month}-{mday}"
     if _ISO_DATE.match(t) or _SLASH_DATE.match(t) or _DOT_DATE.match(t):
         return None if _id_context(toks, i) else "d" + t
     if t in _ZONE_ABBR:

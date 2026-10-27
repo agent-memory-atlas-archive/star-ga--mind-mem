@@ -34,7 +34,7 @@ _MM_MARKER = "# mind-mem"
 # Wiring at the protocol level (MCP entries) is necessary but not
 # sufficient -- without an explicit instruction the LLM in each CLI does
 # not reliably call the MCP tools. This snippet is the instruction half.
-MEMORY_PROTOCOL_SNIPPET = (
+MEMORY_PROTOCOL_SNIPPET: str = (
     f"{_MM_MARKER}: agent instructions (auto-written by `mm install-all`)\n"
     "\n"
     "## Memory Protocol (mind-mem MCP — USE CONSTANTLY)\n"

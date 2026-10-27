@@ -340,3 +340,17 @@ def test_end_to_end_contradiction_check(tmp_path: Path):
     assert flagged("Invoice 1002 from the hosting vendor is due on Friday.") == []
     assert flagged("The weekly standup with the platform team was rescheduled for Thursday at 10am Pacific time.") == ["D-20261001-002"]
     assert flagged("Ilona's weekly planning call is on Wed at 10am Arizona time.") == ["D-20261001-003"]
+
+
+def test_halb_with_an_impossible_hour_is_not_a_clock():
+    """'halb 99' has no clock reading; it must never put None into the token stream.
+
+    Positive control: 'halb zehn' still reads as 9:30, so the guard does not hide the clock path.
+    """
+    from mind_mem.fact_slots import _compare_tokens
+
+    tokens = _compare_tokens("Das Meeting ist um halb 99")
+    assert None not in tokens
+    assert all(isinstance(t, str) for t in tokens)
+    assert any(t.startswith("t09:30") for t in _compare_tokens("Das Meeting ist um halb zehn"))
+    assert isinstance(changed_fact("Das Meeting ist um halb 99", "Das Meeting ist um halb 98"), bool)
