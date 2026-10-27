@@ -5,8 +5,8 @@
 > Re-generate with: `anatomy .`
 
 **Project:** `mind-mem`
-**Files:** 1756 | **Est. tokens:** ~5,170,446
-**Generated:** 2026-10-27 09:28 UTC
+**Files:** 1756 | **Est. tokens:** ~5,171,535
+**Generated:** 2026-10-27 09:31 UTC
 
 ## Token Budget Guide
 
@@ -35,7 +35,7 @@
 | `deploy/docker/` | 1 | ~824 |
 | `deploy/edge/` | 2 | ~1,149 |
 | `deploy/grafana/` | 1 | ~1,145 |
-| `docs/` | 97 | ~239,736 |
+| `docs/` | 97 | ~240,825 |
 | `docs/adr/` | 2 | ~521 |
 | `docs/advisories/` | 1 | ~834 |
 | `docs/audit/` | 1 | ~4,973 |
@@ -394,7 +394,7 @@
 - `cli-reference.md` (~8910 tok, huge) — CLI Reference
 - `companion-tools.md` (~1111 tok, large) — Companion Tools
 - `comparison.md` (~599 tok, large) — Comparison with Alternatives
-- `competitive-analysis-persistent-memory-2026.md` (~4369 tok, huge) — Comprehensive Competitive Analysis: Persistent Memory Systems for AI Coding Agents (2025–2026)
+- `competitive-analysis-persistent-memory-2026.md` (~5458 tok, huge) — Comprehensive Competitive Analysis: Persistent Memory Systems for AI Coding Agents (2025–2026)
 - `computed-abstention.md` (~2322 tok, huge) — Computed abstention
 - `configuration.md` (~18751 tok, huge) — Configuration Reference
 - `content-lifecycle.md` (~1035 tok, large) — Content-category lifetimes
