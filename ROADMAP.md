@@ -6397,9 +6397,9 @@ agent CLI's Stop hook only prints status, so none of its sessions reach capture.
 
 **Owner:** STARGA, Inc.  
 **Status:** Proposed; no implementation or performance claims.  
-**Research:** K. Marathe et al., *Breaking the Token Ceiling: Distilling Smaller, Stronger Byte Models* (2026), https://arxiv.org/abs/2609.12303
+**Research:** recent research on byte-level distillation.
 
-This paper studies decoder-only byte versus token models and token-teacher-to-byte-student supervision via approximate Marginalize-It and exact End-of-Token (EOT). Raw bytes are not synonymous with byte-level BPE. Paper-specific scaling estimates do not constitute STARGA results.
+Recent research studies decoder-only byte versus token models and token-teacher-to-byte-student supervision via approximate Marginalize-It and exact End-of-Token (EOT). Raw bytes are not synonymous with byte-level BPE. Published scaling estimates do not constitute STARGA results.
 
 ### Project scope
 
@@ -6421,9 +6421,9 @@ First regenerate training data against the live MCP tool definitions, resolving 
 
 **Owner:** STARGA, Inc.  
 **Status:** Proposed, not shipped.  
-**Research reference:** EAGLE-4, *One Flexible Drafter for All Batch Sizes and Hardware*, https://github.com/eagle-hq/EAGLE-4
+**Research reference:** recent research on a single speculative drafter that adapts to batch size and hardware.
 
-**License boundary:** EAGLE-4 is source-available, not a default permissive open-source implementation. Do not copy its source, tests, models, trained weights, unique implementation or assets without legal authorization. Independently implement generally described ideas after license and patent review; research citation is not a license.
+**License boundary:** the reference implementation is source-available, not a default permissive open-source implementation. Do not copy its source, tests, models, trained weights, unique implementation or assets without legal authorization. Independently implement generally described ideas after license and patent review; research citation is not a license.
 
 ### Scope
 
@@ -6434,7 +6434,7 @@ Opt-in acceleration for generative model only; retain retrieval, MCP, governance
 - Measure baseline ordinary and current speculative decoding, matched model, hardware, workload and sampling policy; concurrency 1, 8, 32, 64 when supported.
 - Track accepted tokens per verification, target-call cost, drafter overhead, throughput, TTFT, p50/p95 latency, peak memory and cost per token.
 - Verify output-distribution preservation for rejection/acceptance under temperature/top-k/top-p, including boundary cases and RNG reproducibility limitations.
-- Preserve governance, admission, evidence generation and normal-decoding fallback; feature-flag everything and do not promise numerical EAGLE-4 gains.
+- Preserve governance, admission, evidence generation and normal-decoding fallback; feature-flag everything and do not promise numerical gains from the published results.
 - Treat byte-model distillation as a separate experiment; tokenizer alignment and proposal distributions must be verified before combining.
 
 ### Addendum 2026-10-24: copy-heavy calls first, evidence preimages protected
