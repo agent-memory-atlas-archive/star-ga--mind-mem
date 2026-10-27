@@ -6494,3 +6494,35 @@ to release gating.
 ### Status
 
 Proposed. Nothing built. Needs an architecture audit before implementation.
+
+## A learned evidence harness for `mind-mem:4b`: revise the program, not the weights (2026-10-27, Proposed)
+
+Recent research trains a small proposer model to revise a frozen solver's *harness* (the program that builds the context for each model call and runs its tools and checks), rewarded by how the revised harness scores on questions the proposer never sees. Reported: on 21 task families excluded from training, a 4B proposer's single revisions rose from 0.32 to 0.62 mean score, ahead of the 35B model it was first trained to imitate (0.56; the larger model still wins when an oracle picks the best of eight proposals). A proposer trained on one multi-hop QA benchmark also improved harnesses on two it never saw. Both models stay frozen at test time. No code was released, so ideas only.
+
+### Why it fits here
+
+- **We already revise this harness, one rule at a time.** The opt-in computed-evidence layer for `chat_with_memory` (`answer_facts`, on the 4B retrain branches, not yet on `main`) decides which deterministic facts the 4B answers from: event dates, elapsed time, gaps between named events, the options a choice question offers. Between 2026-10-06 and 2026-10-20 its rules were revised 13 times across two branches, each after reading the failures of the last run, and one revision was a revert after a rule refused 413 answerable training questions. That loop is the one a proposer learns to run.
+- **A harness revision keeps the replay promise; a weight update does not.** Same memory, same question and same harness digest give the same answer. A revision is a content-addressed diff that can be reviewed, recorded in the answer's receipt and reverted. The v2.1.0 weight-training loop stays, but adapting to a new workspace or question class goes through the harness first.
+- **This harness is already safe to revise automatically.** `answer_facts` is pure functions: no clock, no I/O, no logging. A proposed revision that adds any of those is rejected by a static check before it runs.
+- **A harness round is cheap.** It reruns the development suite on the served model. A weights round is a training run plus a rerun of every gate.
+
+### Plan
+
+1. **Prompted proposer first, no training.** The served `mind-mem:4b` stays frozen. Each round, the proposer gets the current harness plus its execution report on the development split and returns one revision. At most 5 rounds. A revision is kept only if the development score improves, and the final harness is chosen on a fresh slice that produced no reward.
+2. **Trained proposer second.** Supervised training on the recorded revisions (the October rounds plus the phase-1 ledger: harness, report, edit, outcome), then reinforcement learning rewarded by the revised harness's development score. The proposer is a separate small model or adapter and is never merged into the served `mind-mem:4b` weights, so the served model's acceptance results are untouched.
+3. **Tool-surface drift as an unseen family.** The published 4B was trained against an older tool surface. Treat the tools added since as families it never saw, and test whether a harness revision that supplies the current [MCP contract inventory](train/source-corpus.md) recovers dispatch on them without a retrain. If it does, tool-surface changes stop forcing model retrains.
+
+### Contamination and governance
+
+- The proposer and its reward see only the development split. The true holdout, the memory-answering holdout and the sealed sets are never a reward or a selection signal. They are scored once, at acceptance, under the unchanged 4B acceptance rule (100% on every gate).
+- Every kept revision is a proposal: human approval, the harness digest recorded in each answer's receipt, and rollback to the previous harness.
+
+### Gate and falsification
+
+- **Phase 1 gate:** the proposed harness beats the current hand-tuned harness on the development main gate and loses nothing on any other development suite. Positive control: a deliberately broken revision scored in the same run must score lower, or the run is void.
+- **Phase 2 gate:** at a matched proposal budget, the trained proposer beats the prompted one on question classes held out from its training, and the untrained copy of the same base scores lower.
+- **Falsification:** dropped if phase 1 cannot beat the hand-tuned harness within 5 rounds, or if its development gains do not appear on the true holdout at acceptance. Phase 3 is dropped if the frozen 4B does not recover dispatch on the newer tools.
+
+### Status
+
+Proposed, not built. Needs an architecture audit before implementation. Does not block or change the in-flight 4B retrain.
