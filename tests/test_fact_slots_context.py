@@ -571,10 +571,16 @@ def test_contradiction_report_never_echoes_withheld_text(tmp_path: Path) -> None
 def test_to_month_text_stays_linear() -> None:
     import time
 
-    a, b = "to May " * 40000, "to May " * 40000 + "x"
-    start = time.perf_counter()
-    changed_fact(a, b)
-    assert time.perf_counter() - start < 5.0  # was quadratic: ~570 s at this size
+    def seconds(n: int) -> float:
+        start = time.perf_counter()
+        changed_fact("to May " * n, "to May " * n + "x")
+        return time.perf_counter() - start
+
+    # Scaling, not a wall-clock budget, which fails on a loaded host. Was quadratic: ~570 s at 40,000.
+    half = seconds(20000)
+    full = seconds(40000)
+    assert full < 30.0
+    assert full <= 3.0 * half + 0.25, f"doubling the input took {full:.2f}s vs {half:.2f}s: super-linear"
 
 
 def test_planner_never_keeps_a_block_another_block_supersedes(tmp_path: Path) -> None:

@@ -5,8 +5,8 @@
 > Re-generate with: `anatomy .`
 
 **Project:** `mind-mem`
-**Files:** 1756 | **Est. tokens:** ~5,172,363
-**Generated:** 2026-10-27 10:53 UTC
+**Files:** 1756 | **Est. tokens:** ~5,172,429
+**Generated:** 2026-10-27 11:03 UTC
 
 ## Token Budget Guide
 
@@ -93,7 +93,7 @@
 | `src/mind_mem/tool_output/` | 3 | ~5,895 |
 | `src/mind_mem/v4/` | 24 | ~96,311 |
 | `src/mind_mem/viewer_static/` | 3 | ~865 |
-| `tests/` | 799 | ~2,354,978 |
+| `tests/` | 799 | ~2,355,044 |
 | `tests/fixtures/` | 8 | ~16,356 |
 | `tests/fixtures/importers/` | 5 | ~1,218 |
 | `tests/fixtures/importers/agent_memory/` | 4 | ~383 |
@@ -1486,7 +1486,7 @@
 - `test_extractor_windowed_scan.py` (~1838 tok, huge) — Regression tests for the windowed extract_facts scan (issue #530).
 - `test_fact_card_context.py` (~1339 tok, large) — A fact card must stay SMALL. It must not become a copy of its parent.
 - `test_fact_indexing.py` (~3305 tok, huge) — Tests for Feature 2 (fact card indexing) and Feature 4 (metadata-augmented embeddings)."""
-- `test_fact_slots_context.py` (~10993 tok, huge) — # Copyright 2026 STARGA, Inc.
+- `test_fact_slots_context.py` (~11059 tok, huge) — # Copyright 2026 STARGA, Inc.
 - `test_fact_slots_failclosed.py` (~4869 tok, huge) — # ruff: noqa: E501  (tables of natural-language test sentences)
 - `test_feature_gate.py` (~7614 tok, huge) — Tests for FeatureGate — the shared config-resolver for retrieval features."""
 - `test_federation_connect.py` (~3244 tok, huge) — ``mind-mem-connect`` — the join, and the three ways a join can go wrong.
