@@ -6561,3 +6561,34 @@ Recent research trains a small proposer model to revise a frozen solver's *harne
 ### Status
 
 Proposed, not built. Needs an architecture audit before implementation. Does not block or change the in-flight 4B retrain.
+
+## A plan-ready trust label on every recall hit (2026-10-27, Proposed)
+
+An agent planning an irreversible step (a push, a deploy, a sent message) needs to know whether a recalled
+fact can carry that step. Today the answer is spread across several signals: the block's `status`, its
+approval history (`propose_update` → `approve_apply`), the score from `validity_gate.py`, staleness inside the
+corpus from `lineage_staleness.py`, staleness against the outside world from `world_staleness.py`, and
+`block_maturity.py`. Each signal is useful, but a planner should not have to combine five of them itself.
+
+### Plan
+
+- Add one field to every recall hit: `trust`, with exactly one of `verified`, `unverified`, `stale` or
+  `missing` (for a cited block id that no longer resolves).
+- `verified` means human-approved through `approve_apply`, with no staleness flag from either staleness
+  module. `stale` means either module flags it. Everything else is `unverified`. The validity score and
+  maturity stay visible next to the label but never upgrade it.
+- The label is a pure function of stored state: no clock beyond the stored timestamps, no I/O, no model
+  call. Same memory and same question give the same label, so replayable memory still holds.
+- Consumer: NAESTRO's premise-checked plans, which refuse an irreversible step unless every block it rests
+  on is `verified`.
+
+### Acceptance
+
+- A table test covers every combination of the input signals, including the case where the label must
+  not be `verified` even though the validity score is high.
+- A block whose cited file is deleted moves from `verified` to `stale` on the next recall.
+- Turning the field off returns recall output byte-identical to today's.
+
+### Status
+
+Proposed, not built. Needs an architecture audit before implementation.
