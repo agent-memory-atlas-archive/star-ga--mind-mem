@@ -6805,3 +6805,36 @@ the validator gates only new merge proposals.
 
 Proposed. Nothing built. Needs an architecture audit of the recompaction supersession conflict
 before implementation.
+
+## Custody of compacted agent context (2026-10-28, Proposed)
+
+Cross-repo sibling: naestro **R152**, the consumer side (reversible, incremental compaction
+of an agent's own context). Recent work on long-running coding sessions keeps consumed
+conversation recoverable instead of discarding it; this item is only the storage half. It
+adds no proxy, no second store and no second compaction path: tool outputs already have
+custody in Group J (`mind_mem.tool_output`), and memory blocks are compacted by Group H
+recompaction.
+
+- **Originals.** When an agent's context is compacted, the exact bytes of the replaced span
+  (messages and tool results) are kept under a content-addressed reference, scoped to tenant
+  and session, and never rewritten.
+- **Each compaction generation is a derived record:** source span IDs and hash, summary
+  bytes and hash, the model and prompt version that produced it, the budget decision that
+  triggered it, order, and session/tenant. Replay reads the recorded summary; it never asks
+  a model to regenerate one.
+- **Restore** is a bounded, permission-checked read that returns the original span by
+  reference. Each restore is logged with the grant that authorised it and whether its output
+  reached a model.
+- **No silent supersession.** A summary never replaces or supersedes a canonical block
+  outside propose → review → `approve_apply`. Settle this together with the open
+  `recompaction.py` supersession question above before defining any new record kind.
+- **Tests before build:** exact byte restore, partial failure, interrupted and restarted
+  sessions, concurrent writers, tenant isolation, instructions planted in a summary,
+  retention and secure deletion, and indexes never serving a span that was deleted or
+  redacted.
+
+### Stop condition
+
+No lost span, no broadened permission, byte-identical replay of recorded summaries, and a
+measured task-quality or cost gain over today's stores. Otherwise drop the item and keep the
+existing stores.
