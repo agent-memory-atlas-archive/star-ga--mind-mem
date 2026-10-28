@@ -6592,3 +6592,105 @@ corpus from `lineage_staleness.py`, staleness against the outside world from `wo
 ### Status
 
 Proposed, not built. Needs an architecture audit before implementation.
+
+## Write-time memory for agents that write MIND: verified examples and compile-error fixes (2026-10-28, Proposed)
+
+> Basis: recent research on code generation for low-resource languages.
+> Ideas only, no code or dependency adopted. Provenance lives in governed memory, not here.
+
+### Why
+
+An agent writing MIND starts from almost no training signal, and many first-attempt failures
+are compile errors (a missing import, a wrong signature, a wrong type). Memory can close part
+of that gap without retraining: a store of programs that compiled and passed their tests, and
+of the diagnostic a past attempt hit together with the edit that cleared it, lets the agent
+meet the fix before its first compile. A grep of `src/` and `docs/` finds no store of compiler
+verdicts and no recall path keyed on a compile error, so this is not built.
+
+### 1. Store only compiler-verified material
+
+- A MIND example enters the store only when the exact file compiles with the pinned `mindc`
+  and its tests pass. The entry records the compiler version, the source hash and the test result.
+- A compile-error lesson is stored only as a triple: the diagnostic code and message, the minimal
+  edit that made the same file compile, and a re-check that the edited file compiles. A lesson
+  whose edit does not compile is refused, not stored as a note.
+- Writes go through `propose_update` like every other block. Each lesson carries one verdict
+  label from the verdict-labelled lessons entry above (helped, hurt, no observed effect, confounded).
+
+### 2. Recall at write time
+
+- Before an agent's first compile of a MIND file, recall returns up to k matching examples and
+  error-to-fix lessons, matched on the modules the file imports and the diagnostic codes seen
+  for similar tasks.
+- Each returned item shows its compile record, so the agent can tell a verified example from
+  an unverified note.
+
+### 3. Measured effect on first-compile success
+
+Done when all of the following hold:
+
+- On a held-out set of at least 100 MIND tasks that the store has never seen (the leak scan of
+  the verdict-labelled lessons entry runs before each run), the first-compile pass rate with
+  recall is higher than without it. Same model, same prompts, same seeds, paired by task.
+- The gain is larger than seed spread across at least three seeds.
+- A distractor control (the same number of unverified snippets injected in the same slots)
+  does not reproduce the gain.
+- The compile-error rate per task is reported alongside pass rate, so a gain cannot hide a rise
+  in one error class.
+
+### Falsification condition
+
+Dropped if the paired gain does not exceed seed spread, or if the distractor control matches it.
+
+### Status
+
+Proposed. Nothing built. Needs an architecture audit before implementation. Depends on the
+compiler's machine-readable diagnostics, to be confirmed against the pinned compiler version.
+
+## Independently reproduced release artifacts (2026-10-28, Proposed)
+
+> Basis: recent research and public practice on reproducible builds.
+> Ideas only, no code or dependency adopted. Provenance lives in governed memory, not here.
+
+### Why
+
+Release artifacts are already signed: the wheel and sdist carry Sigstore keyless signatures,
+PyPI uploads carry PEP 740 attestations, and a CycloneDX SBOM is bound to the wheel
+(`.github/workflows/release.yml`, `docs/supply-chain-security.md`). A signature shows who built
+the bytes. It does not show that the bytes come from the tagged source. Nothing in the build or
+release path rebuilds a tag and compares the result, and `SOURCE_DATE_EPOCH` is not set anywhere
+in that path, so a second build of the same tag would not be expected to match. Users who run
+mind-mem as governed memory for regulated work need that check.
+
+This item does not reopen the "SLSA build provenance level 3" decision under
+"Deliberately not pursued". It needs no isolated hosted builder, only a deterministic build and
+a second rebuilder.
+
+### Plan
+
+1. **Pin the build.** Set `SOURCE_DATE_EPOCH` from the tag's commit time, keep the build backend
+   version fixed by the existing `build-system` floor, write archive members in sorted order and
+   strip build-host paths. Document the single command that builds the wheel and sdist from a tag.
+2. **Rebuild on a second runner.** A release job rebuilds each tag from source on an independent
+   runner and compares the SHA-256 of the wheel and sdist with the published files.
+3. **Gate the publish.** The PyPI publish job waits for the rebuild job. A mismatch stops the
+   publish and names the differing members.
+4. **Publish a receipt.** Each release gets a short reproduction record under `docs/`: both
+   hashes, both builders' toolchain versions and the build command.
+
+### Acceptance
+
+- For the next two tagged releases, the second builder produces byte-identical wheel and sdist.
+- A control in which one build input is deliberately altered (an extra file or a changed
+  timestamp) turns the gate red.
+- The publish job cannot run without a passing rebuild.
+
+### Falsification condition
+
+If bit-identity is not reached within two release cycles after step 1, the receipt records which
+members differ, and the release notes stop claiming reproducibility for the artifacts that differ.
+
+### Status
+
+Proposed. Nothing built. Needs an architecture audit of the release workflow's gate ordering
+before implementation.
