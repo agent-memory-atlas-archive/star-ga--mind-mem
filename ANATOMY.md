@@ -5,8 +5,8 @@
 > Re-generate with: `anatomy .`
 
 **Project:** `mind-mem`
-**Files:** 1758 | **Est. tokens:** ~5,178,418
-**Generated:** 2026-10-28 17:07 UTC
+**Files:** 1760 | **Est. tokens:** ~5,180,202
+**Generated:** 2026-10-28 18:06 UTC
 
 ## Token Budget Guide
 
@@ -35,7 +35,7 @@
 | `deploy/docker/` | 1 | ~824 |
 | `deploy/edge/` | 2 | ~1,149 |
 | `deploy/grafana/` | 1 | ~1,145 |
-| `docs/` | 97 | ~240,862 |
+| `docs/` | 97 | ~240,940 |
 | `docs/adr/` | 2 | ~521 |
 | `docs/advisories/` | 1 | ~834 |
 | `docs/audit/` | 1 | ~4,973 |
@@ -54,7 +54,8 @@
 | `.githooks/` | 1 | ~98 |
 | `.github/` | 9 | ~4,466 |
 | `.github/ISSUE_TEMPLATE/` | 2 | ~179 |
-| `.github/workflows/` | 12 | ~22,952 |
+| `.github/scripts/` | 1 | ~985 |
+| `.github/workflows/` | 13 | ~23,673 |
 | `hooks/` | 3 | ~1,026 |
 | `hooks/openclaw/mind-mem/` | 2 | ~1,211 |
 | `intelligence/` | 1 | ~113 |
@@ -388,7 +389,7 @@
 - `block-format.md` (~431 tok, medium) — Block Format
 - `block-type-taxonomy-roadmap.md` (~911 tok, large) — Block-Type Taxonomy Enhancement — Roadmap Note
 - `changelog-format.md` (~217 tok, medium) — Changelog Format Guide
-- `ci-workflows.md` (~861 tok, large) — CI Workflows
+- `ci-workflows.md` (~939 tok, large) — CI Workflows
 - `claude-desktop-setup.md` (~807 tok, large) — Claude Desktop Setup Guide
 - `client-integrations.md` (~14943 tok, huge) — Client Integrations
 - `cli-reference.md` (~8910 tok, huge) — CLI Reference
@@ -551,6 +552,11 @@
 - `mlc_config.json` (~55 tok, small) — Keys: ignorePatterns, timeout, retryOn429, aliveStatusCodes
 - `pilot-issues.md` (~3595 tok, huge) — Pilot Week Issues (Feb 19-25)
 - `pull_request_template.md` (~87 tok, small) — Summary
+### `.github/scripts/`
+
+- `pr_review.py` (~985 tok, large) — PR review + public-leak check for this repository (comment only; never pushes or merges)."""
+### `.github/`
+
 - `SECURITY_CONTACTS.md` (~124 tok, small) — Security Contacts
 ### `.github/workflows/`
 
@@ -561,6 +567,7 @@
 - `dependency-review.yml` (~114 tok, small) — name: Dependency Review
 - `docs.yml` (~261 tok, medium) — name: Docs
 - `label-sync.yml` (~111 tok, small) — name: Label Sync
+- `pr-review.yml` (~721 tok, large) — name: pr-review
 - `red-team.yml` (~385 tok, medium) — name: Red Team Audit
 - `release.yml` (~6918 tok, huge) — name: Release
 - `security.yml` (~3350 tok, huge) — name: Supply-Chain Security
