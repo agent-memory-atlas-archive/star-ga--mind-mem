@@ -6848,3 +6848,25 @@ No lost span, no broadened permission, byte-identical replay of recorded summari
 restore never returning bytes whose hash differs from the recorded span hash, and a measured
 task-quality or cost gain over today's stores. Otherwise drop the item and keep the existing
 stores.
+
+## Research continuity for frontier scientific computation (2026-10-26, Proposed)
+
+Status: proposed; not implemented or release-qualified.
+
+mind-mem's role in a cross-repository scientific-computation effort is research continuity:
+persistent derivation graphs, checkpoint indices, failed-hypothesis records, provenance
+deduplication, retrieval, and reproducible replay.
+
+### Acceptance
+
+- Existing release blockers, compiler pins and repository ownership are preserved; active
+  delivery is not diverted.
+- Start with small, independently known published symbolic tasks, frozen before
+  implementation; scale difficulty only after verified success.
+- Results are checked by an independent verifier, not agent consensus, with false-result
+  mutants, interruption and restart, and bounded-resource tests.
+- Exact source, compiler and dependency identities, assumptions, derivations, immutable
+  artifacts and measured time, memory and cost are recorded.
+- Benchmarks use reproducible baselines; no unmeasured state-of-the-art claim.
+- Research on open mathematical conjectures stays paused and their scientific statuses are
+  unchanged.
