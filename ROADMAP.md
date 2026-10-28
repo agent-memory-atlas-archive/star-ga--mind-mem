@@ -4962,7 +4962,7 @@ Two constraints this must respect:
 Two 2026 papers independently name this exact plane. Recorded for vocabulary
 and evaluation shape, not as a dependency:
 
-- **FORGETEVAL** (arXiv 2606.15903) — thesis: production memory failures are
+- **FORGETEVAL** (a 2026 benchmark paper) — thesis: production memory failures are
   forgetting failures, not recall failures, *"yet existing memory benchmarks
   measure only recall."* Decomposes forgetting into 5 primitive families and 10
   adversarial categories. At least four map onto live defects in our own note
@@ -4974,7 +4974,7 @@ and evaluation shape, not as a dependency:
   **Caveat:** its adapter protocol scores N/A for missing primitives, and we
   have no `purge` and no partial-`supersede` — so the aggregate would understate
   the gap. The per-category profile is the output worth having, not the headline.
-- **GPM** (arXiv 2608.12476) — describes this architecture in academic
+- **GPM** (a 2026 paper) — describes this architecture in academic
   vocabulary: bitemporal state transitions, source-bound admission, non-revival
   after retraction, fail-closed structured release. Independent confirmation that
   governed memory is a real category. **Nothing to steal — we built it.** Take
@@ -4986,7 +4986,7 @@ The item that prompted this group was a typeset explainer ("Agent Memory
 Architecture — 5 Layers"), which carries a model vendor's wordmark on every page
 while disclaiming affiliation with that vendor, cites a vendor site for its headline
 numbers, and attributes an entire section to an unlocatable blog post. Its
-CoALA taxonomy is real and is not its own (arXiv 2309.02427). Recorded here so a
+CoALA taxonomy is real and is not its own (it predates the document in published research). Recorded here so a
 later pass does not re-import it:
 
 - ~~**The five-layer architecture** (working / episodic / semantic / procedural / forgetting)~~
@@ -6412,7 +6412,7 @@ First regenerate training data against the live MCP tool definitions, resolving 
 - Preserve existing public APIs, admission/governance gates and determinism contracts by default; use feature flags. Revert or defer when benefits are not established.
 - Dependency order: mind-inference reference -> mind-nerve benchmark -> MindLLM optional dispatch -> naestro/mind-mem pilots; mind-flow orchestrates experiments and mind/mind-runtime implement only proven optimizations.
 
-**Attribution:** STARGA, Inc. Research source is cited above. No software-development co-authors are designated.
+**Attribution:** STARGA, Inc. The research source is recorded privately, not cited here. No software-development co-authors are designated.
 
 
 ---
@@ -6458,7 +6458,7 @@ Status: proposed, not built. A Fable audit verdict is required before any build.
 
 **Owner:** STARGA, Inc.  
 **Status:** Proposed; not shipped or independently benchmarked.  
-**Competitive reference:** https://sun-asterisk.us/takumi/ — learn from engineering workflow patterns; no copying of restricted assets.
+**Competitive reference:** a commercial verified-engineering-delivery product (provenance recorded privately, per the no-public-attribution rule) — learn from engineering workflow patterns; no copying of restricted assets.
 
 ### Repository-specific work
 
