@@ -6694,3 +6694,114 @@ members differ, and the release notes stop claiming reproducibility for the arti
 
 Proposed. Nothing built. Needs an architecture audit of the release workflow's gate ordering
 before implementation.
+
+## Secret detectors for token shapes the registry misses, and a redact-rescan-drop write rule (2026-10-28, Proposed)
+
+> Basis: recent prior art on secret redaction in agent-memory pipelines.
+> Ideas only, no code or dependency adopted. Provenance lives in governed memory, not here.
+
+### Why
+
+Agent transcripts and tool output are ingested into durable, recallable memory, and the
+package ships publicly. The eight built-in detectors in `src/mind_mem/compliance/detectors.py`
+cover AWS keys, `gh[pousr]_` tokens, Slack, Google API keys, `sk-`/`pypi-` prefixes, PEM
+private-key blocks and credit cards. They do not cover JWTs, `Authorization: Bearer` values,
+credentialed URLs or `github_pat_` tokens. The hook privacy filter (`_SECRET_PATTERNS` in
+`src/mind_mem/hook_installer.py`) misses the same shapes and applies its substitutions once,
+with no re-scan. The DSN redactors (`mm_cli._redact_dsn`, `federation_connect.redact_url`)
+cover two display paths only, not the write path.
+
+### What to build
+
+1. Add detectors to the compliance registry, one `RegexDetector` subclass each: JWTs (three
+   base64url segments, first segment beginning `eyJ`); the credential value of an
+   `Authorization: Bearer` header (the token, not the word); credentialed URLs of the form
+   `scheme://user:pass@host` for postgres, postgresql, mysql, mongodb, mongodb+srv and redis;
+   and `github_pat_` tokens.
+2. Redact, re-scan, drop. After redaction the text is scanned again with the same detector set.
+   A record that still matches is dropped, not stored, and the drop is counted on the existing
+   metrics surface. No record is stored in a partly redacted state.
+3. Route the hook privacy filter through the same registry and the same re-scan, so the two
+   pattern sets agree. This is the upgrade path already noted in `detectors.py`.
+
+### Done criterion
+
+- One positive fixture per new detector is redacted; the test asserts the secret string is
+  absent from the output.
+- Negative controls are left unchanged: a 40-hex git SHA, a file path, a credential-free
+  `https://` URL, and the word "Bearer" in prose with no token.
+- A fixture whose redaction still leaves a match (one crafted so a replacement re-creates a
+  match) is dropped, and the drop counter increments. This case has its own test.
+- Removing any one new detector turns its positive test red. Checked by mutation, once per
+  detector.
+- The full mind-mem test suite stays green.
+- Ingest of secret-free input is byte-identical to today's output. A fixed corpus is hashed
+  before and after the change.
+
+### Falsification condition
+
+Dropped if any new detector fires on a negative control in the corpus, or if the byte-identity
+check on secret-free input fails.
+
+### Status
+
+Proposed. Nothing built. Needs an architecture audit before implementation: the hook filter and
+the compliance registry are separate pattern sets today, and reconciling them changes hook output
+bytes, so the byte-identity criterion has to be checked on both paths.
+
+## Non-destructive consolidation validator for merged blocks (2026-10-28, Proposed)
+
+> Basis: recent prior art on guarded memory consolidation.
+> Ideas only, no code or dependency adopted. Provenance lives in governed memory, not here.
+
+### Why
+
+The destructive merge is deferred (the `# deferred:` marker in
+`src/mind_mem/consolidation_maturity_gate.py`). A weaker merge path is already live:
+`src/mind_mem/recompaction.py` proposes a rewrite with `supersedes=source_ids` and checks only a
+retention floor (25% of the largest source). It checks no rationale and no citation. A validator
+in front of every merged-block proposal closes that gap before the destructive step lands.
+
+### What to build
+
+A pure function `validate_merge(proposal, sources, workspace)` that accepts a merged block only
+when all of the following hold:
+
+1. It has a rationale of at least eight non-whitespace characters, the same floor the RA.4
+   proposal rule uses.
+2. It cites at least one source block, and no citation points to a block that does not exist in
+   the workspace. One dangling citation rejects the merge.
+3. Its length is strictly less than the combined length of its cited sources.
+4. Every source it cites is still in place after the proposal. The validator does not remove or
+   rewrite a source.
+
+An accepted merge is emitted only as a `propose_update` proposal. Only `approve_apply` writes it.
+The validator sits behind a feature flag in `src/mind_mem/v4/flag_registry.py`, off by default.
+
+### Done criterion
+
+- A table test with one case per rejection reason: no rationale, no citation, citation to a
+  deleted block, not shorter than the combined sources, and a source removed by the proposal. It
+  also has one accepted case, so the rejections are shown not to be vacuous.
+- An accepted merge changes no block until `approve_apply`. A test asserts the workspace hash is
+  unchanged after `propose_update`.
+- With the flag off, `plan_consolidation` and `dream_cycle` output is byte-identical to today's,
+  hashed over a fixed workspace.
+- Disabling any one of the four checks turns its table case red. Checked by mutation.
+
+### Falsification condition
+
+Dropped if the validator accepts any case the table marks as rejected, or if flag-off output
+differs from today's.
+
+### Open question
+
+`recompaction.py` already passes `supersedes=source_ids`, while this item requires sources to stay
+in place. The two conflict. The audit has to decide whether recompaction's supersession is routed
+through this validator, or whether supersession is a separate, later step. Until that is decided,
+the validator gates only new merge proposals.
+
+### Status
+
+Proposed. Nothing built. Needs an architecture audit of the recompaction supersession conflict
+before implementation.
