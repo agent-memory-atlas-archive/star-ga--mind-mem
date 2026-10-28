@@ -5,8 +5,8 @@
 > Re-generate with: `anatomy .`
 
 **Project:** `mind-mem`
-**Files:** 1757 | **Est. tokens:** ~5,175,521
-**Generated:** 2026-10-28 16:11 UTC
+**Files:** 1757 | **Est. tokens:** ~5,175,634
+**Generated:** 2026-10-28 16:30 UTC
 
 ## Token Budget Guide
 
@@ -24,7 +24,7 @@
 |-----------|-------|-------------|
 | `./` | 37 | ~51,980 |
 | `.agents/skills/mind-mem-development/` | 1 | ~456 |
-| `.arch-mind/` | 7 | ~5,774 |
+| `.arch-mind/` | 7 | ~5,887 |
 | `audits/` | 5 | ~24,039 |
 | `benchmarks/` | 66 | ~182,487 |
 | `benchmarks/repro/` | 1 | ~689 |
@@ -162,7 +162,7 @@
 
 - `baseline_2026-08-29.json` (~159 tok, small) — Keys: _aggregated_for_phase_a, _comment, _languages, _repo_root, edges
 - `fixture.json` (~265 tok, medium) — Keys: _aggregated_for_phase_a, _comment, _languages, _repo_root, edges
-- `last_summary.json` (~152 tok, small) — Keys: _aggregated_for_phase_a, _comment, _languages, _repo_root, edges
+- `last_summary.json` (~265 tok, medium) — Keys: _aggregated_for_phase_a, _comment, _languages, _repo_root, edges
 - `rescan.py` (~2916 tok, huge) — # Copyright 2026 STARGA, Inc. — Apache-2.0 (see ../LICENSE).
 - `rules.mind` (~1931 tok, huge) — mind-mem architectural-governance rules
 - `scan.json` (~265 tok, medium) — Keys: _aggregated_for_phase_a, _comment, _languages, _repo_root, edges

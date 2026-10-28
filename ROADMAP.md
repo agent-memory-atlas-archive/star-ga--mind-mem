@@ -6806,35 +6806,45 @@ the validator gates only new merge proposals.
 Proposed. Nothing built. Needs an architecture audit of the recompaction supersession conflict
 before implementation.
 
-## Custody of compacted agent context (2026-10-28, Proposed)
+## Custody of compacted agent context (2026-10-28, Proposed, P1)
 
 Cross-repo sibling: naestro **R152**, the consumer side (reversible, incremental compaction
 of an agent's own context). Recent work on long-running coding sessions keeps consumed
-conversation recoverable instead of discarding it; this item is only the storage half. It
-adds no proxy, no second store and no second compaction path: tool outputs already have
-custody in Group J (`mind_mem.tool_output`), and memory blocks are compacted by Group H
-recompaction.
+conversation recoverable instead of discarding it. This item is only the storage half, and
+only for sessions that have no Naestro vault: the external-CLI lanes in R152. A Naestro
+session restores from its own vault and does not use this store, so no span is held twice.
+Terms: a **fold** is one compaction event; a **generation** is its record. The item adds no
+proxy and no compaction path of its own. Tool outputs already have custody in Group J
+(`mind_mem.tool_output`) and are referenced inside a span by handle, never copied; memory
+blocks are compacted by Group H recompaction. P1, because R152's restore path depends on it.
 
 - **Originals.** When an agent's context is compacted, the exact bytes of the replaced span
-  (messages and tool results) are kept under a content-addressed reference, scoped to tenant
-  and session, and never rewritten.
-- **Each compaction generation is a derived record:** source span IDs and hash, summary
-  bytes and hash, the model and prompt version that produced it, the budget decision that
-  triggered it, order, and session/tenant. Replay reads the recorded summary; it never asks
-  a model to regenerate one.
-- **Restore** is a bounded, permission-checked read that returns the original span by
-  reference. Each restore is logged with the grant that authorised it and whether its output
-  reached a model.
-- **No silent supersession.** A summary never replaces or supersedes a canonical block
-  outside propose → review → `approve_apply`. Settle this together with the open
-  `recompaction.py` supersession question above before defining any new record kind.
+  (messages, and tool results by their Group J handle) are kept under a reference keyed per
+  tenant (a keyed hash over the content hash), scoped to tenant, lane and session, written
+  by one writer per session, and never rewritten. Dedup never crosses a tenant.
+- **Each generation is a derived record:** source span IDs and hash, summary bytes and hash,
+  the model, prompt version and parameters that produced it, the budget decision that
+  triggered it, order, and tenant, lane and session. Replay reads the recorded summary; it
+  never asks a model to regenerate one.
+- **Restore** is a bounded read checked against the caller's current grant, not the grant at
+  write time. It returns the original span by reference after the same redaction a live tool
+  result gets. A denied restore and a missing span return the same error. Each restore is
+  logged with the grant that authorised it and whether its output reached a model.
+- **No supersession.** A generation never replaces or supersedes a canonical block and
+  carries no `supersedes` edge, so it does not wait on the open `recompaction.py`
+  supersession question above. Any later proposal to promote a summary into a block goes
+  through propose → review → `approve_apply` like any other write.
+- **Deletion propagates.** Deleting or redacting a span tombstones every generation derived
+  from it (`derived-from` edge). Restore, search and indexes never serve a tombstoned span
+  or a summary derived from one.
 - **Tests before build:** exact byte restore, partial failure, interrupted and restarted
-  sessions, concurrent writers, tenant isolation, instructions planted in a summary,
-  retention and secure deletion, and indexes never serving a span that was deleted or
-  redacted.
+  sessions, concurrent writers, tenant isolation including a hash probe across tenants,
+  instructions planted in a summary, retention and secure deletion, and indexes never
+  serving a span that was deleted or redacted.
 
 ### Stop condition
 
-No lost span, no broadened permission, byte-identical replay of recorded summaries, and a
-measured task-quality or cost gain over today's stores. Otherwise drop the item and keep the
-existing stores.
+No lost span, no broadened permission, byte-identical replay of recorded summaries, a
+restore never returning bytes whose hash differs from the recorded span hash, and a measured
+task-quality or cost gain over today's stores. Otherwise drop the item and keep the existing
+stores.
