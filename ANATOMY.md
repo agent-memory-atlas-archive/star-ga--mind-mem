@@ -5,8 +5,8 @@
 > Re-generate with: `anatomy .`
 
 **Project:** `mind-mem`
-**Files:** 1757 | **Est. tokens:** ~5,174,008
-**Generated:** 2026-10-28 06:47 UTC
+**Files:** 1757 | **Est. tokens:** ~5,174,015
+**Generated:** 2026-10-28 06:48 UTC
 
 ## Token Budget Guide
 
@@ -107,7 +107,7 @@
 | `tests/red_team/` | 3 | ~806 |
 | `tests/red_team/transcripts/` | 1 | ~0 |
 | `train/` | 37 | ~86,802 |
-| `web/` | 6 | ~1,727 |
+| `web/` | 6 | ~1,734 |
 | `web/app/` | 2 | ~1,204 |
 | `web/app/console/` | 1 | ~1,169 |
 | `web/app/v1/[...path]/` | 1 | ~2,636 |
@@ -2128,7 +2128,7 @@
 ### `web/`
 
 - `next.config.ts` (~123 tok, small) — mind-mem-web is a thin client — the REST API lives on the
-- `package.json` (~208 tok, medium) — Keys: name, version, private, description, license
+- `package.json` (~215 tok, medium) — Keys: name, version, private, description, license
 - `README.md` (~1031 tok, large) — MIND-Mem web console
 - `tsconfig.json` (~149 tok, small) — Keys: compilerOptions, include, exclude
 
